@@ -1,0 +1,333 @@
+:root {
+  color: #17201f;
+  background: #f4f7f6;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(43, 200, 166, 0.08), transparent 28rem),
+    #f4f7f6;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.app-header {
+  height: 100%;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+}
+
+.app-header__title {
+  min-width: 0;
+  max-width: min(42vw, 520px);
+}
+
+.app-container {
+  max-width: 1800px;
+}
+
+.desktop-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.78fr) minmax(620px, 1.62fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.desktop-layout__left {
+  position: sticky;
+  top: 92px;
+}
+
+.desktop-layout__right {
+  min-width: 0;
+}
+
+.map-shell {
+  position: relative;
+  overflow: hidden;
+  min-height: 420px;
+  background: #dff4f2;
+  box-shadow: 0 12px 36px rgba(23, 48, 44, 0.08);
+}
+
+.taiwan-map {
+  height: 420px;
+  width: 100%;
+  background: #dff4f2;
+  z-index: 0;
+}
+
+.leaflet-control-attribution {
+  font-size: 9px !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+}
+
+.map-floating-label {
+  position: absolute;
+  z-index: 400;
+  left: 14px;
+  top: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 24px rgba(34, 62, 58, 0.13);
+  backdrop-filter: blur(12px);
+}
+
+.place-details,
+.library-panel {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 30px rgba(23, 48, 44, 0.06);
+}
+
+.place-details--empty {
+  min-height: 74px;
+  display: grid;
+  place-items: center;
+}
+
+.library-panel {
+  padding: 16px;
+  border: 1px solid var(--mantine-color-gray-2);
+  border-radius: var(--mantine-radius-lg);
+}
+
+.place-library {
+  min-width: 0;
+}
+
+.planner-board {
+  padding: 18px;
+  border: 1px solid var(--mantine-color-gray-2);
+  border-radius: var(--mantine-radius-lg);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 36px rgba(23, 48, 44, 0.07);
+}
+
+.board-scroll {
+  margin: 0 -4px;
+}
+
+.day-column {
+  width: 270px;
+  min-width: 270px;
+  min-height: 500px;
+  overflow: hidden;
+  background: #fbfcfc;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.day-column[data-over] {
+  border-color: var(--mantine-color-teal-5);
+  box-shadow: 0 0 0 3px rgba(43, 200, 166, 0.12);
+  transform: translateY(-2px);
+}
+
+.day-column__header {
+  min-height: 112px;
+  padding: 13px;
+  border-bottom: 1px solid rgba(31, 48, 45, 0.07);
+}
+
+.day-column__header--0 {
+  background: linear-gradient(145deg, #e8f8f1, #f5fbf8);
+}
+
+.day-column__header--1 {
+  background: linear-gradient(145deg, #fff3da, #fffaf0);
+}
+
+.day-column__header--2 {
+  background: linear-gradient(145deg, #e8f2ff, #f5f9ff);
+}
+
+.day-column__header--3 {
+  background: linear-gradient(145deg, #f2ebff, #faf7ff);
+}
+
+.day-column__header--4 {
+  background: linear-gradient(145deg, #ffebee, #fff7f8);
+}
+
+.day-column__header--unscheduled {
+  background: linear-gradient(145deg, #f1f3f4, #fafbfb);
+}
+
+.day-column__body {
+  min-height: 386px;
+  align-content: flex-start;
+}
+
+.day-column--unscheduled {
+  background: #f7f8f8;
+}
+
+.drop-placeholder {
+  display: grid;
+  min-height: 76px;
+  place-items: center;
+  padding: 12px;
+  border: 1px dashed var(--mantine-color-gray-4);
+  border-radius: var(--mantine-radius-md);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.place-card {
+  position: relative;
+  cursor: pointer;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(34, 54, 51, 0.04);
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease, opacity 120ms ease;
+}
+
+.place-card:hover {
+  border-color: var(--mantine-color-teal-3);
+  box-shadow: 0 8px 20px rgba(34, 54, 51, 0.08);
+}
+
+.place-card[data-selected] {
+  border-color: var(--mantine-color-teal-5);
+  box-shadow: 0 0 0 2px rgba(43, 200, 166, 0.1);
+}
+
+.place-card[data-dragging] {
+  opacity: 0.35;
+}
+
+.place-card--preview {
+  width: 252px;
+  transform: rotate(1.5deg);
+  cursor: grabbing;
+}
+
+.place-card__accent {
+  width: 4px;
+  align-self: stretch;
+  min-height: 46px;
+  border-radius: 999px;
+  background: var(--mantine-color-teal-5);
+}
+
+.place-card__accent--landmark {
+  background: var(--mantine-color-orange-5);
+}
+
+.place-card__accent--food {
+  background: var(--mantine-color-red-5);
+}
+
+.place-card__accent--nature {
+  background: var(--mantine-color-green-6);
+}
+
+.place-card__accent--culture {
+  background: var(--mantine-color-violet-5);
+}
+
+.place-card__accent--shopping {
+  background: var(--mantine-color-blue-5);
+}
+
+.place-card__accent--relaxation {
+  background: var(--mantine-color-cyan-5);
+}
+
+.drag-handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.mobile-tab-label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 74.99em) {
+  .app-header {
+    padding: 0 14px;
+  }
+
+  .map-shell,
+  .taiwan-map {
+    min-height: 360px;
+    height: 360px;
+  }
+
+  .planner-board {
+    padding: 14px;
+  }
+
+  .day-column {
+    width: min(82vw, 290px);
+    min-width: min(82vw, 290px);
+  }
+}
+
+@media (max-width: 47.99em) {
+  .app-header__title {
+    max-width: 55vw;
+  }
+
+  .map-floating-label {
+    right: 12px;
+    left: 12px;
+  }
+
+  .map-shell,
+  .taiwan-map {
+    min-height: 330px;
+    height: 330px;
+  }
+
+  .planner-board {
+    margin-inline: -4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
