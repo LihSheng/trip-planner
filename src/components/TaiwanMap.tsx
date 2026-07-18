@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
-import { Badge, Box, Group, Paper, Stack, Text, ThemeIcon } from '@mantine/core';
-import { IconMapPin } from '@tabler/icons-react';
+import { useEffect, useState } from 'react';
+import { ActionIcon, Badge, Box, Group, Modal, Paper, Stack, Text, ThemeIcon, Tooltip } from '@mantine/core';
+import { IconArrowsMaximize, IconArrowsMinimize, IconMapPin } from '@tabler/icons-react';
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet';
 import type { Place, PlaceCategory } from '../types';
 
@@ -13,6 +13,8 @@ const markerColors: Record<PlaceCategory, string> = {
   Relaxation: '#15aabf',
 };
 
+const geoapifyMapsApiKey = import.meta.env.VITE_GEOAPIFY_API_KEY as string | undefined;
+
 function SelectedPlaceController({ place }: { place?: Place }) {
   const map = useMap();
 
@@ -23,17 +25,34 @@ function SelectedPlaceController({ place }: { place?: Place }) {
   return null;
 }
 
+function MapSizeController({ expanded }: { expanded: boolean }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => map.invalidateSize(), 120);
+    return () => window.clearTimeout(timer);
+  }, [expanded, map]);
+
+  return null;
+}
+
 interface TaiwanMapProps {
   places: Place[];
   selectedId: string | null;
   onSelect: (placeId: string) => void;
 }
 
-export function TaiwanMap({ places, selectedId, onSelect }: TaiwanMapProps) {
+interface MapSurfaceProps extends TaiwanMapProps {
+  expanded: boolean;
+  onToggleExpanded: () => void;
+}
+
+function MapSurface({ places, selectedId, onSelect, expanded, onToggleExpanded }: MapSurfaceProps) {
   const selected = places.find((place) => place.id === selectedId);
+  const [useOpenStreetMapFallback, setUseOpenStreetMapFallback] = useState(!geoapifyMapsApiKey);
 
   return (
-    <Paper withBorder radius="lg" className="map-shell">
+    <Paper withBorder radius={expanded ? 0 : 'lg'} className={`map-shell${expanded ? ' map-shell--expanded' : ''}`}>
       <MapContainer
         center={[23.8, 120.95]}
         zoom={7}
@@ -41,9 +60,21 @@ export function TaiwanMap({ places, selectedId, onSelect }: TaiwanMapProps) {
         scrollWheelZoom
         className="taiwan-map"
       >
+        <MapSizeController expanded={expanded} />
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          key={useOpenStreetMapFallback ? 'osm-fallback' : 'geoapify-primary'}
+          attribution={
+            useOpenStreetMapFallback
+              ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              : 'Powered by <a href="https://www.geoapify.com/">Geoapify</a> | <a href="https://openmaptiles.org/">© OpenMapTiles</a> | <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap</a> contributors'
+          }
+          url={
+            useOpenStreetMapFallback
+              ? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+              : `https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png?apiKey=${geoapifyMapsApiKey}`
+          }
+          maxZoom={useOpenStreetMapFallback ? 19 : 20}
+          eventHandlers={{ tileerror: () => setUseOpenStreetMapFallback(true) }}
         />
         <SelectedPlaceController place={selected} />
         {places.map((place) => {
@@ -80,21 +111,76 @@ export function TaiwanMap({ places, selectedId, onSelect }: TaiwanMapProps) {
         })}
       </MapContainer>
 
-      <Box className="map-floating-label">
-        <Group gap="xs" wrap="nowrap">
-          <ThemeIcon color="teal" variant="light" radius="xl" size="md">
-            <IconMapPin size={16} />
-          </ThemeIcon>
-          <Stack gap={0}>
-            <Text fw={700} size="sm">
-              Taiwan overview
-            </Text>
-            <Text c="dimmed" size="xs">
-              Select a marker to inspect a place
-            </Text>
-          </Stack>
+      <Box className={`map-floating-label${expanded ? ' map-floating-label--expanded' : ''}`}>
+        <Group gap="xs" wrap="nowrap" justify="space-between">
+          <Group gap="xs" wrap="nowrap">
+            {!expanded ? (
+              <ThemeIcon color="teal" variant="light" radius="xl" size="md">
+                <IconMapPin size={16} />
+              </ThemeIcon>
+            ) : null}
+            <Stack gap={0}>
+              <Text fw={700} size="sm">
+                {expanded ? 'Taiwan map' : 'Taiwan overview'}
+              </Text>
+              {!expanded ? (
+                <Text c="dimmed" size="xs">
+                  Select a marker to inspect a place
+                </Text>
+              ) : null}
+            </Stack>
+          </Group>
+          <Tooltip label={expanded ? 'Shrink map' : 'Enlarge map'}>
+            <ActionIcon
+              variant="subtle"
+              color="teal"
+              aria-label={expanded ? 'Shrink map' : 'Enlarge map'}
+              onClick={onToggleExpanded}
+            >
+              {expanded ? <IconArrowsMinimize size={17} /> : <IconArrowsMaximize size={17} />}
+            </ActionIcon>
+          </Tooltip>
         </Group>
       </Box>
     </Paper>
+  );
+}
+
+export function TaiwanMap({ places, selectedId, onSelect }: TaiwanMapProps) {
+  const [expanded, setExpanded] = useState(false);
+  const toggleExpanded = () => setExpanded((value) => !value);
+
+  if (expanded) {
+    return (
+      <Modal
+        opened
+        onClose={() => setExpanded(false)}
+        fullScreen
+        withCloseButton={false}
+        styles={{
+          header: { display: 'none' },
+          body: { height: '100%', padding: 0 },
+          content: { height: '100%' },
+        }}
+      >
+        <MapSurface
+          places={places}
+          selectedId={selectedId}
+          onSelect={onSelect}
+          expanded
+          onToggleExpanded={toggleExpanded}
+        />
+      </Modal>
+    );
+  }
+
+  return (
+    <MapSurface
+      places={places}
+      selectedId={selectedId}
+      onSelect={onSelect}
+      expanded={false}
+      onToggleExpanded={toggleExpanded}
+    />
   );
 }
