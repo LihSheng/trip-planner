@@ -173,7 +173,7 @@ export function AppHeader({
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item leftSection={<IconLogout size={16} />} onClick={onSignOut}>
-                Sign out
+                {isDemo ? 'Sign in to sync' : 'Sign out'}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
