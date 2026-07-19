@@ -46,8 +46,8 @@ const TaiwanMap = lazy(() =>
   import('./components/TaiwanMap').then((module) => ({ default: module.TaiwanMap })),
 );
 
-export default function App() {
-  const planner = useTripPlanner();
+export default function App({ shareToken }: { shareToken?: string }) {
+  const planner = useTripPlanner(shareToken);
   const { user, signOut } = useAuth();
   const { t } = useI18n();
   const mobileViews = [
@@ -95,6 +95,7 @@ export default function App() {
   }
 
   function openAddPlace() {
+    if (planner.isReadOnly) return;
     setEditingPlace(undefined);
     setAddPlaceDayId(null);
     setReplacePlaceholderId(null);
@@ -102,6 +103,7 @@ export default function App() {
   }
 
   function openAddPlaceForDay(dayId: string) {
+    if (planner.isReadOnly) return;
     setEditingPlace(undefined);
     setAddPlaceDayId(dayId);
     setReplacePlaceholderId(null);
@@ -109,6 +111,7 @@ export default function App() {
   }
 
   function openEditPlace(place: Place) {
+    if (planner.isReadOnly) return;
     setEditingPlace(place);
     setAddPlaceDayId(null);
     setReplacePlaceholderId(null);
@@ -116,6 +119,7 @@ export default function App() {
   }
 
   function handlePlaceSubmit(place: Place) {
+    if (planner.isReadOnly) return;
     if (editingPlace) {
       planner.updatePlace(place);
       notifications.show({ color: 'teal', title: t('placeUpdated'), message: t('placeSaved', { name: place.name }) });
@@ -134,6 +138,7 @@ export default function App() {
   }
 
   function handleDeletePlace() {
+    if (planner.isReadOnly) return;
     if (!deleteTarget) return;
     planner.removePlace(deleteTarget.id);
     if (selectedId === deleteTarget.id) setSelectedId(null);
@@ -145,6 +150,7 @@ export default function App() {
   const dayToDeleteIndex = dayToDelete ? planner.state.days.indexOf(dayToDelete) : -1;
 
   function handleDeleteDay() {
+    if (planner.isReadOnly) return;
     if (!dayToDelete) return;
     planner.removeDay(dayToDelete.id);
     notifications.show({
@@ -337,6 +343,7 @@ export default function App() {
           syncError={planner.syncError}
           onSyncNow={planner.syncNow}
           accountEmail={user.email}
+          readOnly={planner.isReadOnly}
           onAddPlace={openAddPlace}
           onOpenSettings={() => setSettingsOpened(true)}
           canShare={planner.isOwner}

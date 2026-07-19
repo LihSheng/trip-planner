@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createInitialState } from '../data/seed';
 import { useAuth } from '../context/AuthContext';
 import type { ContainerId, PlaceholderKind, Place, StopSchedule, TripState, TravelMode } from '../types';
-import { acceptTripInvitations, isTripState, loadSharedTripOwnerId, loadTripState, saveTripState } from '../lib/tripRepository';
+import { acceptTripInvitations, isTripState, loadPublicTrip, loadSharedTripOwnerId, loadTripState, saveTripState } from '../lib/tripRepository';
 import { movePlace } from '../utils/itinerary';
 import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
 import { markRouteStale, routeLegKey } from '../utils/routing';
@@ -38,7 +38,7 @@ function loadDemoState(): TripState | null {
   return loadStoredState(DEMO_STORAGE_KEY);
 }
 
-export function useTripPlanner() {
+export function useTripPlanner(shareToken?: string) {
   const { accessToken, user, isDemo } = useAuth();
   const [state, setState] = useState<TripState>(createInitialState);
   const [isReady, setIsReady] = useState(false);
@@ -56,6 +56,14 @@ export function useTripPlanner() {
 
     async function hydrate() {
       try {
+        if (shareToken) {
+          const sharedState = await loadPublicTrip(shareToken);
+          if (!sharedState) throw new Error('This share link is invalid or no longer available.');
+          setState(sharedState);
+          setSyncStatus('saved');
+          return;
+        }
+
         if (isDemo) {
           setState(loadDemoState() ?? createInitialState());
           setSyncStatus('saved');
@@ -102,10 +110,10 @@ export function useTripPlanner() {
     return () => {
       active = false;
     };
-  }, [accessToken, isDemo, user.id]);
+  }, [accessToken, isDemo, shareToken, user.id]);
 
   useEffect(() => {
-    if (!isReady) return;
+    if (!isReady || shareToken) return;
 
     const sequence = ++saveSequence.current;
     setSyncStatus('saving');
@@ -130,7 +138,7 @@ export function useTripPlanner() {
     }, SAVE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timeout);
-  }, [accessToken, isDemo, isReady, state, tripOwnerId, user.id]);
+  }, [accessToken, isDemo, isReady, shareToken, state, tripOwnerId, user.id]);
 
   const placesById = useMemo(
     () => new Map(state.places.map((place) => [place.id, place])),
@@ -138,33 +146,37 @@ export function useTripPlanner() {
   );
 
   const addPlace = useCallback((place: Place) => {
+    if (shareToken) return;
     setState((current) => ({
       ...current,
       places: [...current.places, place],
       unscheduledIds: [...current.unscheduledIds, place.id],
       hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId,
     }));
-  }, []);
+  }, [shareToken]);
 
   const addPlaceToDay = useCallback((place: Place, dayId: string) => {
+    if (shareToken) return;
     setState((current) => ({
       ...current,
       places: [...current.places, place],
       days: current.days.map((day) => (day.id === dayId ? markRouteStale({ ...day, placeIds: [...day.placeIds, place.id] }) : day)),
       hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId,
     }));
-  }, []);
+  }, [shareToken]);
 
   const addPlaceholderToDay = useCallback((dayId: string, kind: PlaceholderKind) => {
+    if (shareToken) return;
     const placeholder: Place = { id: `placeholder-${crypto.randomUUID()}`, name: kind, region: '', category: 'Relaxation', latitude: 0, longitude: 0, notes: '', type: 'placeholder', placeholderKind: kind };
     setState((current) => ({
       ...current,
       places: [...current.places, placeholder],
       days: current.days.map((day) => day.id === dayId ? markRouteStale({ ...day, placeIds: [...day.placeIds, placeholder.id] }) : day),
     }));
-  }, []);
+  }, [shareToken]);
 
   const replacePlaceholder = useCallback((placeholderId: string, place: Place) => {
+    if (shareToken) return;
     setState((current) => ({
       ...current,
       places: [...current.places.filter((item) => item.id !== placeholderId), place],
@@ -172,9 +184,10 @@ export function useTripPlanner() {
         ? markRouteStale({ ...day, placeIds: day.placeIds.map((id) => id === placeholderId ? place.id : id) })
         : day),
     }));
-  }, []);
+  }, [shareToken]);
 
   const fillPlaceholder = useCallback((placeholderId: string, placeId: string) => {
+    if (shareToken) return;
     setState((current) => {
       const placeholder = current.places.find((place) => place.id === placeholderId);
       const place = current.places.find((item) => item.id === placeId);
@@ -189,9 +202,10 @@ export function useTripPlanner() {
         }),
       };
     });
-  }, []);
+  }, [shareToken]);
 
   const updatePlace = useCallback((place: Place) => {
+    if (shareToken) return;
     setState((current) => ({
       ...current,
       places: current.places.map((item) => (item.id === place.id ? place : item)),
@@ -201,6 +215,7 @@ export function useTripPlanner() {
   }, []);
 
   const removePlace = useCallback((placeId: string) => {
+    if (shareToken) return;
     setState((current) => ({
       ...current,
       places: current.places.filter((place) => place.id !== placeId),
@@ -216,6 +231,7 @@ export function useTripPlanner() {
   }, []);
 
   const addDay = useCallback(() => {
+    if (shareToken) return;
     setState((current) => {
       const dayNumber = current.days.length + 1;
       return {
@@ -229,6 +245,7 @@ export function useTripPlanner() {
   }, []);
 
   const updateDayLabel = useCallback((dayId: string, label: string) => {
+    if (shareToken) return;
     setState((current) => ({
       ...current,
       days: current.days.map((day) => (day.id === dayId ? { ...day, label } : day)),
@@ -236,6 +253,7 @@ export function useTripPlanner() {
   }, []);
 
   const removeDay = useCallback((dayId: string) => {
+    if (shareToken) return;
     setState((current) => {
       const day = current.days.find((item) => item.id === dayId);
       return {
@@ -247,6 +265,7 @@ export function useTripPlanner() {
   }, []);
 
   const reorderDays = useCallback((fromIndex: number, toIndex: number) => {
+    if (shareToken) return;
     setState((current) => {
       if (
         fromIndex === toIndex ||
@@ -266,6 +285,7 @@ export function useTripPlanner() {
   }, []);
 
   const updateDaySchedule = useCallback((dayId: string, updates: { travelMode?: TravelMode; startTime?: string; lodgingPlaceId?: string; timeManagementEnabled?: boolean }) => {
+    if (shareToken) return;
     setState((current) => {
       const placesById = new Map(current.places.map((place) => [place.id, place]));
       return {
@@ -285,6 +305,7 @@ export function useTripPlanner() {
   }, []);
 
   const updateStopSchedule = useCallback((dayId: string, placeId: string, updates: StopSchedule) => {
+    if (shareToken) return;
     setState((current) => {
       const placesById = new Map(current.places.map((place) => [place.id, place]));
       return {
@@ -315,6 +336,7 @@ export function useTripPlanner() {
   }, []);
 
   const toggleVisited = useCallback((placeId: string) => {
+    if (shareToken) return;
     setState((current) => ({
       ...current,
       visitedPlaceIds: current.visitedPlaceIds.includes(placeId)
@@ -325,6 +347,7 @@ export function useTripPlanner() {
 
   const move = useCallback(
     (placeId: string, destinationId: ContainerId, destinationIndex: number) => {
+      if (shareToken) return;
       setState((current) => {
         if (destinationId === 'unscheduled' && current.places.find((place) => place.id === placeId)?.type === 'placeholder') return current;
         const moved = movePlace(current, placeId, destinationId, destinationIndex);
@@ -335,10 +358,12 @@ export function useTripPlanner() {
   );
 
   const updateTrip = useCallback((tripName: string, startDate: string) => {
+    if (shareToken) return;
     setState((current) => ({ ...current, tripName, startDate, days: current.days.map(markRouteStale) }));
   }, []);
 
   const updateLegMode = useCallback((dayId: string, fromPlaceId: string, toPlaceId: string, mode: TravelMode | 'default') => {
+    if (shareToken) return;
     const key = routeLegKey(fromPlaceId, toPlaceId);
     setState((current) => ({
       ...current,
@@ -348,9 +373,9 @@ export function useTripPlanner() {
     }));
   }, []);
 
-  const reset = useCallback(() => setState(createInitialState()), []);
+  const reset = useCallback(() => { if (!shareToken) setState(createInitialState()); }, [shareToken]);
   const syncNow = useCallback(async () => {
-    if (isDemo) return;
+    if (isDemo || shareToken) return;
 
     setSyncStatus('saving');
     setSyncError(null);
@@ -361,7 +386,7 @@ export function useTripPlanner() {
       setSyncStatus('error');
       setSyncError(reason instanceof Error ? reason.message : 'Unable to save the trip.');
     }
-  }, [accessToken, isDemo, state, tripOwnerId]);
+  }, [accessToken, isDemo, shareToken, state, tripOwnerId]);
   const persistForCloudSignIn = useCallback(() => {
     if (isDemo) window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(state));
   }, [isDemo, state]);
@@ -371,7 +396,8 @@ export function useTripPlanner() {
     isReady,
     syncStatus,
     syncError,
-    isOwner: isDemo || tripOwnerId === user.id,
+    isOwner: !shareToken && (isDemo || tripOwnerId === user.id),
+    isReadOnly: Boolean(shareToken),
     placesById,
     addPlace,
     addPlaceToDay,

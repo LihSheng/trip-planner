@@ -67,6 +67,8 @@ The Supabase authentication session still uses browser storage so a device remai
 
 The owner selects **Share trip** in the header and enters a collaborator's email. The collaborator opens the app and uses the existing magic-link sign-in with that exact email; the database claims the pending invitation and grants editor access to the owner's trip. No password, shared account, or public edit link is used.
 
+The same dialog also creates a **read-only share link**. Anyone with that URL can open the map, places, and planner without signing in, but cannot make changes. The link uses a random token and calls a dedicated Supabase function that only returns the trip JSON; it does not grant anonymous table access or write permission.
+
 Owners can remove a collaborator at any time. Access is enforced by Supabase Row Level Security, not only hidden in the UI.
 
 ## Local development

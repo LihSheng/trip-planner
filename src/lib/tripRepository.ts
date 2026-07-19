@@ -5,6 +5,10 @@ interface TripRow {
   state: unknown;
 }
 
+interface SharedTripRow {
+  state: unknown;
+}
+
 export interface TripCollaborator {
   inviteEmail: string;
   accepted: boolean;
@@ -71,6 +75,39 @@ export async function loadTripState(accessToken: string, userId: string): Promis
   if (!rows[0]) return null;
   if (!isTripState(rows[0].state)) throw new Error('The saved trip has an unsupported data format.');
   return normalizeTripState(rows[0].state);
+}
+
+export async function loadPublicTrip(shareToken: string): Promise<TripState | null> {
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/get_shared_trip`, {
+    method: 'POST',
+    headers: dataHeaders(supabasePublishableKey, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ requested_share_token: shareToken }),
+  });
+  if (!response.ok) throw new Error(await parseError(response));
+  const rows = (await response.json()) as SharedTripRow[];
+  if (!rows[0]) return null;
+  if (!isTripState(rows[0].state)) throw new Error('The shared trip has an unsupported data format.');
+  return normalizeTripState(rows[0].state);
+}
+
+export async function getOrCreateShareToken(accessToken: string, userId: string): Promise<string> {
+  const existingQuery = new URLSearchParams({ select: 'share_token', user_id: `eq.${userId}`, limit: '1' });
+  const existing = await fetch(`${supabaseUrl}/rest/v1/trip_plans?${existingQuery.toString()}`, { headers: dataHeaders(accessToken) });
+  if (!existing.ok) throw new Error(await parseError(existing));
+  const rows = (await existing.json()) as Array<{ share_token: string | null }>;
+  if (rows[0]?.share_token) return rows[0].share_token;
+
+  const shareToken = crypto.randomUUID();
+  const updateQuery = new URLSearchParams({ user_id: `eq.${userId}` });
+  const response = await fetch(`${supabaseUrl}/rest/v1/trip_plans?${updateQuery.toString()}`, {
+    method: 'PATCH',
+    headers: dataHeaders(accessToken, { 'Content-Type': 'application/json', Prefer: 'return=representation' }),
+    body: JSON.stringify({ share_token: shareToken }),
+  });
+  if (!response.ok) throw new Error(await parseError(response));
+  const updated = (await response.json()) as Array<{ share_token: string | null }>;
+  if (!updated[0]?.share_token) throw new Error('Could not create a share link.');
+  return updated[0].share_token;
 }
 
 export async function saveTripState(

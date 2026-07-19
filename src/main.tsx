@@ -7,7 +7,7 @@ import '@mantine/notifications/styles.css';
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
 import App from './App';
-import { AuthGate } from './context/AuthContext';
+import { AuthGate, ReadOnlyAuthProvider } from './context/AuthContext';
 import { I18nProvider } from './i18n';
 
 const theme = createTheme({
@@ -34,14 +34,18 @@ const theme = createTheme({
   },
 });
 
+const shareToken = new URLSearchParams(window.location.search).get('share') ?? undefined;
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="light">
       <Notifications position="top-right" />
       <I18nProvider>
-        <AuthGate>
-          <App />
-        </AuthGate>
+        {shareToken ? (
+          <ReadOnlyAuthProvider><App shareToken={shareToken} /></ReadOnlyAuthProvider>
+        ) : (
+          <AuthGate><App /></AuthGate>
+        )}
       </I18nProvider>
     </MantineProvider>
   </StrictMode>,

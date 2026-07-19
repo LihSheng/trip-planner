@@ -3,8 +3,11 @@
 create table if not exists public.trip_plans (
   user_id uuid primary key references auth.users(id) on delete cascade,
   state jsonb not null,
+  share_token uuid unique,
   updated_at timestamptz not null default now()
 );
+
+alter table public.trip_plans add column if not exists share_token uuid unique;
 
 -- Email invitations let the owner share one itinerary without sharing an account.
 create table if not exists public.trip_collaborators (
@@ -67,3 +70,18 @@ $$;
 
 revoke all on function public.accept_trip_invitations() from public;
 grant execute on function public.accept_trip_invitations() to authenticated;
+
+create or replace function public.get_shared_trip(requested_share_token uuid)
+returns table(state jsonb)
+language sql
+security definer
+set search_path = public
+as $$
+  select trip_plans.state
+  from public.trip_plans
+  where trip_plans.share_token = requested_share_token
+  limit 1;
+$$;
+
+revoke all on function public.get_shared_trip(uuid) from public;
+grant execute on function public.get_shared_trip(uuid) to anon, authenticated;

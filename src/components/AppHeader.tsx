@@ -42,6 +42,7 @@ interface AppHeaderProps {
   syncError: string | null;
   onSyncNow: () => Promise<void>;
   accountEmail?: string;
+  readOnly?: boolean;
   onAddPlace: () => void;
   onOpenSettings: () => void;
   canShare: boolean;
@@ -61,6 +62,7 @@ export function AppHeader({
   syncError,
   onSyncNow,
   accountEmail,
+  readOnly = false,
   onAddPlace,
   onOpenSettings,
   canShare,
@@ -141,24 +143,25 @@ export function AppHeader({
               {syncFailed ? <IconCloudOff size={18} /> : syncStatus === 'saved' ? <IconCloudCheck size={18} /> : <IconCloudUpload size={18} />}
             </ActionIcon>
           </Tooltip>
-          <Button
+          {!readOnly ? <Button
             color="teal"
             leftSection={<IconPlus size={17} />}
             onClick={onAddPlace}
             visibleFrom="sm"
           >
             {t('addPlace')}
-          </Button>
-          <Tooltip label={t('addPlace')}>
+          </Button> : null}
+          {!readOnly ? <Tooltip label={t('addPlace')}>
             <ActionIcon color="teal" size="lg" hiddenFrom="sm" onClick={onAddPlace} aria-label={t('addPlace')}>
               <IconPlus size={18} />
             </ActionIcon>
-          </Tooltip>
-          <Tooltip label={t('tripSettings')}>
+          </Tooltip> : null}
+          {!readOnly ? <Tooltip label={t('tripSettings')}>
             <ActionIcon variant="default" size="lg" onClick={onOpenSettings} aria-label={t('tripSettings')}>
               <IconSettings size={18} />
             </ActionIcon>
-          </Tooltip>
+          </Tooltip> : null}
+          {readOnly ? <Badge color="gray" variant="light">Read-only</Badge> : null}
           {canShare ? <Tooltip label="Share trip"><ActionIcon variant="default" size="lg" onClick={onOpenShare} aria-label="Share trip"><IconUsers size={18} /></ActionIcon></Tooltip> : null}
           <Menu position="bottom-end" withinPortal shadow="md">
             <Menu.Target>

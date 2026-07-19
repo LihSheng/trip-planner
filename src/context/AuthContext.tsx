@@ -40,6 +40,17 @@ export function useAuth(): AuthContextValue {
   return value;
 }
 
+export function ReadOnlyAuthProvider({ children }: { children: ReactNode }) {
+  const value: AuthContextValue = {
+    user: { id: 'shared-trip-viewer' },
+    accessToken: '',
+    isDemo: true,
+    signOut: async () => undefined,
+    requestMagicLink: async () => undefined,
+  };
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
 export function AuthGate({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const [session, setSession] = useState<AuthSession | null>(null);

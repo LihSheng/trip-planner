@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Divider, Group, Modal, Stack, Text, TextInput, ThemeIcon } from '@mantine/core';
-import { IconCheck, IconInfoCircle, IconMail, IconTrash, IconUsers } from '@tabler/icons-react';
+import { IconCheck, IconCopy, IconInfoCircle, IconMail, IconTrash, IconUsers } from '@tabler/icons-react';
 import { useAuth } from '../context/AuthContext';
-import { inviteTripCollaborator, loadTripCollaborators, removeTripCollaborator, type TripCollaborator } from '../lib/tripRepository';
+import { getOrCreateShareToken, inviteTripCollaborator, loadTripCollaborators, removeTripCollaborator, type TripCollaborator } from '../lib/tripRepository';
 
 interface ShareTripModalProps { opened: boolean; onClose: () => void; onPrepareCloudSignIn: () => void; }
 
@@ -10,6 +10,7 @@ export function ShareTripModal({ opened, onClose, onPrepareCloudSignIn }: ShareT
   const { accessToken, user, isDemo, requestMagicLink } = useAuth();
   const [email, setEmail] = useState('');
   const [members, setMembers] = useState<TripCollaborator[]>([]);
+  const [shareUrl, setShareUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +21,20 @@ export function ShareTripModal({ opened, onClose, onPrepareCloudSignIn }: ShareT
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not load collaborators.'); }
     finally { setLoading(false); }
   }
-  useEffect(() => { if (opened) void refresh(); }, [opened]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!opened || isDemo) return;
+    void refresh();
+    setLoading(true);
+    getOrCreateShareToken(accessToken, user.id)
+      .then((token) => setShareUrl(`${window.location.origin}${window.location.pathname}?share=${token}`))
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Could not create a share link.'))
+      .finally(() => setLoading(false));
+  }, [opened, isDemo, accessToken, user.id]);
+
+  async function copyShareUrl() {
+    try { await navigator.clipboard.writeText(shareUrl); }
+    catch { setError('Your browser could not copy the share link.'); }
+  }
 
   async function invite() {
     const normalized = email.trim().toLowerCase();
@@ -54,6 +68,9 @@ export function ShareTripModal({ opened, onClose, onPrepareCloudSignIn }: ShareT
         <Button leftSection={<IconMail size={16} />} onClick={() => void signInAndSave()} loading={loading}>Email me a sign-in link</Button>
         <Alert color="teal" variant="light" icon={<IconInfoCircle size={17} />}>Your current demo plan will be saved and moved to your cloud account after you open the email link.</Alert>
       </> : <>
+        <Text size="sm" c="dimmed">Anyone with this link can view the full trip. They cannot edit it and do not need to sign in.</Text>
+        <Group align="end" wrap="nowrap"><TextInput label="Read-only share link" value={shareUrl} readOnly style={{ flex: 1 }} /><Button leftSection={<IconCopy size={16} />} onClick={() => void copyShareUrl()} disabled={!shareUrl} loading={loading}>Copy link</Button></Group>
+        <Divider />
         <Text size="sm" c="dimmed">Invite people by email. They sign in with a magic link using that exact email, then can edit this trip.</Text>
         {error ? <Alert color="red">{error}</Alert> : null}
         <Group align="end" wrap="nowrap"><TextInput label="Collaborator email" placeholder="friend@example.com" type="email" value={email} onChange={(event) => setEmail(event.currentTarget.value)} leftSection={<IconMail size={16} />} style={{ flex: 1 }} /><Button onClick={() => void invite()} loading={loading}>Invite</Button></Group>
