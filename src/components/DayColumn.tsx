@@ -6,6 +6,7 @@ import {
   Badge,
   Box,
   Group,
+  Menu,
   Paper,
   Stack,
   Text,
@@ -16,7 +17,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconAlertTriangle, IconCalendar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconExternalLink, IconPlus, IconRoute, IconTrash } from '@tabler/icons-react';
+import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconExternalLink, IconPlus, IconRoute, IconTrash, IconWalk } from '@tabler/icons-react';
 import type { Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
@@ -98,6 +99,13 @@ export function DayColumn({
   function legMapUrl(from: Place, to: Place, mode: TravelMode) {
     const travelmode = mode === 'public' ? 'transit' : mode === 'walk' ? 'walking' : mode === 'bike' ? 'bicycling' : 'driving';
     return `https://www.google.com/maps/dir/?${new URLSearchParams({ api: '1', origin: `${from.latitude},${from.longitude}`, destination: `${to.latitude},${to.longitude}`, travelmode }).toString()}`;
+  }
+
+  function transportIcon(mode: TravelMode) {
+    if (mode === 'walk') return <IconWalk size={16} />;
+    if (mode === 'bike') return <IconBike size={16} />;
+    if (mode === 'car') return <IconCar size={16} />;
+    return <IconBus size={16} />;
   }
 
   return (
@@ -264,9 +272,22 @@ export function DayColumn({
                   <Group className="route-leg" gap="xs" wrap="nowrap">
                     <IconRoute size={14} />
                     <Text size="xs" c="dimmed" style={{ flex: 1 }}>{t('travelTo', { name: nextPlace.name })}</Text>
-                    <Select size="xs" w={130} aria-label={t('travelTo', { name: nextPlace.name })} value={mode} data={[
-                      { value: 'default', label: t('dayDefault') }, { value: 'public', label: t('publicTransport') }, { value: 'walk', label: t('walk') }, { value: 'bike', label: t('bike') }, { value: 'car', label: t('car') },
-                    ]} onChange={(value) => onLegModeChange(day.id, place.id, nextPlace.id, (value ?? 'default') as TravelMode | 'default')} />
+                    <Menu position="bottom-end" shadow="md" withinPortal>
+                      <Menu.Target>
+                        <Tooltip label={t('routeMode')}>
+                          <ActionIcon variant="light" color="teal" aria-label={t('routeMode')}>
+                            {transportIcon(actualMode)}
+                          </ActionIcon>
+                        </Tooltip>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item leftSection={transportIcon(day.travelMode ?? 'public')} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'default')}>{t('dayDefault')}</Menu.Item>
+                        <Menu.Item leftSection={<IconBus size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'public')}>{t('publicTransport')}</Menu.Item>
+                        <Menu.Item leftSection={<IconWalk size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'walk')}>{t('walk')}</Menu.Item>
+                        <Menu.Item leftSection={<IconBike size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'bike')}>{t('bike')}</Menu.Item>
+                        <Menu.Item leftSection={<IconCar size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'car')}>{t('car')}</Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
                     <Tooltip label={t('openRoute')}><ActionIcon component="a" href={legMapUrl(place, nextPlace, actualMode)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" aria-label={t('openRoute')}><IconExternalLink size={15} /></ActionIcon></Tooltip>
                   </Group>
                 );
