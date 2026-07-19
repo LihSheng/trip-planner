@@ -578,9 +578,9 @@ select {
 }
 
 .route-leg {
-  min-height: 2.25rem;
-  margin: -0.15rem 0;
-  padding: 0.25rem;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0.375rem 0.25rem;
   color: var(--mantine-color-gray-6);
 }
 
