@@ -215,6 +215,7 @@ export default function App({ shareToken }: { shareToken?: string }) {
         onActiveViewChange={handleMapViewChange}
         onAddDay={planner.addDay}
         onRemoveDay={setDayDeleteTarget}
+        readOnly={planner.isReadOnly}
       />
     </Suspense>
   );
@@ -233,6 +234,7 @@ export default function App({ shareToken }: { shareToken?: string }) {
         onAdd={openAddPlace}
         onEdit={openEditPlace}
         onDelete={setDeleteTarget}
+        readOnly={planner.isReadOnly}
       />
     </Box>
   );
@@ -315,7 +317,7 @@ export default function App({ shareToken }: { shareToken?: string }) {
                 <IconMapPin size={17} />
                 <Text fw={750}>{t('selectedPlace')}</Text>
               </Group>
-              <PlaceDetails place={selectedPlace} onEdit={openEditPlace} />
+              <PlaceDetails place={selectedPlace} onEdit={openEditPlace} readOnly={planner.isReadOnly} />
               {!selectedPlace ? (
                 <Button variant="light" color="teal" onClick={openAddPlace}>
                   {t('addFirstPlace')}
