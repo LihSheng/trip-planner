@@ -21,6 +21,7 @@ import { UnscheduledColumn } from './UnscheduledColumn';
 import { useI18n } from '../i18n';
 
 interface PlannerBoardProps {
+  readOnly?: boolean;
   state: TripState;
   placesById: Map<string, Place>;
   selectedId: string | null;
@@ -45,6 +46,7 @@ interface PlannerBoardProps {
 }
 
 export function PlannerBoard({
+  readOnly = false,
   state,
   placesById,
   selectedId,
@@ -142,9 +144,9 @@ export function PlannerBoard({
               {t('itineraryHint')}
             </Text>
           </div>
-          <Button variant="light" color="teal" leftSection={<IconPlus size={17} />} onClick={onAddDay}>
+          {!readOnly ? <Button variant="light" color="teal" leftSection={<IconPlus size={17} />} onClick={onAddDay}>
             {t('addDay')}
-          </Button>
+          </Button> : null}
         </Group>
 
         <ScrollArea type="auto" offsetScrollbars className="board-scroll">
@@ -184,6 +186,7 @@ export function PlannerBoard({
                   hotelPlaces={hotelPlaces}
                   tripHotelId={state.hotelPlaceId}
                   onLegModeChange={onLegModeChange}
+                  readOnly={readOnly}
                 />
               ))}
             </SortableContext>

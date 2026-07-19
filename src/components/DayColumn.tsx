@@ -28,6 +28,7 @@ import { dayWarnings, estimateTravelMinutes, scheduleFor } from '../utils/schedu
 import { routeLegKey } from '../utils/routing';
 
 interface DayColumnProps {
+  readOnly?: boolean;
   day: TripDay;
   index: number;
   startDate: string;
@@ -52,6 +53,7 @@ interface DayColumnProps {
 }
 
 export function DayColumn({
+  readOnly = false,
   day,
   index,
   startDate,
@@ -313,7 +315,7 @@ export function DayColumn({
               })() : null}
               </Box>
             ))}
-            <UnstyledButton className="add-place-placeholder" onClick={onAddPlace}>
+            {!readOnly ? <><UnstyledButton className="add-place-placeholder" onClick={onAddPlace}>
               <IconPlus size={17} />
               <Text size="xs" fw={650}>
                 {t('addPlace')}
@@ -332,7 +334,7 @@ export function DayColumn({
                 <Menu.Item leftSection={<IconSun size={15} />} onClick={() => onAddPlaceholder('free-time')}>{t('freeTime')}</Menu.Item>
                 <Menu.Item leftSection={<IconPlus size={15} />} onClick={() => onAddPlaceholder('custom')}>{t('customStop')}</Menu.Item>
               </Menu.Dropdown>
-            </Menu>
+            </Menu></> : null}
           </Stack>
         </SortableContext>
       ) : null}

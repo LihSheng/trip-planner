@@ -239,6 +239,7 @@ export default function App({ shareToken }: { shareToken?: string }) {
 
   const plannerPanel = (
     <PlannerBoard
+      readOnly={planner.isReadOnly}
       state={planner.state}
       placesById={planner.placesById}
       selectedId={selectedId}
