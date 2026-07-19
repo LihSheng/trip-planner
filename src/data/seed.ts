@@ -81,6 +81,7 @@ export const createInitialState = (): TripState => ({
   startDate: '2026-11-07',
   places: seedPlaces,
   unscheduledIds: ['alishan'],
+  visitedPlaceIds: [],
   days: [
     { id: 'day-1', label: 'Taipei arrival', placeIds: ['taipei-101', 'ximending'] },
     { id: 'day-2', label: 'Northern day trip', placeIds: ['shifen', 'jiufen'] },

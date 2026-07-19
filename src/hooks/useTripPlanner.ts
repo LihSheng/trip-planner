@@ -16,7 +16,7 @@ function loadStoredState(key: string): TripState | null {
     const stored = window.localStorage.getItem(key);
     if (!stored) return null;
     const parsed = JSON.parse(stored) as unknown;
-    return isTripState(parsed) ? parsed : null;
+    return isTripState(parsed) ? { ...parsed, visitedPlaceIds: parsed.visitedPlaceIds ?? [] } : null;
   } catch {
     return null;
   }
@@ -135,6 +135,7 @@ export function useTripPlanner() {
       ...current,
       places: current.places.filter((place) => place.id !== placeId),
       unscheduledIds: current.unscheduledIds.filter((id) => id !== placeId),
+      visitedPlaceIds: current.visitedPlaceIds.filter((id) => id !== placeId),
       days: current.days.map((day) => ({
         ...day,
         placeIds: day.placeIds.filter((id) => id !== placeId),
@@ -192,6 +193,15 @@ export function useTripPlanner() {
     });
   }, []);
 
+  const toggleVisited = useCallback((placeId: string) => {
+    setState((current) => ({
+      ...current,
+      visitedPlaceIds: current.visitedPlaceIds.includes(placeId)
+        ? current.visitedPlaceIds.filter((id) => id !== placeId)
+        : [...current.visitedPlaceIds, placeId],
+    }));
+  }, []);
+
   const move = useCallback(
     (placeId: string, destinationId: ContainerId, destinationIndex: number) => {
       setState((current) => movePlace(current, placeId, destinationId, destinationIndex));
@@ -218,6 +228,7 @@ export function useTripPlanner() {
     updateDayLabel,
     removeDay,
     reorderDays,
+    toggleVisited,
     move,
     updateTrip,
     reset,

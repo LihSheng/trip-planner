@@ -35,6 +35,15 @@ export function isTripState(value: unknown): value is TripState {
   );
 }
 
+function normalizeTripState(state: TripState): TripState {
+  return {
+    ...state,
+    visitedPlaceIds: Array.isArray(state.visitedPlaceIds)
+      ? state.visitedPlaceIds.filter((placeId): placeId is string => typeof placeId === 'string')
+      : [],
+  };
+}
+
 export async function loadTripState(accessToken: string, userId: string): Promise<TripState | null> {
   const query = new URLSearchParams({
     select: 'state',
@@ -49,7 +58,7 @@ export async function loadTripState(accessToken: string, userId: string): Promis
   const rows = (await response.json()) as TripRow[];
   if (!rows[0]) return null;
   if (!isTripState(rows[0].state)) throw new Error('The saved trip has an unsupported data format.');
-  return rows[0].state;
+  return normalizeTripState(rows[0].state);
 }
 
 export async function saveTripState(

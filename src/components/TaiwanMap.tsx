@@ -7,7 +7,6 @@ import {
   Group,
   Modal,
   Paper,
-  ScrollArea,
   Stack,
   Text,
   Tooltip,
@@ -261,7 +260,7 @@ function MapSurface({
       </MapContainer>
 
       <Box className="map-day-switcher">
-        <ScrollArea type="never" scrollbarSize={0} offsetScrollbars>
+        <Box className="map-day-switcher__scroll" aria-label="Itinerary day selector">
           <Group gap="xs" wrap="nowrap">
             <Button
               size="xs"
@@ -269,18 +268,28 @@ function MapSurface({
               variant={activeView === 'all' ? 'filled' : 'white'}
               color="teal"
               leftSection={<IconMap size={14} />}
+              rightSection={
+                <Badge circle size="sm" variant={activeView === 'all' ? 'white' : 'light'} color="teal">
+                  {places.length}
+                </Badge>
+              }
               onClick={() => onActiveViewChange('all')}
             >
-              All · {places.length}
+              All
             </Button>
             <Button
               size="xs"
               radius="xl"
               variant={activeView === 'unscheduled' ? 'filled' : 'white'}
               color="gray"
+              rightSection={
+                <Badge circle size="sm" variant={activeView === 'unscheduled' ? 'white' : 'light'} color="gray">
+                  {unscheduledIds.length}
+                </Badge>
+              }
               onClick={() => onActiveViewChange('unscheduled')}
             >
-              Unscheduled · {unscheduledIds.length}
+              Unscheduled
             </Button>
             {days.map((day, index) => (
               <Button
@@ -290,9 +299,14 @@ function MapSurface({
                 variant={activeView === day.id ? 'filled' : 'white'}
                 color={activeView === day.id ? 'teal' : 'dark'}
                 leftSection={<IconCalendar size={14} />}
+                rightSection={
+                  <Badge circle size="sm" variant={activeView === day.id ? 'white' : 'light'} color="teal">
+                    {day.placeIds.length}
+                  </Badge>
+                }
                 onClick={() => onActiveViewChange(day.id)}
               >
-                Day {index + 1} · {day.placeIds.length}
+                Day {index + 1}
               </Button>
             ))}
             <Tooltip label="Add itinerary day">
@@ -308,7 +322,7 @@ function MapSurface({
               </ActionIcon>
             </Tooltip>
           </Group>
-        </ScrollArea>
+        </Box>
       </Box>
 
       <Box className="map-route-summary">

@@ -90,9 +90,10 @@ select {
   border-radius: 12px;
 }
 
-.map-shell--expanded {
-  height: 100vh;
-  min-height: 0;
+.map-shell.map-shell--expanded {
+  width: 100vw;
+  height: 100dvh;
+  min-height: 100dvh;
   border: 0;
   box-shadow: none;
 }
@@ -115,11 +116,29 @@ select {
   pointer-events: auto;
 }
 
-.map-day-switcher .mantine-ScrollArea-viewport {
+.map-day-switcher__scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
   padding: 2px;
+  overscroll-behavior-x: contain;
+  scrollbar-color: rgba(23, 48, 44, 0.35) transparent;
+  scrollbar-width: thin;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+}
+
+.map-day-switcher__scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.map-day-switcher .mantine-Group-root {
+  width: max-content;
+  min-width: 100%;
 }
 
 .map-day-switcher button {
+  flex: 0 0 auto;
+  white-space: nowrap;
   box-shadow: 0 6px 18px rgba(25, 48, 44, 0.14);
   backdrop-filter: blur(14px);
 }
@@ -330,6 +349,11 @@ select {
   min-height: 112px;
   padding: 13px;
   border-bottom: 1px solid rgba(31, 48, 45, 0.07);
+  cursor: pointer;
+}
+
+.day-column__header:has(input:focus-within) {
+  cursor: text;
 }
 
 .day-column__header--0 {
@@ -416,6 +440,20 @@ select {
 
 .place-card[data-dragging] {
   opacity: 0.35;
+}
+
+.place-card[data-visited] {
+  background: var(--mantine-color-teal-0);
+}
+
+.place-card__visited {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.place-card__name--visited {
+  color: var(--mantine-color-gray-6);
+  text-decoration: line-through;
 }
 
 .place-card--preview {
@@ -608,16 +646,20 @@ select {
 
   .map-shell,
   .taiwan-map {
-    min-height: min(58dvh, 500px);
-    height: min(58dvh, 500px);
+    min-height: 430px;
+    height: max(430px, calc(100dvh - 310px));
   }
 
-  .map-day-switcher .mantine-ScrollArea-viewport {
+  .map-day-switcher__scroll {
     padding-bottom: 4px;
   }
 
   .map-day-switcher button {
     min-height: 36px;
+  }
+
+  .map-shell .leaflet-top.leaflet-left {
+    top: 56px;
   }
 
   .map-route-summary {
@@ -667,18 +709,20 @@ select {
   }
 
   .board-scroll .mantine-ScrollArea-viewport {
-    scroll-snap-type: x mandatory;
+    overflow-x: hidden;
+    scroll-snap-type: none;
   }
 
-  .board-scroll .mantine-ScrollArea-viewport > div > div {
+  .board-scroll .mantine-ScrollArea-content > .mantine-Group-root {
+    flex-direction: column;
+    align-items: stretch;
     gap: 10px;
   }
 
   .day-column {
-    width: calc(100vw - 40px);
-    min-width: calc(100vw - 40px);
-    min-height: 420px;
-    scroll-snap-align: start;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
   }
 
   .day-column__header {
@@ -686,7 +730,7 @@ select {
   }
 
   .day-column__body {
-    min-height: 312px;
+    min-height: 0;
   }
 
   .place-card {

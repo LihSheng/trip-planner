@@ -4,6 +4,7 @@ import {
   ActionIcon,
   Badge,
   Box,
+  Checkbox,
   Group,
   Menu,
   Paper,
@@ -29,6 +30,8 @@ interface PlaceCardProps {
   onSelect?: (placeId: string) => void;
   onEdit?: (place: Place) => void;
   onDelete?: (place: Place) => void;
+  visited?: boolean;
+  onVisitedChange?: (placeId: string) => void;
 }
 
 export function PlaceCard({
@@ -38,6 +41,8 @@ export function PlaceCard({
   onSelect,
   onEdit,
   onDelete,
+  visited = false,
+  onVisitedChange,
 }: PlaceCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: place.id,
@@ -53,6 +58,7 @@ export function PlaceCard({
       className={`place-card${dragDisabled ? '' : ' place-card--draggable'}`}
       data-selected={selected || undefined}
       data-dragging={isDragging || undefined}
+      data-visited={visited || undefined}
       {...attributes}
       {...listeners}
       style={{
@@ -63,11 +69,21 @@ export function PlaceCard({
       onClick={() => onSelect?.(place.id)}
     >
       <Group align="flex-start" gap="xs" wrap="nowrap">
+        {onVisitedChange ? (
+          <Checkbox
+            checked={visited}
+            onChange={() => onVisitedChange(place.id)}
+            aria-label={`Mark ${place.name} as visited`}
+            className="place-card__visited"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+          />
+        ) : null}
         <Box className={`place-card__accent place-card__accent--${place.category.toLowerCase()}`} />
 
         <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
           <Group justify="space-between" align="flex-start" gap="xs" wrap="nowrap">
-            <Text fw={650} size="sm" lineClamp={1}>
+            <Text fw={650} size="sm" lineClamp={1} className={visited ? 'place-card__name--visited' : undefined}>
               {place.name}
             </Text>
             {(onEdit || onDelete) && (

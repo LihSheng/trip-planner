@@ -53,6 +53,7 @@ export default function App() {
   const [placeModalOpened, setPlaceModalOpened] = useState(false);
   const [settingsOpened, setSettingsOpened] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Place | undefined>();
+  const [dayDeleteTarget, setDayDeleteTarget] = useState<string | null>(null);
 
   const selectedPlace = useMemo(
     () => planner.state.places.find((place) => place.id === selectedId),
@@ -104,6 +105,20 @@ export default function App() {
     if (selectedId === deleteTarget.id) setSelectedId(null);
     notifications.show({ color: 'red', title: 'Place removed', message: `${deleteTarget.name} was deleted.` });
     setDeleteTarget(undefined);
+  }
+
+  const dayToDelete = planner.state.days.find((day) => day.id === dayDeleteTarget);
+  const dayToDeleteIndex = dayToDelete ? planner.state.days.indexOf(dayToDelete) : -1;
+
+  function handleDeleteDay() {
+    if (!dayToDelete) return;
+    planner.removeDay(dayToDelete.id);
+    notifications.show({
+      color: 'orange',
+      title: 'Day removed',
+      message: `${dayToDelete.placeIds.length} stops moved to Unscheduled.`,
+    });
+    setDayDeleteTarget(null);
   }
 
   function handleMapViewChange(viewId: string) {
@@ -176,12 +191,14 @@ export default function App() {
       state={planner.state}
       placesById={planner.placesById}
       selectedId={selectedId}
+      visitedPlaceIds={planner.state.visitedPlaceIds}
       onSelect={setSelectedId}
       onAddDay={planner.addDay}
       onMove={planner.move}
       onLabelChange={planner.updateDayLabel}
-      onRemoveDay={planner.removeDay}
+      onRemoveDay={setDayDeleteTarget}
       onReorderDays={planner.reorderDays}
+      onVisitedChange={planner.toggleVisited}
       onEditPlace={openEditPlace}
       onDeletePlace={setDeleteTarget}
     />
@@ -344,6 +361,21 @@ export default function App() {
             </Button>
             <Button color="red" onClick={handleDeletePlace}>
               Delete place
+            </Button>
+          </Box>
+        </Stack>
+      </Modal>
+      <Modal opened={Boolean(dayToDelete)} onClose={() => setDayDeleteTarget(null)} title="Remove day?" centered>
+        <Stack>
+          <Text size="sm">
+            Remove <strong>Day {dayToDeleteIndex + 1}</strong>? Its {dayToDelete?.placeIds.length ?? 0} stops will be moved to Unscheduled.
+          </Text>
+          <Box className="modal-actions">
+            <Button variant="default" onClick={() => setDayDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button color="red" onClick={handleDeleteDay}>
+              Remove day
             </Button>
           </Box>
         </Stack>

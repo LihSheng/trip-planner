@@ -28,6 +28,7 @@ export interface TripState {
   startDate: string;
   places: Place[];
   unscheduledIds: string[];
+  visitedPlaceIds: string[];
   days: TripDay[];
 }
 

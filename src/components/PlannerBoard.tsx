@@ -23,12 +23,14 @@ interface PlannerBoardProps {
   state: TripState;
   placesById: Map<string, Place>;
   selectedId: string | null;
+  visitedPlaceIds: string[];
   onSelect: (placeId: string) => void;
   onAddDay: () => void;
   onMove: (placeId: string, destinationId: ContainerId, destinationIndex: number) => void;
   onLabelChange: (dayId: string, label: string) => void;
   onRemoveDay: (dayId: string) => void;
   onReorderDays: (fromIndex: number, toIndex: number) => void;
+  onVisitedChange: (placeId: string) => void;
   onEditPlace: (place: Place) => void;
   onDeletePlace: (place: Place) => void;
 }
@@ -37,12 +39,14 @@ export function PlannerBoard({
   state,
   placesById,
   selectedId,
+  visitedPlaceIds,
   onSelect,
   onAddDay,
   onMove,
   onLabelChange,
   onRemoveDay,
   onReorderDays,
+  onVisitedChange,
   onEditPlace,
   onDeletePlace,
 }: PlannerBoardProps) {
@@ -139,11 +143,13 @@ export function PlannerBoard({
                     return place ? [place] : [];
                   })}
                   selectedId={selectedId}
+                  visitedPlaceIds={visitedPlaceIds}
                   onSelect={onSelect}
                   onLabelChange={onLabelChange}
                   onRemove={onRemoveDay}
                   onEditPlace={onEditPlace}
                   onDeletePlace={onDeletePlace}
+                  onVisitedChange={onVisitedChange}
                 />
               ))}
             </SortableContext>
