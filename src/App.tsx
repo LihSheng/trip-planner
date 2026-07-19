@@ -318,7 +318,7 @@ export default function App({ shareToken }: { shareToken?: string }) {
                 <Text fw={750}>{t('selectedPlace')}</Text>
               </Group>
               <PlaceDetails place={selectedPlace} onEdit={openEditPlace} readOnly={planner.isReadOnly} />
-              {!selectedPlace ? (
+              {!planner.isReadOnly && !selectedPlace ? (
                 <Button variant="light" color="teal" onClick={openAddPlace}>
                   {t('addFirstPlace')}
                 </Button>
@@ -402,7 +402,7 @@ export default function App({ shareToken }: { shareToken?: string }) {
                 <Stack gap="sm">
                   {map}
                   <Box className="mobile-place-details">
-                    <PlaceDetails place={selectedPlace} onEdit={openEditPlace} />
+                    <PlaceDetails place={selectedPlace} onEdit={openEditPlace} readOnly={planner.isReadOnly} />
                   </Box>
                 </Stack>
               ) : null}
