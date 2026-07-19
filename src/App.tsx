@@ -1,10 +1,12 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import {
   AppShell,
   Box,
   Button,
+  Center,
   Container,
   Group,
+  Loader,
   Modal,
   Paper,
   SegmentedControl,
@@ -18,6 +20,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconCalendarEvent, IconInfoCircle, IconList, IconMap, IconMapPin } from '@tabler/icons-react';
 import type { Place } from './types';
+import { useAuth } from './context/AuthContext';
 import { useTripPlanner } from './hooks/useTripPlanner';
 import { AppHeader } from './components/AppHeader';
 import { PlaceDetails } from './components/PlaceDetails';
@@ -38,6 +41,7 @@ const mobileViews = [
 
 export default function App() {
   const planner = useTripPlanner();
+  const { user, signOut } = useAuth();
   const theme = useMantineTheme();
   const isDesktop = useMediaQuery(`(min-width: ${theme.breakpoints.lg})`);
   const [selectedId, setSelectedId] = useState<string | null>(planner.state.places[0]?.id ?? null);
@@ -54,6 +58,23 @@ export default function App() {
     () => planner.state.places.find((place) => place.id === selectedId),
     [planner.state.places, selectedId],
   );
+
+  useEffect(() => {
+    if (!planner.isReady) return;
+    if (selectedId && planner.state.places.some((place) => place.id === selectedId)) return;
+    setSelectedId(planner.state.places[0]?.id ?? null);
+  }, [planner.isReady, planner.state.places, selectedId]);
+
+  if (!planner.isReady) {
+    return (
+      <Center mih="100vh">
+        <Stack align="center" gap="sm">
+          <Loader color="teal" />
+          <Text size="sm" c="dimmed">Loading your synchronized trip…</Text>
+        </Stack>
+      </Center>
+    );
+  }
 
   function openAddPlace() {
     setEditingPlace(undefined);
@@ -208,10 +229,14 @@ export default function App() {
           startDate={planner.state.startDate}
           placeCount={planner.state.places.length}
           dayCount={planner.state.days.length}
+          syncStatus={planner.syncStatus}
+          syncError={planner.syncError}
+          accountEmail={user.email}
           onAddPlace={openAddPlace}
           onOpenSettings={() => setSettingsOpened(true)}
           onExport={exportTrip}
           onReset={resetTrip}
+          onSignOut={() => void signOut()}
         />
       </AppShell.Header>
 
