@@ -1,6 +1,6 @@
 # Taiwan Trip Planner
 
-A responsive trip-planning workspace built with React, TypeScript, Mantine, React Leaflet, and dnd-kit.
+A responsive trip-planning workspace built with React, TypeScript, Mantine, React Leaflet, dnd-kit, and Supabase.
 
 ## Features
 
@@ -14,8 +14,54 @@ A responsive trip-planning workspace built with React, TypeScript, Mantine, Reac
 - Editable trip name, start date, and day labels
 - Add, edit, and remove places
 - Responsive Map / Places / Planner navigation
-- Local browser persistence with exportable JSON
+- Passwordless email sign-in
+- Supabase cloud persistence across laptop and mobile
+- Automatic migration of the existing browser `localStorage` trip
+- Cloud save status and exportable JSON backup
 - GitHub Pages deployment workflow
+
+## Supabase setup
+
+The frontend is configured for project `elqiycppfiafleglqkla` using its public publishable key. No database password, secret key, or service-role key is used by the browser.
+
+### 1. Create the table and security policy
+
+Open **Supabase Dashboard → SQL Editor**, copy `supabase/schema.sql`, and run it once. The script creates one trip row per authenticated user and enables Row Level Security so users can only access their own itinerary.
+
+### 2. Configure authentication redirects
+
+Open **Authentication → URL Configuration** and add the URLs where the app runs, for example:
+
+```text
+http://localhost:5173/
+https://<github-username>.github.io/trip-planner/
+```
+
+Set the production app URL as the Site URL after GitHub Pages is enabled.
+
+### 3. Optional environment overrides
+
+The checked-in project URL and publishable key allow the existing deployment to work without GitHub secrets. They are public client configuration, not privileged credentials. To point a local or forked build at another project, create `.env.local`:
+
+```bash
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key
+```
+
+Never add a Supabase secret key, service-role key, database password, or JWT signing secret to Vite environment variables.
+
+## Data and synchronization model
+
+Each authenticated user has one row in `public.trip_plans`. The complete `TripState` is stored as JSONB and automatically saved after edits.
+
+On the first successful login:
+
+1. The app checks Supabase for an existing cloud trip.
+2. If none exists, it imports the previous `taiwan-trip-planner:v1` browser data when available.
+3. The imported trip is uploaded to Supabase and the old local trip record is removed.
+4. Other devices signed in with the same email load the cloud copy.
+
+The Supabase authentication session still uses browser storage so a device remains signed in, but the itinerary itself is stored in Supabase.
 
 ## Local development
 
@@ -24,7 +70,7 @@ npm install
 npm run dev
 ```
 
-Open the URL shown by Vite.
+Open the URL shown by Vite and request a magic sign-in link.
 
 ## Quality checks
 
@@ -33,10 +79,6 @@ npm run typecheck
 npm test
 npm run build
 ```
-
-## Storage model
-
-The current release stores trip data in `localStorage`. This keeps the app fast and deployable as a static site, but data is scoped to the current browser. A future collaborative version can replace the persistence hook with a hosted database and authentication without changing the planner UI.
 
 ## Routing model
 
