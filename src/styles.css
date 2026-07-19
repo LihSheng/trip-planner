@@ -529,6 +529,180 @@ select {
   }
 }
 
+
+@media (max-width: 47.99em) {
+  .app-header {
+    padding: 0 12px;
+  }
+
+  .app-header .mantine-Avatar-root {
+    display: none;
+  }
+
+  .app-header__title {
+    max-width: none;
+  }
+
+  .app-header__title > :last-child {
+    display: none;
+  }
+
+  .app-header .mantine-Group-root {
+    gap: 8px;
+  }
+
+  .app-header .mantine-ActionIcon-root {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .app-container {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .mobile-workspace {
+    min-width: 0;
+  }
+
+  .mobile-place-details {
+    padding-inline: 2px;
+  }
+
+  .mobile-bottom-nav {
+    position: fixed;
+    z-index: 1000;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    min-height: calc(68px + env(safe-area-inset-bottom));
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--mantine-color-gray-2);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 -8px 24px rgba(23, 48, 44, 0.08);
+    backdrop-filter: blur(18px);
+  }
+
+  .mobile-bottom-nav__item {
+    height: 56px;
+    padding: 4px 8px;
+    border-radius: 14px;
+    color: var(--mantine-color-gray-7);
+  }
+
+  .mobile-bottom-nav__item .mantine-Button-inner {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .mobile-bottom-nav__item .mantine-Button-label {
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .mobile-bottom-nav__item[data-active] {
+    background: var(--mantine-color-teal-0);
+  }
+
+  .map-shell,
+  .taiwan-map {
+    min-height: min(58dvh, 500px);
+    height: min(58dvh, 500px);
+  }
+
+  .map-day-switcher .mantine-ScrollArea-viewport {
+    padding-bottom: 4px;
+  }
+
+  .map-day-switcher button {
+    min-height: 36px;
+  }
+
+  .map-route-summary {
+    align-items: flex-start;
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    padding: 10px 12px;
+  }
+
+  .map-route-summary > div {
+    min-width: 0;
+  }
+
+  .map-route-summary button {
+    min-height: 36px;
+  }
+
+  .map-expand-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .library-panel {
+    padding: 14px;
+  }
+
+  .place-library .mantine-ScrollArea-root {
+    max-height: calc(100dvh - 298px);
+  }
+
+  .planner-board {
+    padding: 14px 10px;
+  }
+
+  .planner-board > .mantine-Group-root {
+    padding-inline: 4px;
+  }
+
+  .planner-board > .mantine-Group-root .mantine-Button-root {
+    min-height: 44px;
+  }
+
+  .board-scroll {
+    margin-inline: -10px;
+    padding-inline: 10px;
+  }
+
+  .board-scroll .mantine-ScrollArea-viewport {
+    scroll-snap-type: x mandatory;
+  }
+
+  .board-scroll .mantine-ScrollArea-viewport > div > div {
+    gap: 10px;
+  }
+
+  .day-column {
+    width: calc(100vw - 40px);
+    min-width: calc(100vw - 40px);
+    min-height: 420px;
+    scroll-snap-align: start;
+  }
+
+  .day-column__header {
+    min-height: 96px;
+  }
+
+  .day-column__body {
+    min-height: 312px;
+  }
+
+  .place-card {
+    min-height: 68px;
+  }
+
+  .modal-actions {
+    gap: 10px;
+  }
+
+  .modal-actions > * {
+    min-height: 44px;
+    flex: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
