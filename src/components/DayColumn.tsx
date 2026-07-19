@@ -4,9 +4,11 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   ActionIcon,
   Badge,
+  Button,
   Box,
   Group,
   Menu,
+  Modal,
   Paper,
   Stack,
   Text,
@@ -36,6 +38,7 @@ interface DayColumnProps {
   onAddPlace: () => void;
   onAddPlaceholder: (kind: PlaceholderKind) => void;
   onReplacePlaceholder: (placeholderId: string) => void;
+  onRenamePlaceholder: (place: Place, label: string) => void;
   onLabelChange: (dayId: string, label: string) => void;
   onRemove: (dayId: string) => void;
   onEditPlace: (place: Place) => void;
@@ -59,6 +62,7 @@ export function DayColumn({
   onAddPlace,
   onAddPlaceholder,
   onReplacePlaceholder,
+  onRenamePlaceholder,
   onLabelChange,
   onRemove,
   onEditPlace,
@@ -72,6 +76,8 @@ export function DayColumn({
 }: DayColumnProps) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<Place | null>(null);
+  const [renameLabel, setRenameLabel] = useState('');
   const isDesktop = useMediaQuery('(min-width: 75em)');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `day:${day.id}`,
@@ -261,6 +267,7 @@ export function DayColumn({
                 onEdit={onEditPlace}
                 onDelete={onDeletePlace}
                 onReplace={place.type === 'placeholder' ? onReplacePlaceholder : undefined}
+                onRename={place.type === 'placeholder' ? (target) => { setRenameTarget(target); setRenameLabel(target.name === target.placeholderKind ? '' : target.name); } : undefined}
                 onVisitedChange={onVisitedChange}
                 schedule={day.timeManagementEnabled && day.stopSchedules?.[place.id] ? scheduleFor(day, place) : undefined}
                 travelMinutes={day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 && place.type !== 'placeholder' && places[placeIndex - 1].type !== 'placeholder' ? estimateTravelMinutes(places[placeIndex - 1], place, day.travelMode) : undefined}
@@ -321,6 +328,15 @@ export function DayColumn({
           </Stack>
         </SortableContext>
       ) : null}
+      <Modal opened={Boolean(renameTarget)} onClose={() => setRenameTarget(null)} title={t('renamePlannedStop')} centered>
+        <Stack>
+          <TextInput value={renameLabel} placeholder={renameTarget?.placeholderKind === 'meal' ? t('lunchDinner') : renameTarget?.placeholderKind === 'coffee' ? t('coffeeBreak') : renameTarget?.placeholderKind === 'free-time' ? t('freeTime') : t('customStop')} onChange={(event) => setRenameLabel(event.currentTarget.value)} autoFocus />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setRenameTarget(null)}>{t('cancel')}</Button>
+            <Button color="teal" onClick={() => { if (renameTarget && renameLabel.trim()) onRenamePlaceholder(renameTarget, renameLabel.trim()); setRenameTarget(null); }}>{t('saveChanges')}</Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Paper>
   );
 }

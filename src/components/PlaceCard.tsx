@@ -13,7 +13,7 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
-import { IconAlertTriangle, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconRoute, IconSun, IconToolsKitchen, IconTrash } from '@tabler/icons-react';
+import { IconAlertTriangle, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconPencil, IconRoute, IconSun, IconToolsKitchen, IconTrash } from '@tabler/icons-react';
 import type { Place, PlaceCategory, StopSchedule } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
 
@@ -41,6 +41,7 @@ interface PlaceCardProps {
   onScheduleChange?: (updates: StopSchedule) => void;
   onEnableSchedule?: () => void;
   onReplace?: (placeId: string) => void;
+  onRename?: (place: Place) => void;
 }
 
 export function PlaceCard({
@@ -58,6 +59,7 @@ export function PlaceCard({
   onScheduleChange,
   onEnableSchedule,
   onReplace,
+  onRename,
 }: PlaceCardProps) {
   const { t } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -65,7 +67,8 @@ export function PlaceCard({
     disabled: dragDisabled,
   });
   const isPlaceholder = place.type === 'placeholder';
-  const placeholderLabel = place.placeholderKind === 'meal' ? t('lunchDinner') : place.placeholderKind === 'coffee' ? t('coffeeBreak') : place.placeholderKind === 'free-time' ? t('freeTime') : t('customStop');
+  const presetPlaceholderLabel = place.placeholderKind === 'meal' ? t('lunchDinner') : place.placeholderKind === 'coffee' ? t('coffeeBreak') : place.placeholderKind === 'free-time' ? t('freeTime') : t('customStop');
+  const placeholderLabel = place.name === place.placeholderKind ? presetPlaceholderLabel : place.name;
   const PlaceholderIcon = place.placeholderKind === 'meal' ? IconToolsKitchen : place.placeholderKind === 'coffee' ? IconCoffee : IconSun;
 
   return (
@@ -105,7 +108,7 @@ export function PlaceCard({
             <Text fw={650} size="sm" lineClamp={1} className={visited ? 'place-card__name--visited' : undefined}>
               {isPlaceholder ? placeholderLabel : place.name}
             </Text>
-            {(onEdit || onDelete || onEnableSchedule || onReplace) && (
+            {(onEdit || onDelete || onEnableSchedule || onReplace || onRename) && (
               <Menu position="bottom-end" withinPortal shadow="md">
                 <Menu.Target>
                   <ActionIcon
@@ -120,6 +123,7 @@ export function PlaceCard({
                   </ActionIcon>
                 </Menu.Target>
                 <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
+                  {onRename ? <Menu.Item leftSection={<IconPencil size={15} />} onClick={() => onRename(place)}>{t('renamePlannedStop')}</Menu.Item> : null}
                   {onReplace ? (
                     <Menu.Item leftSection={<IconMapPin size={15} />} onClick={() => onReplace(place.id)}>
                       {t('choosePlace')}

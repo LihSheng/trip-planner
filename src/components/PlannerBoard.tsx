@@ -30,6 +30,7 @@ interface PlannerBoardProps {
   onAddPlaceToDay: (dayId: string) => void;
   onAddPlaceholderToDay: (dayId: string, kind: PlaceholderKind) => void;
   onReplacePlaceholder: (placeholderId: string) => void;
+  onRenamePlaceholder: (place: Place, label: string) => void;
   onMove: (placeId: string, destinationId: ContainerId, destinationIndex: number) => void;
   onLabelChange: (dayId: string, label: string) => void;
   onRemoveDay: (dayId: string) => void;
@@ -52,6 +53,7 @@ export function PlannerBoard({
   onAddPlaceToDay,
   onAddPlaceholderToDay,
   onReplacePlaceholder,
+  onRenamePlaceholder,
   onMove,
   onLabelChange,
   onRemoveDay,
@@ -163,6 +165,7 @@ export function PlannerBoard({
                   onAddPlace={() => onAddPlaceToDay(day.id)}
                   onAddPlaceholder={(kind) => onAddPlaceholderToDay(day.id, kind)}
                   onReplacePlaceholder={onReplacePlaceholder}
+                  onRenamePlaceholder={onRenamePlaceholder}
                   onLabelChange={onLabelChange}
                   onRemove={onRemoveDay}
                   onEditPlace={onEditPlace}
