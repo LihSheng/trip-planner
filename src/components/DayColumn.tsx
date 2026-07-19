@@ -4,7 +4,6 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   ActionIcon,
   Badge,
-  Button,
   Box,
   Group,
   Paper,
@@ -17,7 +16,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconAlertTriangle, IconCalendar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconPlus, IconRoute, IconTrash } from '@tabler/icons-react';
+import { IconAlertTriangle, IconCalendar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconExternalLink, IconPlus, IconRoute, IconTrash } from '@tabler/icons-react';
 import type { Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
@@ -43,8 +42,7 @@ interface DayColumnProps {
   onStopScheduleChange: (dayId: string, placeId: string, updates: StopSchedule) => void;
   hotelPlaces: Place[];
   tripHotelId?: string;
-  onOptimizeRoute: (dayId: string) => Promise<void>;
-  onLegModeChange: (dayId: string, fromPlaceId: string, toPlaceId: string, mode: TravelMode | 'default') => Promise<void>;
+  onLegModeChange: (dayId: string, fromPlaceId: string, toPlaceId: string, mode: TravelMode | 'default') => void;
 }
 
 export function DayColumn({
@@ -65,12 +63,10 @@ export function DayColumn({
   onStopScheduleChange,
   hotelPlaces,
   tripHotelId,
-  onOptimizeRoute,
   onLegModeChange,
 }: DayColumnProps) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
-  const [routing, setRouting] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 75em)');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `day:${day.id}`,
@@ -99,9 +95,9 @@ export function DayColumn({
     setCollapsed((value) => !value);
   }
 
-  async function optimizeRoute() {
-    setRouting(true);
-    try { await onOptimizeRoute(day.id); } finally { setRouting(false); }
+  function legMapUrl(from: Place, to: Place, mode: TravelMode) {
+    const travelmode = mode === 'public' ? 'transit' : mode === 'walk' ? 'walking' : mode === 'bike' ? 'bicycling' : 'driving';
+    return `https://www.google.com/maps/dir/?${new URLSearchParams({ api: '1', origin: `${from.latitude},${from.longitude}`, destination: `${to.latitude},${to.longitude}`, travelmode }).toString()}`;
   }
 
   return (
@@ -262,22 +258,21 @@ export function DayColumn({
               {placeIndex < places.length - 1 ? (() => {
                 const nextPlace = places[placeIndex + 1];
                 const key = routeLegKey(place.id, nextPlace.id);
-                const leg = day.routeLegs?.find((item) => item.fromPlaceId === place.id && item.toPlaceId === nextPlace.id);
                 const mode = day.legModeOverrides?.[key] ?? 'default';
+                const actualMode = mode === 'default' ? day.travelMode ?? 'public' : mode;
                 return (
                   <Group className="route-leg" gap="xs" wrap="nowrap">
                     <IconRoute size={14} />
-                    <Text size="xs" c="dimmed" style={{ flex: 1 }}>{leg ? `${leg.durationMinutes} min · ${(leg.distanceMeters / 1000).toFixed(1)} km` : t('routeStale')}</Text>
+                    <Text size="xs" c="dimmed" style={{ flex: 1 }}>{t('travelTo', { name: nextPlace.name })}</Text>
                     <Select size="xs" w={130} aria-label={t('travelTo', { name: nextPlace.name })} value={mode} data={[
                       { value: 'default', label: t('dayDefault') }, { value: 'public', label: t('publicTransport') }, { value: 'walk', label: t('walk') }, { value: 'bike', label: t('bike') }, { value: 'car', label: t('car') },
-                    ]} onChange={(value) => void onLegModeChange(day.id, place.id, nextPlace.id, (value ?? 'default') as TravelMode | 'default')} />
+                    ]} onChange={(value) => onLegModeChange(day.id, place.id, nextPlace.id, (value ?? 'default') as TravelMode | 'default')} />
+                    <Tooltip label={t('openRoute')}><ActionIcon component="a" href={legMapUrl(place, nextPlace, actualMode)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" aria-label={t('openRoute')}><IconExternalLink size={15} /></ActionIcon></Tooltip>
                   </Group>
                 );
               })() : null}
               </Box>
             ))}
-            {places.length > 1 ? <Button size="xs" variant={day.routeStale ? 'light' : 'subtle'} color="teal" leftSection={<IconRoute size={15} />} loading={routing} onClick={() => void optimizeRoute()}>{day.routeLegs?.length ? t('refreshRoute') : t('optimizeRoute')}</Button> : null}
-            {day.routeError ? <Text c="orange" size="xs">{day.routeError}</Text> : null}
             <UnstyledButton className="add-place-placeholder" onClick={onAddPlace}>
               <IconPlus size={17} />
               <Text size="xs" fw={650}>

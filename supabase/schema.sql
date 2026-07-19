@@ -18,26 +18,6 @@ create table if not exists public.trip_collaborators (
   unique (trip_owner_id, member_id)
 );
 
--- Edge Function quota ledger. This table is never exposed to browser roles.
-create table if not exists public.route_request_usage (
-  user_id uuid not null references auth.users(id) on delete cascade,
-  usage_date date not null,
-  request_count integer not null default 0 check (request_count >= 0),
-  updated_at timestamptz not null default now(),
-  primary key (user_id, usage_date)
-);
-alter table public.route_request_usage enable row level security;
-revoke all on table public.route_request_usage from anon, authenticated;
-
-create table if not exists public.route_cache (
-  cache_key text primary key,
-  result jsonb not null,
-  expires_at timestamptz not null,
-  created_at timestamptz not null default now()
-);
-alter table public.route_cache enable row level security;
-revoke all on table public.route_cache from anon, authenticated;
-
 alter table public.trip_collaborators enable row level security;
 revoke all on table public.trip_collaborators from anon;
 grant select, insert, update, delete on table public.trip_collaborators to authenticated;

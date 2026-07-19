@@ -27,7 +27,6 @@ import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-
 import type { Place, PlaceCategory, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { categoryLabel, useI18n } from '../i18n';
-import { decodePolyline } from '../utils/routing';
 
 const markerColors: Record<PlaceCategory, string> = {
   Landmark: '#f08c46',
@@ -205,7 +204,6 @@ function MapSurface({
   );
   const selectedPlace = visiblePlaces.find((place) => place.id === selectedId);
   const routeUrl = googleMapsRouteUrl(routePlaces);
-  const savedRouteLines = useMemo(() => activeDay?.routeStale ? [] : (activeDay?.routeLegs ?? []).flatMap((leg) => leg.polyline ? [decodePolyline(leg.polyline)] : []), [activeDay]);
 
   function markerLabel(place: Place, visibleIndex: number) {
     if (activeDay) return String(visibleIndex + 1);
@@ -235,9 +233,7 @@ function MapSurface({
           eventHandlers={{ tileerror: () => setUseOpenStreetMapFallback(true) }}
         />
 
-        {savedRouteLines.length ? savedRouteLines.map((positions, index) => (
-          <Polyline key={`saved-route-${index}`} positions={positions} pathOptions={{ color: '#13a889', weight: 5, opacity: 0.85, lineCap: 'round' }} />
-        )) : routePlaces.length > 1 ? (
+        {routePlaces.length > 1 ? (
           <Polyline
             positions={routePlaces.map((place) => [place.latitude, place.longitude] as [number, number])}
             pathOptions={{ color: '#13a889', weight: 5, opacity: 0.78, dashArray: '10 8', lineCap: 'round' }}

@@ -88,20 +88,7 @@ npm run build
 
 ## Routing model
 
-Each day can be optimized with Google Routes. Public transport is the default; every connection can override it with walking, cycling, or driving. The saved itinerary records route distance, duration, compact steps, and map geometry. Editing a stop, order, date, day mode, or time marks the route stale until the user explicitly refreshes it.
-
-### Google Routes setup
-
-The browser never receives the Google key. Add it only as a Supabase Edge Function secret, then deploy the included function:
-
-```bash
-supabase secrets set GOOGLE_ROUTES_API_KEY=your-google-routes-key
-supabase functions deploy route-plan
-```
-
-Enable **Routes API** and restrict the key to that API. Run the updated `supabase/schema.sql` first; it adds the private quota and one-hour cache tables. The function allows 100 route requests per authenticated owner per UTC day. Requests with the same route/mode/hour reuse the server cache. Do not put `GOOGLE_ROUTES_API_KEY` in `.env.local` or any `VITE_` variable.
-
-The deployed function currently permits the trip owner to request routes. This is deliberate: it protects the quota. Shared editors can still view the saved route data.
+Routes are manual and free: drag place cards into your preferred order, select public transport, walking, cycling, or driving for each connection, then open that individual connection in Google Maps. No Google API key, billing account, or Supabase Edge Function is needed.
 
 ## Deployment
 
