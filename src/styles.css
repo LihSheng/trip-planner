@@ -596,10 +596,16 @@ select {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border: 1px dashed var(--mantine-color-orange-4);
+  border: 1px dashed var(--mantine-color-gray-4);
   border-radius: var(--mantine-radius-md);
-  color: var(--mantine-color-orange-8);
-  background: var(--mantine-color-orange-0);
+  color: var(--mantine-color-gray-7);
+  background: rgba(248, 249, 250, 0.72);
+}
+
+.planned-stop-placeholder:hover,
+.planned-stop-placeholder:focus-visible {
+  border-color: var(--mantine-color-gray-6);
+  background: var(--mantine-color-gray-1);
 }
 
 .place-card--placeholder {
