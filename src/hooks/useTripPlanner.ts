@@ -64,7 +64,7 @@ export function useTripPlanner() {
     return () => {
       active = false;
     };
-  }, [accessToken, user.id]);
+  }, [user.id]);
 
   useEffect(() => {
     if (!isReady) return;
