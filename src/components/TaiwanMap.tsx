@@ -219,7 +219,7 @@ function MapSurface({
 
         {routePlaces.length > 1 ? (
           <Polyline
-            positions={routePlaces.map((place) => [place.latitude, place.longitude])}
+            positions={routePlaces.map((place) => [place.latitude, place.longitude] as [number, number])}
             pathOptions={{ color: '#13a889', weight: 5, opacity: 0.78, dashArray: '10 8', lineCap: 'round' }}
           />
         ) : null}
