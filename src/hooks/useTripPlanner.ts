@@ -297,6 +297,19 @@ export function useTripPlanner() {
   }, []);
 
   const reset = useCallback(() => setState(createInitialState()), []);
+  const syncNow = useCallback(async () => {
+    if (isDemo) return;
+
+    setSyncStatus('saving');
+    setSyncError(null);
+    try {
+      await saveTripState(accessToken, tripOwnerId, state);
+      setSyncStatus('saved');
+    } catch (reason) {
+      setSyncStatus('error');
+      setSyncError(reason instanceof Error ? reason.message : 'Unable to save the trip.');
+    }
+  }, [accessToken, isDemo, state, tripOwnerId]);
   const persistForCloudSignIn = useCallback(() => {
     if (isDemo) window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(state));
   }, [isDemo, state]);
@@ -322,6 +335,7 @@ export function useTripPlanner() {
     move,
     updateTrip,
     reset,
+    syncNow,
     persistForCloudSignIn,
   };
 }

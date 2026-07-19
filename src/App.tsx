@@ -319,6 +319,7 @@ export default function App() {
           dayCount={planner.state.days.length}
           syncStatus={planner.syncStatus}
           syncError={planner.syncError}
+          onSyncNow={planner.syncNow}
           accountEmail={user.email}
           onAddPlace={openAddPlace}
           onOpenSettings={() => setSettingsOpened(true)}

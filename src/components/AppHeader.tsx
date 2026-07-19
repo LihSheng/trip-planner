@@ -40,6 +40,7 @@ interface AppHeaderProps {
   dayCount: number;
   syncStatus: 'loading' | 'saving' | 'saved' | 'error';
   syncError: string | null;
+  onSyncNow: () => Promise<void>;
   accountEmail?: string;
   onAddPlace: () => void;
   onOpenSettings: () => void;
@@ -58,6 +59,7 @@ export function AppHeader({
   dayCount,
   syncStatus,
   syncError,
+  onSyncNow,
   accountEmail,
   onAddPlace,
   onOpenSettings,
@@ -125,12 +127,15 @@ export function AppHeader({
               {t({ loading: 'loading', saving: 'saving', saved: 'saved', error: 'syncFailed' }[syncStatus] as 'loading' | 'saving' | 'saved' | 'syncFailed')}
             </Badge>
           </Tooltip>
-          <Tooltip label={syncError ?? t('cloudStatus', { status: t({ loading: 'loading', saving: 'saving', saved: 'saved', error: 'syncFailed' }[syncStatus] as 'loading' | 'saving' | 'saved' | 'syncFailed') })}>
+          <Tooltip label={isDemo ? t('demoHint') : syncError ?? t('cloudStatus', { status: t({ loading: 'loading', saving: 'saving', saved: 'saved', error: 'syncFailed' }[syncStatus] as 'loading' | 'saving' | 'saved' | 'syncFailed') })}>
             <ActionIcon
               hiddenFrom="lg"
               variant="light"
               color={syncFailed ? 'red' : syncStatus === 'saved' ? 'teal' : 'yellow'}
               size="lg"
+              loading={syncStatus === 'saving'}
+              disabled={isDemo || syncStatus === 'saving'}
+              onClick={() => void onSyncNow()}
               aria-label={t('cloudStatus', { status: t({ loading: 'loading', saving: 'saving', saved: 'saved', error: 'syncFailed' }[syncStatus] as 'loading' | 'saving' | 'saved' | 'syncFailed') })}
             >
               {syncFailed ? <IconCloudOff size={18} /> : syncStatus === 'saved' ? <IconCloudCheck size={18} /> : <IconCloudUpload size={18} />}

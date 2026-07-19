@@ -569,17 +569,18 @@ select {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border: 1px dashed var(--mantine-color-teal-4);
+  border: 1px dashed var(--mantine-color-gray-4);
   border-radius: var(--mantine-radius-md);
-  color: var(--mantine-color-teal-7);
-  background: rgba(237, 252, 248, 0.55);
+  color: var(--mantine-color-gray-7);
+  font-weight: 700;
+  background: rgba(248, 249, 250, 0.72);
   transition: border-color 140ms ease, background 140ms ease;
 }
 
 .add-place-placeholder:hover,
 .add-place-placeholder:focus-visible {
-  border-color: var(--mantine-color-teal-6);
-  background: var(--mantine-color-teal-0);
+  border-color: var(--mantine-color-gray-6);
+  background: var(--mantine-color-gray-1);
 }
 
 .place-card[data-visited] {
@@ -695,7 +696,7 @@ select {
   .map-shell,
   .taiwan-map {
     min-height: 500px;
-    height: 500px;
+    height: max(500px, calc(100dvh - 20rem));
   }
 
   .map-route-summary {
