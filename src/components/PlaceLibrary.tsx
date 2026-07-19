@@ -22,6 +22,7 @@ interface PlaceLibraryProps {
   onAdd: () => void;
   onEdit: (place: Place) => void;
   onDelete: (place: Place) => void;
+  readOnly?: boolean;
 }
 
 export function PlaceLibrary({
@@ -31,6 +32,7 @@ export function PlaceLibrary({
   onAdd,
   onEdit,
   onDelete,
+  readOnly = false,
 }: PlaceLibraryProps) {
   const { t } = useI18n();
   const [query, setQuery] = useState('');
@@ -64,11 +66,11 @@ export function PlaceLibrary({
             {t('placesCount', { shown: filtered.length, total: places.length })}
           </Text>
         </div>
-        <Tooltip label={t('addPlace')}>
+        {!readOnly ? <Tooltip label={t('addPlace')}>
           <ActionIcon color="teal" variant="light" radius="xl" onClick={onAdd} aria-label={t('addPlace')}>
             <IconPlus size={18} />
           </ActionIcon>
-        </Tooltip>
+        </Tooltip> : null}
       </Group>
 
       <TextInput
@@ -98,8 +100,8 @@ export function PlaceLibrary({
                   selected={place.id === selectedId}
                   dragDisabled
                   onSelect={onSelect}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
+                  onEdit={readOnly ? undefined : onEdit}
+                  onDelete={readOnly ? undefined : onDelete}
                 />
               ))
             ) : (

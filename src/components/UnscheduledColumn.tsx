@@ -14,6 +14,7 @@ interface UnscheduledColumnProps {
   onSelect: (placeId: string) => void;
   onEditPlace: (place: Place) => void;
   onDeletePlace: (place: Place) => void;
+  readOnly?: boolean;
 }
 
 export function UnscheduledColumn({
@@ -22,11 +23,12 @@ export function UnscheduledColumn({
   onSelect,
   onEditPlace,
   onDeletePlace,
+  readOnly = false,
 }: UnscheduledColumnProps) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 75em)');
-  const { setNodeRef, isOver } = useDroppable({ id: 'unscheduled' });
+  const { setNodeRef, isOver } = useDroppable({ id: 'unscheduled', disabled: readOnly });
 
   useEffect(() => {
     if (isDesktop) setCollapsed(false);
@@ -89,9 +91,10 @@ export function UnscheduledColumn({
                 key={place.id}
                 place={place}
                 selected={selectedId === place.id}
+                dragDisabled={readOnly}
                 onSelect={onSelect}
-                onEdit={onEditPlace}
-                onDelete={onDeletePlace}
+                onEdit={readOnly ? undefined : onEditPlace}
+                onDelete={readOnly ? undefined : onDeletePlace}
               />
             ))}
             {places.length === 0 && (

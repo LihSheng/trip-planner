@@ -51,6 +51,7 @@ interface TaiwanMapProps {
   onActiveViewChange: (viewId: string) => void;
   onAddDay: () => void;
   onRemoveDay: (dayId: string) => void;
+  readOnly?: boolean;
 }
 
 interface MapSurfaceProps extends TaiwanMapProps {
@@ -168,6 +169,7 @@ function MapSurface({
   onActiveViewChange,
   onAddDay,
   onRemoveDay,
+  readOnly = false,
   expanded,
   onToggleExpanded,
 }: MapSurfaceProps) {
@@ -284,11 +286,11 @@ function MapSurface({
                         <IconExternalLink size={15} />
                       </ActionIcon>
                     </Tooltip>
-                    <Tooltip label={t('editPlace')}>
+                    {!readOnly ? <Tooltip label={t('editPlace')}>
                       <ActionIcon variant="subtle" color="gray" size="sm" aria-label={t('editPlace')} onClick={() => onEditPlace(place)}>
                         <IconEdit size={15} />
                       </ActionIcon>
-                    </Tooltip>
+                    </Tooltip> : null}
                   </Group>
                 </Stack>
               </Popup>
@@ -332,7 +334,7 @@ function MapSurface({
             {days.map((day, index) => (
               <Button
                 key={day.id}
-                draggable
+                draggable={!readOnly}
                 size="xs"
                 radius="xl"
                 variant={activeView === day.id ? 'filled' : 'white'}
@@ -344,7 +346,7 @@ function MapSurface({
                   </Badge>
                 }
                 onClick={() => onActiveViewChange(day.id)}
-                onDragStart={(event) => {
+                onDragStart={readOnly ? undefined : (event) => {
                   event.dataTransfer.effectAllowed = 'move';
                   event.dataTransfer.setData('text/plain', day.id);
                   setDraggedDayId(day.id);
@@ -354,7 +356,7 @@ function MapSurface({
                 {t('day', { number: index + 1 })}
               </Button>
             ))}
-            <Tooltip label={t('addItineraryDay')}>
+            {!readOnly ? <Tooltip label={t('addItineraryDay')}>
               <ActionIcon
                 size="lg"
                 radius="xl"
@@ -365,8 +367,8 @@ function MapSurface({
               >
                 <IconPlus size={17} />
               </ActionIcon>
-            </Tooltip>
-            {draggedDayId ? (
+            </Tooltip> : null}
+            {!readOnly && draggedDayId ? (
               <Tooltip label={t('removeDay')}>
                 <ActionIcon
                   size="lg"

@@ -128,11 +128,11 @@ export function PlannerBoard({
 
   return (
     <DndContext
-      sensors={sensors}
+      sensors={readOnly ? [] : sensors}
       collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragCancel={() => setActiveId(null)}
-      onDragEnd={handleDragEnd}
+      onDragStart={readOnly ? undefined : handleDragStart}
+      onDragCancel={readOnly ? undefined : () => setActiveId(null)}
+      onDragEnd={readOnly ? undefined : handleDragEnd}
     >
       <Stack gap="md" className="planner-board">
         <Group justify="space-between" align="flex-end">
@@ -157,6 +157,7 @@ export function PlannerBoard({
               onSelect={onSelect}
               onEditPlace={onEditPlace}
               onDeletePlace={onDeletePlace}
+              readOnly={readOnly}
             />
             <SortableContext items={state.days.map((day) => `day:${day.id}`)} strategy={horizontalListSortingStrategy}>
               {state.days.map((day, index) => (
