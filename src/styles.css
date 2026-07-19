@@ -580,12 +580,8 @@ select {
 .route-leg {
   min-height: 2.25rem;
   margin: -0.15rem 0;
-  padding: 0.25rem 0.35rem;
+  padding: 0.25rem;
   color: var(--mantine-color-gray-6);
-}
-
-.route-leg .mantine-Select-input {
-  font-size: 0.7rem;
 }
 
 .add-place-placeholder:hover,

@@ -17,7 +17,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconExternalLink, IconPlus, IconRoute, IconTrash, IconWalk } from '@tabler/icons-react';
+import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconPlus, IconRoute, IconTrash, IconWalk } from '@tabler/icons-react';
 import type { Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
@@ -269,9 +269,8 @@ export function DayColumn({
                 const mode = day.legModeOverrides?.[key] ?? 'default';
                 const actualMode = mode === 'default' ? day.travelMode ?? 'public' : mode;
                 return (
-                  <Group className="route-leg" gap="xs" wrap="nowrap">
-                    <IconRoute size={14} />
-                    <Text size="xs" c="dimmed" style={{ flex: 1 }}>{t('travelTo', { name: nextPlace.name })}</Text>
+                  <Group className="route-leg" gap="xs" justify="center" wrap="nowrap">
+                    <Tooltip label={t('openRoute')}><ActionIcon component="a" href={legMapUrl(place, nextPlace, actualMode)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon></Tooltip>
                     <Menu position="bottom-end" shadow="md" withinPortal>
                       <Menu.Target>
                         <Tooltip label={t('routeMode')}>
@@ -288,7 +287,6 @@ export function DayColumn({
                         <Menu.Item leftSection={<IconCar size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'car')}>{t('car')}</Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
-                    <Tooltip label={t('openRoute')}><ActionIcon component="a" href={legMapUrl(place, nextPlace, actualMode)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" aria-label={t('openRoute')}><IconExternalLink size={15} /></ActionIcon></Tooltip>
                   </Group>
                 );
               })() : null}
