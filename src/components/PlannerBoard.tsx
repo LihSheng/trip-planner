@@ -30,6 +30,7 @@ interface PlannerBoardProps {
   onAddPlaceToDay: (dayId: string) => void;
   onAddPlaceholderToDay: (dayId: string, kind: PlaceholderKind) => void;
   onReplacePlaceholder: (placeholderId: string) => void;
+  onFillPlaceholder: (placeholderId: string, placeId: string) => void;
   onRenamePlaceholder: (place: Place, label: string) => void;
   onMove: (placeId: string, destinationId: ContainerId, destinationIndex: number) => void;
   onLabelChange: (dayId: string, label: string) => void;
@@ -53,6 +54,7 @@ export function PlannerBoard({
   onAddPlaceToDay,
   onAddPlaceholderToDay,
   onReplacePlaceholder,
+  onFillPlaceholder,
   onRenamePlaceholder,
   onMove,
   onLabelChange,
@@ -111,7 +113,13 @@ export function PlannerBoard({
       return;
     }
 
-    const destination = getDestination(String(event.over.id));
+    const overId = String(event.over.id);
+    if (placesById.get(overId)?.type === 'placeholder' && placesById.get(activeId)?.type !== 'placeholder') {
+      onFillPlaceholder(overId, activeId);
+      return;
+    }
+
+    const destination = getDestination(overId);
     if (!destination) return;
     onMove(activeId, destination.containerId, destination.index);
   }

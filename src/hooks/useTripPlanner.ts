@@ -174,6 +174,23 @@ export function useTripPlanner() {
     }));
   }, []);
 
+  const fillPlaceholder = useCallback((placeholderId: string, placeId: string) => {
+    setState((current) => {
+      const placeholder = current.places.find((place) => place.id === placeholderId);
+      const place = current.places.find((item) => item.id === placeId);
+      if (placeholder?.type !== 'placeholder' || !place || place.type === 'placeholder') return current;
+      return {
+        ...current,
+        places: current.places.filter((item) => item.id !== placeholderId),
+        unscheduledIds: current.unscheduledIds.filter((id) => id !== placeId),
+        days: current.days.map((day) => {
+          if (day.placeIds.includes(placeholderId)) return markRouteStale({ ...day, placeIds: day.placeIds.filter((id) => id !== placeId).map((id) => id === placeholderId ? placeId : id) });
+          return day.placeIds.includes(placeId) ? markRouteStale({ ...day, placeIds: day.placeIds.filter((id) => id !== placeId) }) : day;
+        }),
+      };
+    });
+  }, []);
+
   const updatePlace = useCallback((place: Place) => {
     setState((current) => ({
       ...current,
@@ -360,6 +377,7 @@ export function useTripPlanner() {
     addPlaceToDay,
     addPlaceholderToDay,
     replacePlaceholder,
+    fillPlaceholder,
     updatePlace,
     removePlace,
     addDay,

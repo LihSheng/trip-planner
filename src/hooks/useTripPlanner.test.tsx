@@ -94,4 +94,17 @@ describe('useTripPlanner', () => {
     expect(hook.result.current.state.places.some((place) => place.id === placeholder?.id)).toBe(false);
     expect(hook.result.current.state.days[0].placeIds).toContain('lunch-place');
   });
+
+  it('fills a planned stop with an unscheduled place in the same route position', async () => {
+    const hook = await planner();
+    const dayId = hook.result.current.state.days[0].id;
+    await act(async () => hook.result.current.addPlaceholderToDay(dayId, 'coffee'));
+    const placeholderId = hook.result.current.state.places.find((place) => place.type === 'placeholder')!.id;
+
+    await act(async () => hook.result.current.fillPlaceholder(placeholderId, 'alishan'));
+    const day = hook.result.current.state.days[0];
+    expect(day.placeIds).toContain('alishan');
+    expect(hook.result.current.state.unscheduledIds).not.toContain('alishan');
+    expect(hook.result.current.state.places.some((place) => place.id === placeholderId)).toBe(false);
+  });
 });

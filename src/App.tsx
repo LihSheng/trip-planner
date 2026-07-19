@@ -247,6 +247,7 @@ export default function App() {
         setReplacePlaceholderId(placeholderId);
         setPlaceModalOpened(true);
       }}
+      onFillPlaceholder={planner.fillPlaceholder}
       onRenamePlaceholder={(place, label) => planner.updatePlace({ ...place, name: label })}
       onMove={planner.move}
       onLabelChange={planner.updateDayLabel}
