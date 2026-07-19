@@ -10,7 +10,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Button, Group, ScrollArea, Stack, Text } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import type { ContainerId, Place, TripState } from '../types';
@@ -28,6 +28,7 @@ interface PlannerBoardProps {
   onMove: (placeId: string, destinationId: ContainerId, destinationIndex: number) => void;
   onLabelChange: (dayId: string, label: string) => void;
   onRemoveDay: (dayId: string) => void;
+  onReorderDays: (fromIndex: number, toIndex: number) => void;
   onEditPlace: (place: Place) => void;
   onDeletePlace: (place: Place) => void;
 }
@@ -41,6 +42,7 @@ export function PlannerBoard({
   onMove,
   onLabelChange,
   onRemoveDay,
+  onReorderDays,
   onEditPlace,
   onDeletePlace,
 }: PlannerBoardProps) {
@@ -50,15 +52,16 @@ export function PlannerBoard({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const activePlace = activeId ? placesById.get(activeId) : undefined;
+  const activePlace = activeId?.startsWith('day:') ? undefined : activeId ? placesById.get(activeId) : undefined;
   const unscheduled = state.unscheduledIds.flatMap((id) => {
     const place = placesById.get(id);
     return place ? [place] : [];
   });
 
   function getDestination(overId: string): { containerId: ContainerId; index: number } | null {
-    if (overId === 'unscheduled' || state.days.some((day) => day.id === overId)) {
-      const containerId = overId as ContainerId;
+    const dayId = overId.startsWith('day:') ? overId.slice(4) : overId;
+    if (dayId === 'unscheduled' || state.days.some((day) => day.id === dayId)) {
+      const containerId = dayId as ContainerId;
       return { containerId, index: getContainerItems(state, containerId).length };
     }
 
@@ -75,9 +78,21 @@ export function PlannerBoard({
   function handleDragEnd(event: DragEndEvent) {
     setActiveId(null);
     if (!event.over) return;
+
+    const activeId = String(event.active.id);
+    if (activeId.startsWith('day:')) {
+      const activeDayId = activeId.slice(4);
+      const overId = String(event.over.id);
+      const overDayId = overId.startsWith('day:') ? overId.slice(4) : overId;
+      const fromIndex = state.days.findIndex((day) => day.id === activeDayId);
+      const toIndex = state.days.findIndex((day) => day.id === overDayId);
+      if (fromIndex >= 0 && toIndex >= 0) onReorderDays(fromIndex, toIndex);
+      return;
+    }
+
     const destination = getDestination(String(event.over.id));
     if (!destination) return;
-    onMove(String(event.active.id), destination.containerId, destination.index);
+    onMove(activeId, destination.containerId, destination.index);
   }
 
   return (
@@ -112,24 +127,26 @@ export function PlannerBoard({
               onEditPlace={onEditPlace}
               onDeletePlace={onDeletePlace}
             />
-            {state.days.map((day, index) => (
-              <DayColumn
-                key={day.id}
-                day={day}
-                index={index}
-                startDate={state.startDate}
-                places={day.placeIds.flatMap((id) => {
-                  const place = placesById.get(id);
-                  return place ? [place] : [];
-                })}
-                selectedId={selectedId}
-                onSelect={onSelect}
-                onLabelChange={onLabelChange}
-                onRemove={onRemoveDay}
-                onEditPlace={onEditPlace}
-                onDeletePlace={onDeletePlace}
-              />
-            ))}
+            <SortableContext items={state.days.map((day) => `day:${day.id}`)} strategy={horizontalListSortingStrategy}>
+              {state.days.map((day, index) => (
+                <DayColumn
+                  key={day.id}
+                  day={day}
+                  index={index}
+                  startDate={state.startDate}
+                  places={day.placeIds.flatMap((id) => {
+                    const place = placesById.get(id);
+                    return place ? [place] : [];
+                  })}
+                  selectedId={selectedId}
+                  onSelect={onSelect}
+                  onLabelChange={onLabelChange}
+                  onRemove={onRemoveDay}
+                  onEditPlace={onEditPlace}
+                  onDeletePlace={onDeletePlace}
+                />
+              ))}
+            </SortableContext>
           </Group>
         </ScrollArea>
       </Stack>

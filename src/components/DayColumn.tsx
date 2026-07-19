@@ -1,5 +1,6 @@
-import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import type { KeyboardEventHandler, PointerEvent } from 'react';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   ActionIcon,
   Box,
@@ -40,15 +41,32 @@ export function DayColumn({
   onEditPlace,
   onDeletePlace,
 }: DayColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({ id: day.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
+    id: `day:${day.id}`,
+    data: { type: 'day', dayId: day.id },
+  });
+  const { onPointerDown, onKeyDown } = listeners ?? {};
+
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.target instanceof Element && event.target.closest('button, input, .place-card')) {
+      return;
+    }
+
+    onPointerDown?.(event);
+  }
 
   return (
     <Paper
       ref={setNodeRef}
       withBorder
       radius="lg"
-      className="day-column"
+      className="day-column day-column--draggable"
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      {...attributes}
+      onPointerDown={handlePointerDown}
+      onKeyDown={onKeyDown as KeyboardEventHandler<HTMLDivElement> | undefined}
       data-over={isOver || undefined}
+      data-dragging={isDragging || undefined}
     >
       <Box className={`day-column__header day-column__header--${index % 5}`}>
         <Group justify="space-between" align="flex-start" wrap="nowrap">

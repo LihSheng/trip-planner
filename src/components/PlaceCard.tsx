@@ -9,15 +9,8 @@ import {
   Paper,
   Stack,
   Text,
-  Tooltip,
 } from '@mantine/core';
-import {
-  IconDotsVertical,
-  IconEdit,
-  IconGripVertical,
-  IconMapPin,
-  IconTrash,
-} from '@tabler/icons-react';
+import { IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconTrash } from '@tabler/icons-react';
 import type { Place, PlaceCategory } from '../types';
 
 const categoryColors: Record<PlaceCategory, string> = {
@@ -57,31 +50,19 @@ export function PlaceCard({
       withBorder
       radius="md"
       p="sm"
-      className="place-card"
+      className={`place-card${dragDisabled ? '' : ' place-card--draggable'}`}
       data-selected={selected || undefined}
       data-dragging={isDragging || undefined}
+      {...attributes}
+      {...listeners}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
+        touchAction: dragDisabled ? undefined : 'none',
       }}
       onClick={() => onSelect?.(place.id)}
     >
       <Group align="flex-start" gap="xs" wrap="nowrap">
-        <Tooltip label="Drag to schedule" disabled={dragDisabled}>
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            size="sm"
-            className="drag-handle"
-            aria-label={`Drag ${place.name}`}
-            {...attributes}
-            {...listeners}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <IconGripVertical size={15} />
-          </ActionIcon>
-        </Tooltip>
-
         <Box className={`place-card__accent place-card__accent--${place.category.toLowerCase()}`} />
 
         <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
@@ -97,6 +78,7 @@ export function PlaceCard({
                     color="gray"
                     size="sm"
                     aria-label={`Actions for ${place.name}`}
+                    onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => event.stopPropagation()}
                   >
                     <IconDotsVertical size={16} />

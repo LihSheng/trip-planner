@@ -159,6 +159,7 @@ export default function App() {
       onMove={planner.move}
       onLabelChange={planner.updateDayLabel}
       onRemoveDay={planner.removeDay}
+      onReorderDays={planner.reorderDays}
       onEditPlace={openEditPlace}
       onDeletePlace={setDeleteTarget}
     />

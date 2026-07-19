@@ -383,6 +383,27 @@ select {
   transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease, opacity 120ms ease;
 }
 
+.day-column--draggable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.day-column--draggable:active {
+  cursor: grabbing;
+}
+
+.day-column[data-dragging] {
+  opacity: 0.35;
+}
+
+.place-card--draggable {
+  cursor: grab;
+}
+
+.place-card--draggable:active {
+  cursor: grabbing;
+}
+
 .place-card:hover {
   border-color: var(--mantine-color-teal-3);
   box-shadow: 0 8px 20px rgba(34, 54, 51, 0.08);
@@ -433,15 +454,6 @@ select {
 
 .place-card__accent--relaxation {
   background: var(--mantine-color-cyan-5);
-}
-
-.drag-handle {
-  cursor: grab;
-  touch-action: none;
-}
-
-.drag-handle:active {
-  cursor: grabbing;
 }
 
 .modal-actions {

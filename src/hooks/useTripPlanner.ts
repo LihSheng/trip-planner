@@ -86,6 +86,25 @@ export function useTripPlanner() {
     });
   }, []);
 
+  const reorderDays = useCallback((fromIndex: number, toIndex: number) => {
+    setState((current) => {
+      if (
+        fromIndex === toIndex ||
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= current.days.length ||
+        toIndex >= current.days.length
+      ) {
+        return current;
+      }
+
+      const days = [...current.days];
+      const [movedDay] = days.splice(fromIndex, 1);
+      days.splice(toIndex, 0, movedDay);
+      return { ...current, days };
+    });
+  }, []);
+
   const move = useCallback(
     (placeId: string, destinationId: ContainerId, destinationIndex: number) => {
       setState((current) => movePlace(current, placeId, destinationId, destinationIndex));
@@ -108,6 +127,7 @@ export function useTripPlanner() {
     addDay,
     updateDayLabel,
     removeDay,
+    reorderDays,
     move,
     updateTrip,
     reset,
