@@ -44,37 +44,40 @@ select {
 }
 
 .app-container {
-  max-width: 1800px;
+  max-width: none;
 }
 
-.desktop-layout {
-  display: grid;
-  grid-template-columns: minmax(360px, 0.78fr) minmax(620px, 1.62fr);
-  gap: 20px;
-  align-items: start;
+.workspace-toolbar {
+  min-height: 48px;
+  padding-inline: 2px;
 }
 
-.desktop-layout__left {
-  position: sticky;
-  top: 92px;
+.workspace-tab-label,
+.mobile-tab-label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
 }
 
-.desktop-layout__right {
+.map-workspace {
+  position: relative;
   min-width: 0;
 }
 
 .map-shell {
   position: relative;
+  min-height: 600px;
+  height: calc(100vh - 184px);
   overflow: hidden;
   isolation: isolate;
-  min-height: 420px;
   background: #dff4f2;
-  box-shadow: 0 12px 36px rgba(23, 48, 44, 0.08);
+  box-shadow: 0 18px 48px rgba(23, 48, 44, 0.1);
 }
 
 .taiwan-map {
-  height: 420px;
   width: 100%;
+  height: 100%;
   background: #dff4f2;
   z-index: 0;
 }
@@ -85,20 +88,6 @@ select {
 
 .leaflet-popup-content-wrapper {
   border-radius: 12px;
-}
-
-.map-floating-label {
-  position: absolute;
-  /* Keep the map decoration below Mantine modal overlays. */
-  z-index: 1;
-  left: 14px;
-  top: 14px;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.76);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 8px 24px rgba(34, 62, 58, 0.13);
-  backdrop-filter: blur(12px);
 }
 
 .map-shell--expanded {
@@ -113,11 +102,179 @@ select {
   min-height: 0;
 }
 
-.map-floating-label--expanded {
+.map-day-switcher {
+  position: absolute;
+  z-index: 700;
   top: 16px;
   right: 16px;
-  left: auto;
-  min-width: 160px;
+  left: 16px;
+  pointer-events: none;
+}
+
+.map-day-switcher > * {
+  pointer-events: auto;
+}
+
+.map-day-switcher .mantine-ScrollArea-viewport {
+  padding: 2px;
+}
+
+.map-day-switcher button {
+  box-shadow: 0 6px 18px rgba(25, 48, 44, 0.14);
+  backdrop-filter: blur(14px);
+}
+
+.map-workspace .map-day-switcher {
+  right: 430px;
+}
+
+.map-route-summary {
+  position: absolute;
+  z-index: 700;
+  bottom: 18px;
+  left: 18px;
+  display: flex;
+  max-width: min(460px, calc(100% - 110px));
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 30px rgba(25, 48, 44, 0.16);
+  backdrop-filter: blur(16px);
+}
+
+.map-expand-button {
+  position: absolute;
+  z-index: 700;
+  right: 18px;
+  bottom: 18px;
+  box-shadow: 0 8px 22px rgba(25, 48, 44, 0.16);
+}
+
+.map-workspace .map-expand-button {
+  right: 414px;
+}
+
+.map-shell--expanded .map-day-switcher {
+  right: 76px;
+}
+
+.map-shell--expanded .map-expand-button {
+  right: 18px;
+}
+
+.map-empty-state {
+  position: absolute;
+  z-index: 650;
+  top: 50%;
+  left: 50%;
+  min-width: 260px;
+  padding: 18px 20px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 34px rgba(25, 48, 44, 0.16);
+  transform: translate(-50%, -50%);
+  backdrop-filter: blur(16px);
+}
+
+.map-side-panel {
+  position: absolute;
+  z-index: 720;
+  top: 76px;
+  right: 18px;
+  bottom: 18px;
+  width: 380px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 48px rgba(23, 48, 44, 0.16);
+  backdrop-filter: blur(18px);
+}
+
+.map-side-panel .mantine-Tabs-root {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+.map-side-panel .mantine-Tabs-list {
+  flex: 0 0 auto;
+  padding: 8px 8px 0;
+  background: rgba(248, 251, 250, 0.92);
+}
+
+.map-side-panel .mantine-Tabs-panel {
+  min-height: 0;
+  overflow: auto;
+}
+
+.map-side-panel .place-details,
+.map-side-panel .library-panel {
+  box-shadow: none;
+}
+
+.map-side-panel .library-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.map-side-panel .place-library .mantine-ScrollArea-root {
+  max-height: calc(100vh - 390px) !important;
+}
+
+.map-pin-wrapper {
+  border: 0;
+  background: transparent;
+}
+
+.map-pin {
+  position: relative;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 3px solid #ffffff;
+  border-radius: 50% 50% 50% 0;
+  color: #ffffff;
+  background: var(--pin-color);
+  box-shadow: 0 6px 14px rgba(22, 41, 38, 0.28);
+  transform: rotate(-45deg);
+  transition: width 140ms ease, height 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.map-pin::after {
+  position: absolute;
+  inset: 3px;
+  content: '';
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: inherit;
+}
+
+.map-pin span {
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  transform: rotate(45deg);
+}
+
+.map-pin--selected {
+  width: 42px;
+  height: 42px;
+  border-width: 4px;
+  box-shadow:
+    0 0 0 4px rgba(43, 200, 166, 0.24),
+    0 8px 20px rgba(22, 41, 38, 0.34);
+}
+
+.map-pin--selected span {
+  font-size: 14px;
 }
 
 .place-details,
@@ -287,13 +444,6 @@ select {
   cursor: grabbing;
 }
 
-.mobile-tab-label {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  justify-content: center;
-}
-
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -307,8 +457,13 @@ select {
 
   .map-shell,
   .taiwan-map {
-    min-height: 360px;
-    height: 360px;
+    min-height: 500px;
+    height: 500px;
+  }
+
+  .map-route-summary {
+    right: 68px;
+    max-width: none;
   }
 
   .planner-board {
@@ -326,15 +481,35 @@ select {
     max-width: 55vw;
   }
 
-  .map-floating-label {
-    right: 12px;
-    left: 12px;
-  }
-
   .map-shell,
   .taiwan-map {
-    min-height: 330px;
-    height: 330px;
+    min-height: 430px;
+    height: 430px;
+  }
+
+  .map-day-switcher {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+  }
+
+  .map-route-summary {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    max-width: none;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .map-route-summary button {
+    flex: 0 0 auto;
+  }
+
+  .map-expand-button {
+    top: 64px;
+    right: 12px;
+    bottom: auto;
   }
 
   .planner-board {
