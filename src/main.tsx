@@ -7,6 +7,7 @@ import '@mantine/notifications/styles.css';
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
 import App from './App';
+import { AuthGate } from './context/AuthContext';
 
 const theme = createTheme({
   primaryColor: 'teal',
@@ -36,7 +37,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="light">
       <Notifications position="top-right" />
-      <App />
+      <AuthGate>
+        <App />
+      </AuthGate>
     </MantineProvider>
   </StrictMode>,
 );
