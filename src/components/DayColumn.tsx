@@ -268,7 +268,7 @@ export function DayColumn({
                 onScheduleChange={day.timeManagementEnabled ? (updates) => onStopScheduleChange(day.id, place.id, updates) : undefined}
                 onEnableSchedule={day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
               />
-              {place.type !== 'placeholder' && places[placeIndex + 1]?.type !== 'placeholder' ? (() => {
+              {place.type !== 'placeholder' && places[placeIndex + 1] && places[placeIndex + 1].type !== 'placeholder' ? (() => {
                 const nextPlace = places[placeIndex + 1];
                 const key = routeLegKey(place.id, nextPlace.id);
                 const mode = day.legModeOverrides?.[key] ?? 'default';
