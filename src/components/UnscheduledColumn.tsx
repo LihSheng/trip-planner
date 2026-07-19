@@ -5,6 +5,7 @@ import { ActionIcon, Badge, Box, Group, Paper, Stack, Text, Tooltip } from '@man
 import { IconChevronDown, IconChevronUp, IconInbox } from '@tabler/icons-react';
 import type { Place } from '../types';
 import { PlaceCard } from './PlaceCard';
+import { useI18n } from '../i18n';
 
 interface UnscheduledColumnProps {
   places: Place[];
@@ -21,6 +22,7 @@ export function UnscheduledColumn({
   onEditPlace,
   onDeletePlace,
 }: UnscheduledColumnProps) {
+  const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
   const { setNodeRef, isOver } = useDroppable({ id: 'unscheduled' });
 
@@ -40,19 +42,19 @@ export function UnscheduledColumn({
           <Group gap="xs">
             <IconInbox size={17} />
             <Text fw={750} size="sm">
-              Unscheduled
+              {t('unscheduled')}
             </Text>
           </Group>
           <Group gap={2} wrap="nowrap">
             <Badge variant="light" color="gray">
-              {collapsed ? `${places.length} spots` : places.length}
+              {collapsed ? t('spots', { count: places.length }) : places.length}
             </Badge>
-            <Tooltip label={collapsed ? 'Expand unscheduled places' : 'Collapse unscheduled places'}>
+            <Tooltip label={collapsed ? t('expandUnscheduled') : t('collapseUnscheduled')}>
               <ActionIcon
                 variant="subtle"
                 color="gray"
                 size="sm"
-                aria-label={collapsed ? 'Expand unscheduled places' : 'Collapse unscheduled places'}
+                aria-label={collapsed ? t('expandUnscheduled') : t('collapseUnscheduled')}
                 onClick={(event) => {
                   event.stopPropagation();
                   setCollapsed((value) => !value);
@@ -65,7 +67,7 @@ export function UnscheduledColumn({
         </Group>
         {!collapsed ? (
           <Text size="xs" c="dimmed" mt={4}>
-            Ideas ready to be placed into a day
+            {t('unscheduledHint')}
           </Text>
         ) : null}
       </Box>
@@ -86,7 +88,7 @@ export function UnscheduledColumn({
             {places.length === 0 && (
               <Box className="drop-placeholder">
                 <Text size="xs" c="dimmed" ta="center">
-                  Drop places here to plan them later
+                  {t('dropPlacesLater')}
                 </Text>
               </Box>
             )}

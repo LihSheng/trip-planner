@@ -15,6 +15,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import type { Place, PlaceCategory } from '../types';
+import { useI18n } from '../i18n';
 
 const categoryOptions: PlaceCategory[] = [
   'Landmark',
@@ -83,6 +84,7 @@ async function geoapifyApiError(response: Response, fallback: string) {
 }
 
 export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormModalProps) {
+  const { t } = useI18n();
   const [placeSearch, setPlaceSearch] = useState('');
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searching, setSearching] = useState(false);
@@ -97,12 +99,12 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
       notes: '',
     },
     validate: {
-      name: (value) => (value.trim().length < 2 ? 'Enter a place name' : null),
-      region: (value) => (value.trim().length < 2 ? 'Enter a region or city' : null),
+      name: (value) => (value.trim().length < 2 ? t('enterPlaceName') : null),
+      region: (value) => (value.trim().length < 2 ? t('enterRegion') : null),
       latitude: (value) =>
-        typeof value !== 'number' || value < -90 || value > 90 ? 'Use a valid latitude' : null,
+        typeof value !== 'number' || value < -90 || value > 90 ? t('validLatitude') : null,
       longitude: (value) =>
-        typeof value !== 'number' || value < -180 || value > 180 ? 'Use a valid longitude' : null,
+        typeof value !== 'number' || value < -180 || value > 180 ? t('validLongitude') : null,
     },
   });
 
@@ -213,7 +215,7 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
   }
 
   return (
-    <Modal opened={opened} onClose={onClose} title={place ? 'Edit place' : 'Add a place'} centered>
+    <Modal opened={opened} onClose={onClose} title={place ? t('editPlace') : t('addPlace')} centered>
       <form
         onSubmit={form.onSubmit((values) => {
           onSubmit({
@@ -232,15 +234,15 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
           {!place ? (
             <Stack gap={4}>
               <Autocomplete
-                label="Search for a place"
-                placeholder={geoapifyApiKey ? 'e.g. Raohe Night Market' : 'Add a Geoapify API key to enable search'}
+                label={t('searchForPlace')}
+                placeholder={geoapifyApiKey ? t('searchExample') : t('searchDisabled')}
                 data={predictions.map((prediction) => prediction.label)}
                 value={placeSearch}
                 onChange={setPlaceSearch}
                 onOptionSubmit={selectPrediction}
                 disabled={!geoapifyApiKey}
                 rightSection={searching ? <Loader size={16} /> : null}
-                description="Search Taiwan places and fill the coordinates automatically."
+                description={t('searchDescription')}
               />
               {searchError ? <Text size="xs" c="red">{searchError}</Text> : null}
               {!geoapifyApiKey ? (
@@ -250,33 +252,33 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
               ) : null}
             </Stack>
           ) : null}
-          <TextInput label="Place name" placeholder="e.g. Raohe Night Market" required {...form.getInputProps('name')} />
+          <TextInput label={t('placeName')} placeholder={t('searchExample')} required {...form.getInputProps('name')} />
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <TextInput label="Region or city" placeholder="Taipei" required {...form.getInputProps('region')} />
+            <TextInput label={t('regionCity')} placeholder="Taipei" required {...form.getInputProps('region')} />
             <Select
-              label="Category"
-              data={categoryOptions}
+              label={t('category')}
+              data={categoryOptions.map((category) => ({ value: category, label: category === 'Nature' ? t('nature') : category === 'Culture' ? t('culture') : category === 'Food' ? t('food') : category }))}
               allowDeselect={false}
               {...form.getInputProps('category')}
             />
           </SimpleGrid>
           <SimpleGrid cols={2}>
-            <NumberInput label="Latitude" decimalScale={6} {...form.getInputProps('latitude')} />
-            <NumberInput label="Longitude" decimalScale={6} {...form.getInputProps('longitude')} />
+            <NumberInput label={t('latitude')} decimalScale={6} {...form.getInputProps('latitude')} />
+            <NumberInput label={t('longitude')} decimalScale={6} {...form.getInputProps('longitude')} />
           </SimpleGrid>
           <Textarea
-            label="Notes"
-            placeholder="Food to try, ideal visiting time, transport notes..."
+            label={t('notes')}
+            placeholder={t('notesPlaceholder')}
             autosize
             minRows={3}
             {...form.getInputProps('notes')}
           />
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" color="teal">
-              {place ? 'Save changes' : 'Add to unscheduled'}
+              {place ? t('saveChanges') : t('addToUnscheduled')}
             </Button>
           </Group>
         </Stack>

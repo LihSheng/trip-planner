@@ -73,6 +73,38 @@ export function exportTripJson(state: TripState): void {
   download(JSON.stringify(state, null, 2), 'application/json', `${slugify(state.tripName)}.json`);
 }
 
+export function formatTripPlainText(state: TripState): string {
+  const places = new Map(state.places.map((place) => [place.id, place]));
+  const lines: string[] = [];
+
+  state.days.forEach((day, dayIndex) => {
+    lines.push(`Day ${dayIndex + 1}${day.label ? ` — ${day.label}` : ''}`);
+    if (day.placeIds.length === 0) {
+      lines.push('No places scheduled.');
+    } else {
+      day.placeIds.forEach((placeId, placeIndex) => {
+        const place = places.get(placeId);
+        if (!place) return;
+        lines.push(`${placeIndex + 1}. ${place.name}`);
+        if (place.notes.trim()) lines.push(`   ${place.notes.trim()}`);
+      });
+    }
+    lines.push('');
+  });
+
+  if (state.unscheduledIds.length) {
+    lines.push('Unscheduled');
+    state.unscheduledIds.forEach((placeId, placeIndex) => {
+      const place = places.get(placeId);
+      if (!place) return;
+      lines.push(`${placeIndex + 1}. ${place.name}`);
+      if (place.notes.trim()) lines.push(`   ${place.notes.trim()}`);
+    });
+  }
+
+  return lines.join('\n').trim();
+}
+
 export function exportTripMarkdown(state: TripState): void {
   const places = new Map(state.places.map((place) => [place.id, place]));
   const lines = [

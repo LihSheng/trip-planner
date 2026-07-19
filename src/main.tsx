@@ -8,6 +8,7 @@ import 'leaflet/dist/leaflet.css';
 import './styles.css';
 import App from './App';
 import { AuthGate } from './context/AuthContext';
+import { I18nProvider } from './i18n';
 
 const theme = createTheme({
   primaryColor: 'teal',
@@ -37,9 +38,11 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="light">
       <Notifications position="top-right" />
-      <AuthGate>
-        <App />
-      </AuthGate>
+      <I18nProvider>
+        <AuthGate>
+          <App />
+        </AuthGate>
+      </I18nProvider>
     </MantineProvider>
   </StrictMode>,
 );

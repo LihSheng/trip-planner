@@ -1,6 +1,7 @@
 import { ActionIcon, Badge, Group, Paper, Stack, Text, ThemeIcon, Tooltip } from '@mantine/core';
 import { IconEdit, IconMapPin, IconNotes } from '@tabler/icons-react';
 import type { Place } from '../types';
+import { categoryLabel, useI18n } from '../i18n';
 
 interface PlaceDetailsProps {
   place?: Place;
@@ -8,11 +9,12 @@ interface PlaceDetailsProps {
 }
 
 export function PlaceDetails({ place, onEdit }: PlaceDetailsProps) {
+  const { t } = useI18n();
   if (!place) {
     return (
       <Paper withBorder radius="lg" p="md" className="place-details place-details--empty">
         <Text size="sm" c="dimmed">
-          Select a map marker or place card to see its notes.
+          {t('selectPlace')}
         </Text>
       </Paper>
     );
@@ -32,12 +34,12 @@ export function PlaceDetails({ place, onEdit }: PlaceDetailsProps) {
                 {place.region}
               </Text>
               <Badge variant="light" color="teal" size="sm">
-                {place.category}
+                {categoryLabel(t, place.category)}
               </Badge>
             </Group>
           </Stack>
         </Group>
-        <Tooltip label="Edit place">
+        <Tooltip label={t('editPlace')}>
           <ActionIcon variant="subtle" color="gray" onClick={() => onEdit(place)}>
             <IconEdit size={18} />
           </ActionIcon>
@@ -46,7 +48,7 @@ export function PlaceDetails({ place, onEdit }: PlaceDetailsProps) {
       <Group mt="md" gap="xs" align="flex-start" wrap="nowrap">
         <IconNotes size={16} color="var(--mantine-color-dimmed)" style={{ marginTop: 2 }} />
         <Text size="sm" c={place.notes ? undefined : 'dimmed'}>
-          {place.notes || 'No notes added yet.'}
+          {place.notes || t('noNotes')}
         </Text>
       </Group>
     </Paper>

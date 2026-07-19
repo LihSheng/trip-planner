@@ -13,13 +13,7 @@ import { IconPlus, IconSearch } from '@tabler/icons-react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { Place, PlaceCategory } from '../types';
 import { PlaceCard } from './PlaceCard';
-
-const filterOptions = [
-  { label: 'All', value: 'All' },
-  { label: 'Nature', value: 'Nature' },
-  { label: 'Culture', value: 'Culture' },
-  { label: 'Food', value: 'Food' },
-];
+import { useI18n } from '../i18n';
 
 interface PlaceLibraryProps {
   places: Place[];
@@ -38,8 +32,13 @@ export function PlaceLibrary({
   onEdit,
   onDelete,
 }: PlaceLibraryProps) {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
+  const filterOptions = [
+    { label: t('all'), value: 'All' }, { label: t('nature'), value: 'Nature' },
+    { label: t('culture'), value: 'Culture' }, { label: t('food'), value: 'Food' },
+  ];
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
 
   const filtered = useMemo(
@@ -59,13 +58,13 @@ export function PlaceLibrary({
     <Stack gap="sm" className="place-library">
       <Group justify="space-between" align="center">
         <div>
-          <Text fw={750}>Places of interest</Text>
+          <Text fw={750}>{t('placesOfInterest')}</Text>
           <Text size="xs" c="dimmed">
-            {filtered.length} of {places.length} places
+            {t('placesCount', { shown: filtered.length, total: places.length })}
           </Text>
         </div>
-        <Tooltip label="Add a place">
-          <ActionIcon color="teal" variant="light" radius="xl" onClick={onAdd} aria-label="Add a place">
+        <Tooltip label={t('addPlace')}>
+          <ActionIcon color="teal" variant="light" radius="xl" onClick={onAdd} aria-label={t('addPlace')}>
             <IconPlus size={18} />
           </ActionIcon>
         </Tooltip>
@@ -74,9 +73,9 @@ export function PlaceLibrary({
       <TextInput
         value={query}
         onChange={(event) => setQuery(event.currentTarget.value)}
-        placeholder="Search a place or region"
+        placeholder={t('searchPlaceRegion')}
         leftSection={<IconSearch size={16} />}
-        aria-label="Search places"
+        aria-label={t('searchPlaces')}
       />
 
       <SegmentedControl
@@ -87,7 +86,7 @@ export function PlaceLibrary({
         fullWidth
       />
 
-      <ScrollArea.Autosize mah={380} type="auto" offsetScrollbars>
+      <ScrollArea.Autosize mah={380} type="auto" offsetScrollbars className="place-library__list">
         <SortableContext items={filtered.map((place) => place.id)} strategy={verticalListSortingStrategy}>
           <Stack gap="xs" pr={4}>
             {filtered.length ? (
@@ -104,7 +103,7 @@ export function PlaceLibrary({
               ))
             ) : (
               <Text size="sm" c="dimmed" ta="center" py="xl">
-                No places match this filter.
+                {t('noPlacesFilter')}
               </Text>
             )}
           </Stack>

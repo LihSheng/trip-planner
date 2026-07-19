@@ -10,12 +10,14 @@ import {
   Stack,
   Text,
   TextInput,
+  ThemeIcon,
   Tooltip,
 } from '@mantine/core';
-import { IconCalendar, IconChevronDown, IconChevronUp, IconTrash } from '@tabler/icons-react';
+import { IconCalendar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconTrash } from '@tabler/icons-react';
 import type { Place, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
+import { useI18n } from '../i18n';
 
 interface DayColumnProps {
   day: TripDay;
@@ -46,6 +48,7 @@ export function DayColumn({
   onDeletePlace,
   onVisitedChange,
 }: DayColumnProps) {
+  const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `day:${day.id}`,
@@ -53,6 +56,7 @@ export function DayColumn({
   });
   const { onPointerDown, onKeyDown } = listeners ?? {};
   const visitedCount = places.filter((place) => visitedPlaceIds.includes(place.id)).length;
+  const allPlacesVisited = places.length > 0 && visitedCount === places.length;
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     if (event.target instanceof Element && event.target.closest('button, input, .place-card')) {
@@ -89,32 +93,43 @@ export function DayColumn({
             <Group gap={6}>
               <IconCalendar size={15} />
               <Text fw={750} size="sm">
-                Day {index + 1}
+                {t('day', { number: index + 1 })}
               </Text>
             </Group>
             <Text size="xs" c="dimmed">
               {formatTripDate(startDate, index)}
             </Text>
+            {collapsed ? (
+              <Badge size="sm" variant="light" color="teal" className="day-column__status">
+                {t('stopsVisited', { stops: places.length, visited: visitedCount })}
+              </Badge>
+            ) : null}
           </Stack>
           <Group gap={2} wrap="nowrap">
-            {collapsed ? <Badge size="sm" variant="light" color="teal">{places.length} stops · {visitedCount} visited</Badge> : null}
-            <Tooltip label={collapsed ? 'Expand day' : 'Collapse day'}>
+            {allPlacesVisited ? (
+              <Tooltip label={t('allStopsVisited')}>
+                <ThemeIcon color="teal" variant="light" radius="xl" size="lg" className="day-column__completion" aria-label={t('allStopsVisited')}>
+                  <IconCircleCheckFilled size={22} />
+                </ThemeIcon>
+              </Tooltip>
+            ) : null}
+            <Tooltip label={collapsed ? t('expandDay') : t('collapseDay')}>
               <ActionIcon
                 variant="subtle"
                 color="gray"
                 size="sm"
-                aria-label={`${collapsed ? 'Expand' : 'Collapse'} day ${index + 1}`}
+                aria-label={`${collapsed ? t('expandDay') : t('collapseDay')} ${index + 1}`}
                 onClick={() => setCollapsed((value) => !value)}
               >
                 {collapsed ? <IconChevronDown size={16} /> : <IconChevronUp size={16} />}
               </ActionIcon>
             </Tooltip>
-            <Tooltip label="Remove day">
+            <Tooltip label={t('removeDay')}>
               <ActionIcon
                 variant="subtle"
                 color="gray"
                 size="sm"
-                aria-label={`Remove day ${index + 1}`}
+                aria-label={`${t('removeDay')} ${index + 1}`}
                 onClick={() => onRemove(day.id)}
               >
                 <IconTrash size={15} />
@@ -128,7 +143,7 @@ export function DayColumn({
             value={day.label}
             onChange={(event) => onLabelChange(day.id, event.currentTarget.value)}
             size="xs"
-            aria-label={`Day ${index + 1} title`}
+            aria-label={t('dayTitle', { number: index + 1 })}
           />
         ) : null}
       </Box>
@@ -151,7 +166,7 @@ export function DayColumn({
             {places.length === 0 && (
               <Box className="drop-placeholder">
                 <Text size="xs" c="dimmed" ta="center">
-                  Drop a place here
+                  {t('dropPlace')}
                 </Text>
               </Box>
             )}

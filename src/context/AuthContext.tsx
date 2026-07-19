@@ -4,6 +4,7 @@ import {
   Button,
   Center,
   Loader,
+  Group,
   Paper,
   Stack,
   Text,
@@ -13,6 +14,7 @@ import {
 } from '@mantine/core';
 import { IconCloud, IconInfoCircle, IconMail } from '@tabler/icons-react';
 import { hasSupabaseConfig } from '../lib/supabaseConfig';
+import { LanguageToggle, useI18n } from '../i18n';
 import {
   refreshAuthSession,
   restoreSession,
@@ -38,6 +40,7 @@ export function useAuth(): AuthContextValue {
 }
 
 export function AuthGate({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [session, setSession] = useState<AuthSession | null>(null);
   const [checking, setChecking] = useState(true);
   const [email, setEmail] = useState('');
@@ -128,7 +131,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       <Center mih="100vh">
         <Stack align="center" gap="sm">
           <Loader color="teal" />
-          <Text size="sm" c="dimmed">Restoring your trip…</Text>
+          <Text size="sm" c="dimmed">{t('restoringTrip')}</Text>
         </Stack>
       </Center>
     );
@@ -146,34 +149,34 @@ export function AuthGate({ children }: { children: ReactNode }) {
             <ThemeIcon size={54} radius="xl" color="teal" variant="light">
               <IconCloud size={28} />
             </ThemeIcon>
-            <Title order={2}>Open your Taiwan trip</Title>
+            <Group justify="space-between" w="100%"><Title order={2}>{t('openTaiwanTrip')}</Title><LanguageToggle /></Group>
             <Text size="sm" c="dimmed">
-              Sign in with the same email on your laptop and mobile to keep the itinerary synchronized.
+              {t('signInHint')}
             </Text>
           </Stack>
 
           {!hasSupabaseConfig ? (
-            <Alert color="red" icon={<IconInfoCircle size={18} />} title="Supabase is not configured">
-              Add the Vite Supabase environment variables before deploying the application.
+            <Alert color="red" icon={<IconInfoCircle size={18} />} title={t('supabaseMissing')}>
+              {t('supabaseMissingHint')}
             </Alert>
           ) : null}
 
           {error ? (
-            <Alert color="red" icon={<IconInfoCircle size={18} />} title="Sign-in failed">
+            <Alert color="red" icon={<IconInfoCircle size={18} />} title={t('signInFailed')}>
               {error}
             </Alert>
           ) : null}
 
           {sent ? (
-            <Alert color="teal" icon={<IconMail size={18} />} title="Check your email">
-              Open the sign-in link on this device. You can close this message after the planner opens.
+            <Alert color="teal" icon={<IconMail size={18} />} title={t('checkEmail')}>
+              {t('checkEmailHint')}
             </Alert>
           ) : null}
 
           <form onSubmit={handleSubmit}>
             <Stack>
               <TextInput
-                label="Email address"
+                label={t('emailAddress')}
                 placeholder="you@example.com"
                 type="email"
                 required
@@ -183,13 +186,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
                 autoComplete="email"
               />
               <Button type="submit" color="teal" loading={sending} disabled={!hasSupabaseConfig}>
-                Email me a sign-in link
+                {t('emailSignIn')}
               </Button>
               <Button type="button" variant="light" color="teal" onClick={() => setDemoMode(true)}>
-                Continue in demo mode
+                {t('demoMode')}
               </Button>
               <Text size="xs" c="dimmed" ta="center">
-                Demo changes are saved only in this browser and are not synchronized.
+                {t('demoHint')}
               </Text>
             </Stack>
           </form>

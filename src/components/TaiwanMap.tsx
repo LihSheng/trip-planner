@@ -15,6 +15,8 @@ import {
   IconArrowsMaximize,
   IconArrowsMinimize,
   IconCalendar,
+  IconEdit,
+  IconExternalLink,
   IconMap,
   IconPlus,
   IconRoute,
@@ -23,6 +25,7 @@ import { divIcon, latLngBounds } from 'leaflet';
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import type { Place, PlaceCategory, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
+import { categoryLabel, useI18n } from '../i18n';
 
 const markerColors: Record<PlaceCategory, string> = {
   Landmark: '#f08c46',
@@ -43,6 +46,7 @@ interface TaiwanMapProps {
   selectedId: string | null;
   activeView: string;
   onSelect: (placeId: string) => void;
+  onEditPlace: (place: Place) => void;
   onActiveViewChange: (viewId: string) => void;
   onAddDay: () => void;
 }
@@ -92,9 +96,12 @@ function MapViewportController({
 
   useEffect(() => {
     if (!selectedPlace || viewChanged) return;
+    const zoom = Math.max(map.getZoom(), 11);
+    const selectedPoint = map.project([selectedPlace.latitude, selectedPlace.longitude], zoom);
+    const mobileOffset = window.matchMedia('(max-width: 74.99em)').matches ? map.getSize().y * 0.18 : 0;
     map.flyTo(
-      [selectedPlace.latitude, selectedPlace.longitude],
-      Math.max(map.getZoom(), 11),
+      map.unproject(selectedPoint.subtract([0, mobileOffset]), zoom),
+      zoom,
       { duration: 0.55 },
     );
   }, [map, selectedPlace, viewChanged]);
@@ -143,6 +150,10 @@ function googleMapsRouteUrl(routePlaces: Place[]) {
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
+function googleSearchUrl(place: Place) {
+  return `https://www.google.com/search?${new URLSearchParams({ q: `${place.name} ${place.region}` }).toString()}`;
+}
+
 function MapSurface({
   places,
   days,
@@ -151,11 +162,13 @@ function MapSurface({
   selectedId,
   activeView,
   onSelect,
+  onEditPlace,
   onActiveViewChange,
   onAddDay,
   expanded,
   onToggleExpanded,
 }: MapSurfaceProps) {
+  const { t } = useI18n();
   const [useOpenStreetMapFallback, setUseOpenStreetMapFallback] = useState(!geoapifyMapsApiKey);
   const placesById = useMemo(() => new Map(places.map((place) => [place.id, place])), [places]);
   const dayByPlaceId = useMemo(() => {
@@ -234,24 +247,45 @@ function MapSurface({
               zIndexOffset={selected ? 1000 : 0}
             >
               <Popup>
-                <Stack gap={5} miw={170}>
-                  <Group justify="space-between" align="flex-start" wrap="nowrap">
-                    <Text fw={700} size="sm">
-                      {place.name}
-                    </Text>
-                    {activeDay ? <Badge size="xs">Stop {index + 1}</Badge> : null}
-                  </Group>
-                  <Text size="xs" c="dimmed">
-                    {place.region}
+                <Stack gap={4} miw={170}>
+                  <Text fw={700} size="sm" lineClamp={1}>
+                    {place.name}
                   </Text>
-                  <Badge color={markerColors[place.category]} variant="light" size="xs" w="fit-content">
-                    {place.category}
-                  </Badge>
+                  <Group gap={6} wrap="nowrap">
+                    <Text size="xs" c="dimmed" lineClamp={1}>
+                      {place.region}
+                    </Text>
+                    <Badge color={markerColors[place.category]} variant="light" size="xs">
+                      {categoryLabel(t, place.category)}
+                    </Badge>
+                    {activeDay ? <Badge size="xs">{t('stop', { number: index + 1 })}</Badge> : null}
+                  </Group>
                   {place.notes ? (
                     <Text size="xs" lineClamp={2}>
                       {place.notes}
                     </Text>
                   ) : null}
+                  <Group justify="flex-end" gap={2} mt={2}>
+                    <Tooltip label="Google search">
+                      <ActionIcon
+                        component="a"
+                        href={googleSearchUrl(place)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="subtle"
+                        color="gray"
+                        size="sm"
+                        aria-label="Google search"
+                      >
+                        <IconExternalLink size={15} />
+                      </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label={t('editPlace')}>
+                      <ActionIcon variant="subtle" color="gray" size="sm" aria-label={t('editPlace')} onClick={() => onEditPlace(place)}>
+                        <IconEdit size={15} />
+                      </ActionIcon>
+                    </Tooltip>
+                  </Group>
                 </Stack>
               </Popup>
             </Marker>
@@ -260,7 +294,7 @@ function MapSurface({
       </MapContainer>
 
       <Box className="map-day-switcher">
-        <Box className="map-day-switcher__scroll" aria-label="Itinerary day selector">
+        <Box className="map-day-switcher__scroll" aria-label={t('itineraryDaySelector')}>
           <Group gap="xs" wrap="nowrap">
             <Button
               size="xs"
@@ -275,7 +309,7 @@ function MapSurface({
               }
               onClick={() => onActiveViewChange('all')}
             >
-              All
+              {t('all')}
             </Button>
             <Button
               size="xs"
@@ -289,7 +323,7 @@ function MapSurface({
               }
               onClick={() => onActiveViewChange('unscheduled')}
             >
-              Unscheduled
+              {t('unscheduled')}
             </Button>
             {days.map((day, index) => (
               <Button
@@ -306,16 +340,16 @@ function MapSurface({
                 }
                 onClick={() => onActiveViewChange(day.id)}
               >
-                Day {index + 1}
+                {t('day', { number: index + 1 })}
               </Button>
             ))}
-            <Tooltip label="Add itinerary day">
+            <Tooltip label={t('addItineraryDay')}>
               <ActionIcon
                 size="lg"
                 radius="xl"
                 variant="white"
                 color="teal"
-                aria-label="Add itinerary day"
+                aria-label={t('addItineraryDay')}
                 onClick={onAddDay}
               >
                 <IconPlus size={17} />
@@ -329,15 +363,15 @@ function MapSurface({
         <Stack gap={2}>
           <Text fw={750} size="sm">
             {activeDay
-              ? `Day ${activeDayIndex + 1}: ${activeDay.label || 'Untitled day'}`
+                ? `${t('day', { number: activeDayIndex + 1 })}: ${activeDay.label || t('untitledDay')}`
               : activeView === 'unscheduled'
-                ? 'Unscheduled places'
-                : 'Complete trip overview'}
+                ? t('unscheduledPlaces')
+                : t('completeOverview')}
           </Text>
           <Text size="xs" c="dimmed">
             {activeDay
-              ? `${formatTripDate(startDate, activeDayIndex)} · ${routePlaces.length} stops`
-              : `${visiblePlaces.length} places visible`}
+              ? `${formatTripDate(startDate, activeDayIndex)} · ${t('stopsCount', { count: routePlaces.length })}`
+              : t('visiblePlaces', { count: visiblePlaces.length })}
           </Text>
         </Stack>
         {routeUrl ? (
@@ -348,19 +382,19 @@ function MapSurface({
             leftSection={<IconRoute size={15} />}
             onClick={() => window.open(routeUrl, '_blank', 'noopener,noreferrer')}
           >
-            Open route
+            {t('openRoute')}
           </Button>
         ) : null}
       </Box>
 
-      <Tooltip label={expanded ? 'Exit full screen' : 'Full screen map'}>
+      <Tooltip label={expanded ? t('exitFullScreen') : t('fullScreenMap')}>
         <ActionIcon
           className="map-expand-button"
           size="lg"
           radius="xl"
           variant="white"
           color="teal"
-          aria-label={expanded ? 'Exit full screen map' : 'Open full screen map'}
+          aria-label={expanded ? t('exitFullScreen') : t('openFullScreenMap')}
           onClick={onToggleExpanded}
         >
           {expanded ? <IconArrowsMinimize size={18} /> : <IconArrowsMaximize size={18} />}
@@ -369,9 +403,9 @@ function MapSurface({
 
       {!visiblePlaces.length ? (
         <Box className="map-empty-state">
-          <Text fw={700}>No places in this view</Text>
+          <Text fw={700}>{t('noPlacesView')}</Text>
           <Text size="sm" c="dimmed">
-            Add a place or move one into this itinerary day.
+            {t('addOrMovePlace')}
           </Text>
         </Box>
       ) : null}

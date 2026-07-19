@@ -13,6 +13,7 @@ import {
 } from '@mantine/core';
 import { IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconTrash } from '@tabler/icons-react';
 import type { Place, PlaceCategory } from '../types';
+import { categoryLabel, useI18n } from '../i18n';
 
 const categoryColors: Record<PlaceCategory, string> = {
   Landmark: 'orange',
@@ -44,6 +45,7 @@ export function PlaceCard({
   visited = false,
   onVisitedChange,
 }: PlaceCardProps) {
+  const { t } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: place.id,
     disabled: dragDisabled,
@@ -73,7 +75,7 @@ export function PlaceCard({
           <Checkbox
             checked={visited}
             onChange={() => onVisitedChange(place.id)}
-            aria-label={`Mark ${place.name} as visited`}
+            aria-label={t('markVisited', { name: place.name })}
             className="place-card__visited"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
@@ -93,7 +95,7 @@ export function PlaceCard({
                     variant="subtle"
                     color="gray"
                     size="sm"
-                    aria-label={`Actions for ${place.name}`}
+                    aria-label={t('actionsFor', { name: place.name })}
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -103,7 +105,7 @@ export function PlaceCard({
                 <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
                   {onEdit && (
                     <Menu.Item leftSection={<IconEdit size={15} />} onClick={() => onEdit(place)}>
-                      Edit place
+                      {t('editPlace')}
                     </Menu.Item>
                   )}
                   {onDelete && (
@@ -112,7 +114,7 @@ export function PlaceCard({
                       leftSection={<IconTrash size={15} />}
                       onClick={() => onDelete(place)}
                     >
-                      Delete place
+                      {t('deletePlace')}
                     </Menu.Item>
                   )}
                 </Menu.Dropdown>
@@ -126,7 +128,7 @@ export function PlaceCard({
             </Text>
           </Group>
           <Badge color={categoryColors[place.category]} variant="light" size="xs">
-            {place.category}
+            {categoryLabel(t, place.category)}
           </Badge>
         </Stack>
       </Group>

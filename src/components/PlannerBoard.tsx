@@ -18,6 +18,7 @@ import { findContainer, getContainerItems } from '../utils/itinerary';
 import { DayColumn } from './DayColumn';
 import { PlaceCardPreview } from './PlaceCard';
 import { UnscheduledColumn } from './UnscheduledColumn';
+import { useI18n } from '../i18n';
 
 interface PlannerBoardProps {
   state: TripState;
@@ -50,6 +51,7 @@ export function PlannerBoard({
   onEditPlace,
   onDeletePlace,
 }: PlannerBoardProps) {
+  const { t } = useI18n();
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -111,14 +113,14 @@ export function PlannerBoard({
         <Group justify="space-between" align="flex-end">
           <div>
             <Text fw={800} size="lg">
-              Itinerary
+              {t('itinerary')}
             </Text>
             <Text c="dimmed" size="sm">
-              Drag places between days to shape your route.
+              {t('itineraryHint')}
             </Text>
           </div>
           <Button variant="light" color="teal" leftSection={<IconPlus size={17} />} onClick={onAddDay}>
-            Add day
+            {t('addDay')}
           </Button>
         </Group>
 

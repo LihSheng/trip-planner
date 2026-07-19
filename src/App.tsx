@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import {
   AppShell,
+  ActionIcon,
   Box,
   Button,
   Center,
@@ -14,11 +15,20 @@ import {
   Stack,
   Tabs,
   Text,
+  Tooltip,
   useMantineTheme,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconCalendarEvent, IconInfoCircle, IconList, IconMap, IconMapPin } from '@tabler/icons-react';
+import {
+  IconCalendarEvent,
+  IconChevronLeft,
+  IconChevronRight,
+  IconInfoCircle,
+  IconList,
+  IconMap,
+  IconMapPin,
+} from '@tabler/icons-react';
 import type { Place } from './types';
 import { useAuth } from './context/AuthContext';
 import { useTripPlanner } from './hooks/useTripPlanner';
@@ -28,26 +38,29 @@ import { PlaceFormModal } from './components/PlaceFormModal';
 import { PlaceLibrary } from './components/PlaceLibrary';
 import { PlannerBoard } from './components/PlannerBoard';
 import { TripSettingsModal } from './components/TripSettingsModal';
+import { formatTripPlainText } from './utils/exportTrip';
+import { useI18n } from './i18n';
 
 const TaiwanMap = lazy(() =>
   import('./components/TaiwanMap').then((module) => ({ default: module.TaiwanMap })),
 );
 
-const mobileViews = [
-  { label: 'Map', value: 'map' },
-  { label: 'Places', value: 'places' },
-  { label: 'Planner', value: 'planner' },
-];
-
 export default function App() {
   const planner = useTripPlanner();
   const { user, signOut } = useAuth();
+  const { t } = useI18n();
+  const mobileViews = [
+    { label: t('map'), value: 'map' },
+    { label: t('places'), value: 'places' },
+    { label: t('planner'), value: 'planner' },
+  ];
   const theme = useMantineTheme();
   const isDesktop = useMediaQuery(`(min-width: ${theme.breakpoints.lg})`);
   const [selectedId, setSelectedId] = useState<string | null>(planner.state.places[0]?.id ?? null);
   const [activeMapView, setActiveMapView] = useState('all');
   const [desktopWorkspace, setDesktopWorkspace] = useState('map');
   const [mapPanelTab, setMapPanelTab] = useState<string | null>('details');
+  const [mapPanelCollapsed, setMapPanelCollapsed] = useState(false);
   const [mobileView, setMobileView] = useState('map');
   const [editingPlace, setEditingPlace] = useState<Place | undefined>();
   const [placeModalOpened, setPlaceModalOpened] = useState(false);
@@ -71,7 +84,7 @@ export default function App() {
       <Center mih="100vh">
         <Stack align="center" gap="sm">
           <Loader color="teal" />
-          <Text size="sm" c="dimmed">Loading your synchronized trip…</Text>
+          <Text size="sm" c="dimmed">{t('loadingTrip')}</Text>
         </Stack>
       </Center>
     );
@@ -90,12 +103,12 @@ export default function App() {
   function handlePlaceSubmit(place: Place) {
     if (editingPlace) {
       planner.updatePlace(place);
-      notifications.show({ color: 'teal', title: 'Place updated', message: `${place.name} was saved.` });
+      notifications.show({ color: 'teal', title: t('placeUpdated'), message: t('placeSaved', { name: place.name }) });
     } else {
       planner.addPlace(place);
       setSelectedId(place.id);
       setActiveMapView('unscheduled');
-      notifications.show({ color: 'teal', title: 'Place added', message: `${place.name} is ready to schedule.` });
+      notifications.show({ color: 'teal', title: t('placeAdded'), message: t('placeReady', { name: place.name }) });
     }
   }
 
@@ -103,7 +116,7 @@ export default function App() {
     if (!deleteTarget) return;
     planner.removePlace(deleteTarget.id);
     if (selectedId === deleteTarget.id) setSelectedId(null);
-    notifications.show({ color: 'red', title: 'Place removed', message: `${deleteTarget.name} was deleted.` });
+    notifications.show({ color: 'red', title: t('placeRemoved'), message: t('placeDeleted', { name: deleteTarget.name }) });
     setDeleteTarget(undefined);
   }
 
@@ -115,8 +128,8 @@ export default function App() {
     planner.removeDay(dayToDelete.id);
     notifications.show({
       color: 'orange',
-      title: 'Day removed',
-      message: `${dayToDelete.placeIds.length} stops moved to Unscheduled.`,
+      title: t('dayRemoved'),
+      message: t('stopsMoved', { count: dayToDelete.placeIds.length }),
     });
     setDayDeleteTarget(null);
   }
@@ -145,11 +158,20 @@ export default function App() {
     URL.revokeObjectURL(url);
   }
 
+  async function copyItineraryText() {
+    try {
+      await navigator.clipboard.writeText(formatTripPlainText(planner.state));
+      notifications.show({ color: 'teal', title: t('itineraryCopied'), message: t('itineraryCopiedMessage') });
+    } catch {
+      notifications.show({ color: 'red', title: t('copyFailed'), message: t('clipboardDenied') });
+    }
+  }
+
   function resetTrip() {
     planner.reset();
     setSelectedId('taipei-101');
     setActiveMapView('all');
-    notifications.show({ title: 'Demo restored', message: 'The sample Taiwan trip has been reset.' });
+    notifications.show({ title: t('demoRestored'), message: t('demoRestoredMessage') });
   }
 
   const map = (
@@ -162,6 +184,7 @@ export default function App() {
         selectedId={selectedId}
         activeView={activeMapView}
         onSelect={setSelectedId}
+        onEditPlace={openEditPlace}
         onActiveViewChange={handleMapViewChange}
         onAddDay={planner.addDay}
       />
@@ -205,28 +228,55 @@ export default function App() {
   );
 
   const mapWorkspace = (
-    <Box className="map-workspace">
+    <Box className={`map-workspace${mapPanelCollapsed ? ' map-workspace--panel-collapsed' : ''}`}>
       {map}
-      <Paper withBorder radius="lg" className="map-side-panel">
+      {mapPanelCollapsed ? (
+        <Tooltip label="Show details panel" position="left">
+          <ActionIcon
+            variant="filled"
+            color="teal"
+            radius="xl"
+            size="lg"
+            className="map-side-panel-restore"
+            aria-label="Show details panel"
+            onClick={() => setMapPanelCollapsed(false)}
+          >
+            <IconChevronLeft size={20} />
+          </ActionIcon>
+        </Tooltip>
+      ) : (
+        <Paper withBorder radius="lg" className="map-side-panel">
+          <Tooltip label="Minimize details panel" position="left">
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              radius="xl"
+              className="map-side-panel__minimize"
+              aria-label="Minimize details panel"
+              onClick={() => setMapPanelCollapsed(true)}
+            >
+              <IconChevronRight size={19} />
+            </ActionIcon>
+          </Tooltip>
         <Tabs value={mapPanelTab} onChange={setMapPanelTab} keepMounted={false}>
           <Tabs.List grow>
             <Tabs.Tab value="details" leftSection={<IconInfoCircle size={15} />}>
-              Details
+              {t('details')}
             </Tabs.Tab>
             <Tabs.Tab value="places" leftSection={<IconList size={15} />}>
-              Places
+              {t('places')}
             </Tabs.Tab>
           </Tabs.List>
           <Tabs.Panel value="details" p="md">
             <Stack gap="md">
               <Group gap="xs" wrap="nowrap">
                 <IconMapPin size={17} />
-                <Text fw={750}>Selected place</Text>
+                <Text fw={750}>{t('selectedPlace')}</Text>
               </Group>
               <PlaceDetails place={selectedPlace} onEdit={openEditPlace} />
               {!selectedPlace ? (
                 <Button variant="light" color="teal" onClick={openAddPlace}>
-                  Add your first place
+                  {t('addFirstPlace')}
                 </Button>
               ) : null}
             </Stack>
@@ -235,7 +285,8 @@ export default function App() {
             {placesPanel}
           </Tabs.Panel>
         </Tabs>
-      </Paper>
+        </Paper>
+      )}
     </Box>
   );
 
@@ -253,6 +304,7 @@ export default function App() {
           onAddPlace={openAddPlace}
           onOpenSettings={() => setSettingsOpened(true)}
           onExport={exportTrip}
+          onCopyPlainText={copyItineraryText}
           onReset={resetTrip}
           onSignOut={() => void signOut()}
         />
@@ -264,9 +316,9 @@ export default function App() {
             <Stack gap="md">
               <Group justify="space-between" align="center" className="workspace-toolbar">
                 <div>
-                  <Text fw={800}>Trip workspace</Text>
+                  <Text fw={800}>{t('tripWorkspace')}</Text>
                   <Text size="sm" c="dimmed">
-                    Explore on the map or fine-tune the full itinerary board.
+                    {t('workspaceHint')}
                   </Text>
                 </div>
                 <SegmentedControl
@@ -278,7 +330,7 @@ export default function App() {
                       label: (
                         <Box className="workspace-tab-label">
                           <IconMap size={15} />
-                          <span>Map</span>
+                          <span>{t('map')}</span>
                         </Box>
                       ),
                     },
@@ -287,7 +339,7 @@ export default function App() {
                       label: (
                         <Box className="workspace-tab-label">
                           <IconCalendarEvent size={15} />
-                          <span>Planner</span>
+                          <span>{t('planner')}</span>
                         </Box>
                       ),
                     },
@@ -314,7 +366,7 @@ export default function App() {
       </AppShell.Main>
 
       {!isDesktop ? (
-        <Box component="nav" className="mobile-bottom-nav" aria-label="Trip planner navigation">
+        <Box component="nav" className="mobile-bottom-nav" aria-label={t('navigation')}>
           {mobileViews.map((item) => {
             const active = mobileView === item.value;
             const Icon =
@@ -350,32 +402,32 @@ export default function App() {
         onClose={() => setSettingsOpened(false)}
         onSubmit={planner.updateTrip}
       />
-      <Modal opened={Boolean(deleteTarget)} onClose={() => setDeleteTarget(undefined)} title="Delete place?" centered>
+      <Modal opened={Boolean(deleteTarget)} onClose={() => setDeleteTarget(undefined)} title={t('deletePlaceQuestion')} centered>
         <Stack>
           <Text size="sm">
-            Remove <strong>{deleteTarget?.name}</strong> from the map and every itinerary day?
+            {t('removePlaceConfirm', { name: deleteTarget?.name ?? '' })}
           </Text>
           <Box className="modal-actions">
             <Button variant="default" onClick={() => setDeleteTarget(undefined)}>
               Cancel
             </Button>
             <Button color="red" onClick={handleDeletePlace}>
-              Delete place
+              {t('deletePlace')}
             </Button>
           </Box>
         </Stack>
       </Modal>
-      <Modal opened={Boolean(dayToDelete)} onClose={() => setDayDeleteTarget(null)} title="Remove day?" centered>
+      <Modal opened={Boolean(dayToDelete)} onClose={() => setDayDeleteTarget(null)} title={t('removeDayQuestion')} centered>
         <Stack>
           <Text size="sm">
-            Remove <strong>Day {dayToDeleteIndex + 1}</strong>? Its {dayToDelete?.placeIds.length ?? 0} stops will be moved to Unscheduled.
+            {t('removeDayConfirm', { number: dayToDeleteIndex + 1, count: dayToDelete?.placeIds.length ?? 0 })}
           </Text>
           <Box className="modal-actions">
             <Button variant="default" onClick={() => setDayDeleteTarget(null)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button color="red" onClick={handleDeleteDay}>
-              Remove day
+              {t('removeDay')}
             </Button>
           </Box>
         </Stack>

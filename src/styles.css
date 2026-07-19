@@ -177,6 +177,14 @@ select {
   right: 414px;
 }
 
+.map-workspace--panel-collapsed .map-day-switcher {
+  right: 76px;
+}
+
+.map-workspace--panel-collapsed .map-expand-button {
+  right: 76px;
+}
+
 .map-shell--expanded .map-day-switcher {
   right: 76px;
 }
@@ -214,6 +222,21 @@ select {
   backdrop-filter: blur(18px);
 }
 
+.map-side-panel__minimize,
+.map-side-panel-restore {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  top: 12px;
+}
+
+.map-side-panel-restore {
+  z-index: 720;
+  right: 18px;
+  top: 18px;
+  box-shadow: 0 8px 22px rgba(25, 48, 44, 0.18);
+}
+
 .map-side-panel .mantine-Tabs-root {
   display: flex;
   height: 100%;
@@ -222,7 +245,7 @@ select {
 
 .map-side-panel .mantine-Tabs-list {
   flex: 0 0 auto;
-  padding: 8px 8px 0;
+  padding: 8px 52px 0 8px;
   background: rgba(248, 251, 250, 0.92);
 }
 
@@ -333,9 +356,12 @@ select {
 .day-column {
   width: 270px;
   min-width: 270px;
+  height: min(40rem, calc(100dvh - 14rem));
   min-height: 500px;
   overflow: hidden;
   background: #fbfcfc;
+  display: flex;
+  flex-direction: column;
   transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
@@ -381,8 +407,11 @@ select {
 }
 
 .day-column__body {
-  min-height: 386px;
+  min-height: 0;
+  flex: 1 1 auto;
   align-content: flex-start;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .day-column--unscheduled {
@@ -505,6 +534,53 @@ select {
     padding: 0 14px;
   }
 
+  .app-container {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .mobile-bottom-nav {
+    position: fixed;
+    z-index: 1000;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-height: calc(68px + env(safe-area-inset-bottom));
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--mantine-color-gray-2);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 -8px 24px rgba(23, 48, 44, 0.08);
+    backdrop-filter: blur(18px);
+  }
+
+  .mobile-bottom-nav__item {
+    width: 100%;
+    height: 56px;
+    padding: 4px 8px;
+    border-radius: 14px;
+    color: var(--mantine-color-gray-7);
+  }
+
+  .mobile-bottom-nav__item .mantine-Button-inner {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .mobile-bottom-nav__item .mantine-Button-label {
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .mobile-bottom-nav__item[data-active] {
+    background: var(--mantine-color-teal-0);
+  }
+
+  .mobile-workspace > .planner-board {
+    min-height: calc(100dvh - 8.75rem);
+  }
+
   .map-shell,
   .taiwan-map {
     min-height: 500px;
@@ -602,6 +678,12 @@ select {
     min-width: 0;
   }
 
+  .mobile-workspace > .library-panel {
+    display: flex;
+    height: calc(100dvh - 160px);
+    flex-direction: column;
+  }
+
   .mobile-place-details {
     padding-inline: 2px;
   }
@@ -687,8 +769,16 @@ select {
     padding: 14px;
   }
 
-  .place-library .mantine-ScrollArea-root {
-    max-height: calc(100dvh - 298px);
+  .mobile-workspace > .library-panel .place-library {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .mobile-workspace > .library-panel .place-library__list {
+    height: 100%;
+    max-height: none !important;
+    flex: 1;
+    min-height: 0;
   }
 
   .planner-board {
@@ -722,6 +812,7 @@ select {
   .day-column {
     width: 100%;
     min-width: 0;
+    height: auto;
     min-height: 0;
   }
 
@@ -731,6 +822,7 @@ select {
 
   .day-column__body {
     min-height: 0;
+    overflow: visible;
   }
 
   .place-card {

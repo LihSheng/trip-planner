@@ -15,6 +15,8 @@ import { notifications } from '@mantine/notifications';
 import {
   IconCloudCheck,
   IconCloudOff,
+  IconCloudUpload,
+  IconCopy,
   IconDownload,
   IconFileSpreadsheet,
   IconFileText,
@@ -28,6 +30,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { loadTripState } from '../lib/tripRepository';
 import { exportTripExcel, exportTripMarkdown } from '../utils/exportTrip';
+import { LanguageToggle, useI18n } from '../i18n';
 
 interface AppHeaderProps {
   tripName: string;
@@ -40,16 +43,10 @@ interface AppHeaderProps {
   onAddPlace: () => void;
   onOpenSettings: () => void;
   onExport: () => void;
+  onCopyPlainText: () => Promise<void>;
   onReset: () => void;
   onSignOut: () => void;
 }
-
-const syncLabels = {
-  loading: 'Loading',
-  saving: 'Saving…',
-  saved: 'Saved',
-  error: 'Sync failed',
-} as const;
 
 export function AppHeader({
   tripName,
@@ -62,10 +59,12 @@ export function AppHeader({
   onAddPlace,
   onOpenSettings,
   onExport,
+  onCopyPlainText,
   onReset,
   onSignOut,
 }: AppHeaderProps) {
   const { accessToken, user, isDemo } = useAuth();
+  const { t } = useI18n();
   const [exporting, setExporting] = useState<'excel' | 'markdown' | null>(null);
   const syncFailed = syncStatus === 'error';
   const cloudExportReady = !isDemo && syncStatus === 'saved' && !exporting;
@@ -74,19 +73,19 @@ export function AppHeader({
     setExporting(format);
     try {
       const state = await loadTripState(accessToken, user.id);
-      if (!state) throw new Error('No synchronized trip was found.');
+      if (!state) throw new Error(t('noSynchronizedTrip'));
       if (format === 'excel') exportTripExcel(state);
       else exportTripMarkdown(state);
       notifications.show({
         color: 'teal',
-        title: format === 'excel' ? 'Excel itinerary exported' : 'Markdown note exported',
-        message: 'The latest synchronized schedule was downloaded.',
+        title: format === 'excel' ? t('excelExported') : t('markdownExported'),
+        message: t('latestScheduleDownloaded'),
       });
     } catch (reason) {
       notifications.show({
         color: 'red',
-        title: 'Export failed',
-        message: reason instanceof Error ? reason.message : 'Unable to export the itinerary.',
+        title: t('exportFailed'),
+        message: reason instanceof Error ? reason.message : t('unableExport'),
       });
     } finally {
       setExporting(null);
@@ -105,21 +104,32 @@ export function AppHeader({
               {tripName}
             </Text>
             <Text size="xs" c="dimmed" lineClamp={1}>
-              Starts {startDate} · {dayCount} days · {placeCount} places
+              {t('startsSummary', { date: startDate, days: dayCount, places: placeCount })}
             </Text>
           </Stack>
         </Group>
 
         <Group gap="xs" wrap="nowrap">
-          <Tooltip label={syncError ?? 'Your itinerary is synchronized with Supabase.'}>
+          <Tooltip label={syncError ?? t('syncDescription')}>
             <Badge
-              visibleFrom="sm"
+              visibleFrom="lg"
               variant="light"
               color={syncFailed ? 'red' : syncStatus === 'saved' ? 'teal' : 'gray'}
               leftSection={syncFailed ? <IconCloudOff size={13} /> : <IconCloudCheck size={13} />}
             >
-              {syncLabels[syncStatus]}
+              {t({ loading: 'loading', saving: 'saving', saved: 'saved', error: 'syncFailed' }[syncStatus] as 'loading' | 'saving' | 'saved' | 'syncFailed')}
             </Badge>
+          </Tooltip>
+          <Tooltip label={syncError ?? t('cloudStatus', { status: t({ loading: 'loading', saving: 'saving', saved: 'saved', error: 'syncFailed' }[syncStatus] as 'loading' | 'saving' | 'saved' | 'syncFailed') })}>
+            <ActionIcon
+              hiddenFrom="lg"
+              variant="light"
+              color={syncFailed ? 'red' : syncStatus === 'saved' ? 'teal' : 'yellow'}
+              size="lg"
+              aria-label={t('cloudStatus', { status: t({ loading: 'loading', saving: 'saving', saved: 'saved', error: 'syncFailed' }[syncStatus] as 'loading' | 'saving' | 'saved' | 'syncFailed') })}
+            >
+              {syncFailed ? <IconCloudOff size={18} /> : syncStatus === 'saved' ? <IconCloudCheck size={18} /> : <IconCloudUpload size={18} />}
+            </ActionIcon>
           </Tooltip>
           <Button
             color="teal"
@@ -127,56 +137,60 @@ export function AppHeader({
             onClick={onAddPlace}
             visibleFrom="sm"
           >
-            Add place
+            {t('addPlace')}
           </Button>
-          <Tooltip label="Add place">
-            <ActionIcon color="teal" size="lg" hiddenFrom="sm" onClick={onAddPlace} aria-label="Add place">
+          <Tooltip label={t('addPlace')}>
+            <ActionIcon color="teal" size="lg" hiddenFrom="sm" onClick={onAddPlace} aria-label={t('addPlace')}>
               <IconPlus size={18} />
             </ActionIcon>
           </Tooltip>
-          <Tooltip label="Trip settings">
-            <ActionIcon variant="default" size="lg" onClick={onOpenSettings} aria-label="Trip settings">
+          <Tooltip label={t('tripSettings')}>
+            <ActionIcon variant="default" size="lg" onClick={onOpenSettings} aria-label={t('tripSettings')}>
               <IconSettings size={18} />
             </ActionIcon>
           </Tooltip>
           <Menu position="bottom-end" withinPortal shadow="md">
             <Menu.Target>
-              <ActionIcon variant="default" size="lg" aria-label="More trip actions">
+              <ActionIcon variant="default" size="lg" aria-label={t('moreActions')}>
                 <IconDownload size={18} />
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
               {accountEmail ? <Menu.Label>{accountEmail}</Menu.Label> : null}
-              <Menu.Label>{isDemo ? 'Local demo data' : `Cloud status: ${syncLabels[syncStatus]}`}</Menu.Label>
+              <Menu.Label>{isDemo ? t('localDemoData') : t('cloudStatus', { status: t({ loading: 'loading', saving: 'saving', saved: 'saved', error: 'syncFailed' }[syncStatus] as 'loading' | 'saving' | 'saved' | 'syncFailed') })}</Menu.Label>
               <Menu.Divider />
-              <Menu.Label>Export itinerary</Menu.Label>
+              <Menu.Label>{t('exportItinerary')}</Menu.Label>
+              <Menu.Item leftSection={<IconCopy size={16} />} onClick={() => void onCopyPlainText()}>
+                {t('copyItineraryText')}
+              </Menu.Item>
               <Menu.Item
                 leftSection={<IconFileSpreadsheet size={16} />}
                 disabled={!cloudExportReady}
                 onClick={() => void exportCloudTrip('excel')}
               >
-                {exporting === 'excel' ? 'Preparing Excel…' : 'Excel workbook (.xls)'}
+                {exporting === 'excel' ? t('preparingExcel') : t('excelWorkbook')}
               </Menu.Item>
               <Menu.Item
                 leftSection={<IconFileText size={16} />}
                 disabled={!cloudExportReady}
                 onClick={() => void exportCloudTrip('markdown')}
               >
-                {exporting === 'markdown' ? 'Preparing note…' : 'Markdown note (.md)'}
+                {exporting === 'markdown' ? t('preparingNote') : t('markdownNote')}
               </Menu.Item>
               <Menu.Item leftSection={<IconJson size={16} />} onClick={onExport}>
-                JSON backup (.json)
+                {t('jsonBackup')}
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item color="red" leftSection={<IconRefresh size={16} />} onClick={onReset}>
-                Reset demo data
+                {t('resetDemoData')}
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item leftSection={<IconLogout size={16} />} onClick={onSignOut}>
-                {isDemo ? 'Sign in to sync' : 'Sign out'}
+                {isDemo ? t('signInToSync') : t('signOut')}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
+          <LanguageToggle />
         </Group>
       </Group>
     </Box>

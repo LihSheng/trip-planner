@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Button, Group, Modal, Stack, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { useI18n } from '../i18n';
 
 interface TripSettingsModalProps {
   opened: boolean;
@@ -17,11 +18,12 @@ export function TripSettingsModal({
   onClose,
   onSubmit,
 }: TripSettingsModalProps) {
+  const { t } = useI18n();
   const form = useForm({
     initialValues: { tripName, startDate },
     validate: {
-      tripName: (value) => (value.trim().length < 2 ? 'Enter a trip name' : null),
-      startDate: (value) => (!value ? 'Choose a start date' : null),
+      tripName: (value) => (value.trim().length < 2 ? t('enterTripName') : null),
+      startDate: (value) => (!value ? t('chooseStartDate') : null),
     },
   });
 
@@ -31,7 +33,7 @@ export function TripSettingsModal({
   }, [opened, tripName, startDate]);
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Trip settings" centered>
+    <Modal opened={opened} onClose={onClose} title={t('tripSettings')} centered>
       <form
         onSubmit={form.onSubmit((values) => {
           onSubmit(values.tripName.trim(), values.startDate);
@@ -39,14 +41,14 @@ export function TripSettingsModal({
         })}
       >
         <Stack>
-          <TextInput label="Trip name" required {...form.getInputProps('tripName')} />
-          <TextInput label="Start date" type="date" required {...form.getInputProps('startDate')} />
+          <TextInput label={t('tripName')} required {...form.getInputProps('tripName')} />
+          <TextInput label={t('startDate')} type="date" required {...form.getInputProps('startDate')} />
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" color="teal">
-              Save trip
+              {t('saveTrip')}
             </Button>
           </Group>
         </Stack>
