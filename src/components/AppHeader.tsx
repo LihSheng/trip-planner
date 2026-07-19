@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   ActionIcon,
   Avatar,
@@ -10,16 +11,23 @@ import {
   Text,
   Tooltip,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import {
   IconCloudCheck,
   IconCloudOff,
   IconDownload,
+  IconFileSpreadsheet,
+  IconFileText,
+  IconJson,
   IconLogout,
   IconMap2,
   IconPlus,
   IconRefresh,
   IconSettings,
 } from '@tabler/icons-react';
+import { useAuth } from '../context/AuthContext';
+import { loadTripState } from '../lib/tripRepository';
+import { exportTripExcel, exportTripMarkdown } from '../utils/exportTrip';
 
 interface AppHeaderProps {
   tripName: string;
@@ -57,7 +65,33 @@ export function AppHeader({
   onReset,
   onSignOut,
 }: AppHeaderProps) {
+  const { accessToken, user } = useAuth();
+  const [exporting, setExporting] = useState<'excel' | 'markdown' | null>(null);
   const syncFailed = syncStatus === 'error';
+  const cloudExportReady = syncStatus === 'saved' && !exporting;
+
+  async function exportCloudTrip(format: 'excel' | 'markdown') {
+    setExporting(format);
+    try {
+      const state = await loadTripState(accessToken, user.id);
+      if (!state) throw new Error('No synchronized trip was found.');
+      if (format === 'excel') exportTripExcel(state);
+      else exportTripMarkdown(state);
+      notifications.show({
+        color: 'teal',
+        title: format === 'excel' ? 'Excel itinerary exported' : 'Markdown note exported',
+        message: 'The latest synchronized schedule was downloaded.',
+      });
+    } catch (reason) {
+      notifications.show({
+        color: 'red',
+        title: 'Export failed',
+        message: reason instanceof Error ? reason.message : 'Unable to export the itinerary.',
+      });
+    } finally {
+      setExporting(null);
+    }
+  }
 
   return (
     <Box component="header" className="app-header">
@@ -115,9 +149,25 @@ export function AppHeader({
               {accountEmail ? <Menu.Label>{accountEmail}</Menu.Label> : null}
               <Menu.Label>Cloud status: {syncLabels[syncStatus]}</Menu.Label>
               <Menu.Divider />
-              <Menu.Item leftSection={<IconDownload size={16} />} onClick={onExport}>
-                Export trip JSON
+              <Menu.Label>Export itinerary</Menu.Label>
+              <Menu.Item
+                leftSection={<IconFileSpreadsheet size={16} />}
+                disabled={!cloudExportReady}
+                onClick={() => void exportCloudTrip('excel')}
+              >
+                {exporting === 'excel' ? 'Preparing Excel…' : 'Excel workbook (.xls)'}
               </Menu.Item>
+              <Menu.Item
+                leftSection={<IconFileText size={16} />}
+                disabled={!cloudExportReady}
+                onClick={() => void exportCloudTrip('markdown')}
+              >
+                {exporting === 'markdown' ? 'Preparing note…' : 'Markdown note (.md)'}
+              </Menu.Item>
+              <Menu.Item leftSection={<IconJson size={16} />} onClick={onExport}>
+                JSON backup (.json)
+              </Menu.Item>
+              <Menu.Divider />
               <Menu.Item color="red" leftSection={<IconRefresh size={16} />} onClick={onReset}>
                 Reset demo data
               </Menu.Item>
