@@ -44,6 +44,7 @@ export function PlaceLibrary({
   const filtered = useMemo(
     () =>
       places.filter((place) => {
+        if (place.type === 'placeholder') return false;
         const matchesQuery =
           !deferredQuery ||
           place.name.toLowerCase().includes(deferredQuery) ||

@@ -42,6 +42,7 @@ function distanceKm(from: Place, to: Place) {
 }
 
 export function estimateTravelMinutes(from: Place, to: Place, mode: TravelMode = 'public') {
+  if (from.type === 'placeholder' || to.type === 'placeholder') return 0;
   const roadFactor = mode === 'walk' ? 1.15 : 1.3;
   return Math.max(5, Math.round((distanceKm(from, to) * roadFactor / TRAVEL_SPEEDS_KMH[mode]) * 60));
 }

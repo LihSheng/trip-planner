@@ -65,6 +65,7 @@ export default function App() {
   const [mobileView, setMobileView] = useState('map');
   const [editingPlace, setEditingPlace] = useState<Place | undefined>();
   const [addPlaceDayId, setAddPlaceDayId] = useState<string | null>(null);
+  const [replacePlaceholderId, setReplacePlaceholderId] = useState<string | null>(null);
   const [placeModalOpened, setPlaceModalOpened] = useState(false);
   const [settingsOpened, setSettingsOpened] = useState(false);
   const [shareOpened, setShareOpened] = useState(false);
@@ -96,18 +97,21 @@ export default function App() {
   function openAddPlace() {
     setEditingPlace(undefined);
     setAddPlaceDayId(null);
+    setReplacePlaceholderId(null);
     setPlaceModalOpened(true);
   }
 
   function openAddPlaceForDay(dayId: string) {
     setEditingPlace(undefined);
     setAddPlaceDayId(dayId);
+    setReplacePlaceholderId(null);
     setPlaceModalOpened(true);
   }
 
   function openEditPlace(place: Place) {
     setEditingPlace(place);
     setAddPlaceDayId(null);
+    setReplacePlaceholderId(null);
     setPlaceModalOpened(true);
   }
 
@@ -116,13 +120,15 @@ export default function App() {
       planner.updatePlace(place);
       notifications.show({ color: 'teal', title: t('placeUpdated'), message: t('placeSaved', { name: place.name }) });
     } else {
-      if (addPlaceDayId) {
+      if (replacePlaceholderId) {
+        planner.replacePlaceholder(replacePlaceholderId, place);
+      } else if (addPlaceDayId) {
         planner.addPlaceToDay(place, addPlaceDayId);
       } else {
         planner.addPlace(place);
       }
       setSelectedId(place.id);
-      setActiveMapView(addPlaceDayId ?? 'unscheduled');
+      setActiveMapView(replacePlaceholderId ? 'all' : addPlaceDayId ?? 'unscheduled');
       notifications.show({ color: 'teal', title: t('placeAdded'), message: t('placeReady', { name: place.name }) });
     }
   }
@@ -192,7 +198,7 @@ export default function App() {
   const map = (
     <Suspense fallback={<Skeleton height="calc(100vh - 176px)" mih={560} radius="lg" />}>
       <TaiwanMap
-        places={planner.state.places}
+        places={planner.state.places.filter((place) => place.type !== 'placeholder')}
         days={planner.state.days}
         unscheduledIds={planner.state.unscheduledIds}
         startDate={planner.state.startDate}
@@ -210,7 +216,7 @@ export default function App() {
   const placesPanel = (
     <Box className="library-panel">
       <PlaceLibrary
-        places={planner.state.places}
+        places={planner.state.places.filter((place) => place.type !== 'placeholder')}
         selectedId={selectedId}
         onSelect={(placeId) => {
           setSelectedId(placeId);
@@ -234,6 +240,13 @@ export default function App() {
       onSelect={setSelectedId}
       onAddDay={planner.addDay}
       onAddPlaceToDay={openAddPlaceForDay}
+      onAddPlaceholderToDay={planner.addPlaceholderToDay}
+      onReplacePlaceholder={(placeholderId) => {
+        setEditingPlace(undefined);
+        setAddPlaceDayId(null);
+        setReplacePlaceholderId(placeholderId);
+        setPlaceModalOpened(true);
+      }}
       onMove={planner.move}
       onLabelChange={planner.updateDayLabel}
       onRemoveDay={setDayDeleteTarget}
@@ -316,7 +329,7 @@ export default function App() {
         <AppHeader
           tripName={planner.state.tripName}
           startDate={planner.state.startDate}
-          placeCount={planner.state.places.length}
+          placeCount={planner.state.places.filter((place) => place.type !== 'placeholder').length}
           dayCount={planner.state.days.length}
           syncStatus={planner.syncStatus}
           syncError={planner.syncError}

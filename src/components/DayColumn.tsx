@@ -17,8 +17,8 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconPlus, IconRoute, IconTrash, IconWalk } from '@tabler/icons-react';
-import type { Place, StopSchedule, TravelMode, TripDay } from '../types';
+import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconCoffee, IconPlus, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconWalk } from '@tabler/icons-react';
+import type { PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
 import { useI18n } from '../i18n';
@@ -34,6 +34,8 @@ interface DayColumnProps {
   visitedPlaceIds: string[];
   onSelect: (placeId: string) => void;
   onAddPlace: () => void;
+  onAddPlaceholder: (kind: PlaceholderKind) => void;
+  onReplacePlaceholder: (placeholderId: string) => void;
   onLabelChange: (dayId: string, label: string) => void;
   onRemove: (dayId: string) => void;
   onEditPlace: (place: Place) => void;
@@ -55,6 +57,8 @@ export function DayColumn({
   visitedPlaceIds,
   onSelect,
   onAddPlace,
+  onAddPlaceholder,
+  onReplacePlaceholder,
   onLabelChange,
   onRemove,
   onEditPlace,
@@ -256,14 +260,15 @@ export function DayColumn({
                 onSelect={onSelect}
                 onEdit={onEditPlace}
                 onDelete={onDeletePlace}
+                onReplace={place.type === 'placeholder' ? onReplacePlaceholder : undefined}
                 onVisitedChange={onVisitedChange}
                 schedule={day.timeManagementEnabled && day.stopSchedules?.[place.id] ? scheduleFor(day, place) : undefined}
-                travelMinutes={day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 ? estimateTravelMinutes(places[placeIndex - 1], place, day.travelMode) : undefined}
+                travelMinutes={day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 && place.type !== 'placeholder' && places[placeIndex - 1].type !== 'placeholder' ? estimateTravelMinutes(places[placeIndex - 1], place, day.travelMode) : undefined}
                 warnings={warningsByPlace.get(place.id)}
                 onScheduleChange={day.timeManagementEnabled ? (updates) => onStopScheduleChange(day.id, place.id, updates) : undefined}
                 onEnableSchedule={day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
               />
-              {placeIndex < places.length - 1 ? (() => {
+              {place.type !== 'placeholder' && places[placeIndex + 1]?.type !== 'placeholder' ? (() => {
                 const nextPlace = places[placeIndex + 1];
                 const key = routeLegKey(place.id, nextPlace.id);
                 const mode = day.legModeOverrides?.[key] ?? 'default';
@@ -298,6 +303,20 @@ export function DayColumn({
                 {t('addPlace')}
               </Text>
             </UnstyledButton>
+            <Menu position="top" shadow="md" withinPortal>
+              <Menu.Target>
+                <UnstyledButton className="planned-stop-placeholder">
+                  <IconPlus size={17} />
+                  <Text size="xs" fw={650}>{t('plannedStop')}</Text>
+                </UnstyledButton>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item leftSection={<IconToolsKitchen size={15} />} onClick={() => onAddPlaceholder('meal')}>{t('lunchDinner')}</Menu.Item>
+                <Menu.Item leftSection={<IconCoffee size={15} />} onClick={() => onAddPlaceholder('coffee')}>{t('coffeeBreak')}</Menu.Item>
+                <Menu.Item leftSection={<IconSun size={15} />} onClick={() => onAddPlaceholder('free-time')}>{t('freeTime')}</Menu.Item>
+                <Menu.Item leftSection={<IconPlus size={15} />} onClick={() => onAddPlaceholder('custom')}>{t('customStop')}</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           </Stack>
         </SortableContext>
       ) : null}

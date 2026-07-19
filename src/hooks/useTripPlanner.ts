@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createInitialState } from '../data/seed';
 import { useAuth } from '../context/AuthContext';
-import type { ContainerId, Place, StopSchedule, TripState, TravelMode } from '../types';
+import type { ContainerId, PlaceholderKind, Place, StopSchedule, TripState, TravelMode } from '../types';
 import { acceptTripInvitations, isTripState, loadSharedTripOwnerId, loadTripState, saveTripState } from '../lib/tripRepository';
 import { movePlace } from '../utils/itinerary';
 import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
@@ -155,6 +155,25 @@ export function useTripPlanner() {
     }));
   }, []);
 
+  const addPlaceholderToDay = useCallback((dayId: string, kind: PlaceholderKind) => {
+    const placeholder: Place = { id: `placeholder-${crypto.randomUUID()}`, name: kind, region: '', category: 'Relaxation', latitude: 0, longitude: 0, notes: '', type: 'placeholder', placeholderKind: kind };
+    setState((current) => ({
+      ...current,
+      places: [...current.places, placeholder],
+      days: current.days.map((day) => day.id === dayId ? markRouteStale({ ...day, placeIds: [...day.placeIds, placeholder.id] }) : day),
+    }));
+  }, []);
+
+  const replacePlaceholder = useCallback((placeholderId: string, place: Place) => {
+    setState((current) => ({
+      ...current,
+      places: [...current.places.filter((item) => item.id !== placeholderId), place],
+      days: current.days.map((day) => day.placeIds.includes(placeholderId)
+        ? markRouteStale({ ...day, placeIds: day.placeIds.map((id) => id === placeholderId ? place.id : id) })
+        : day),
+    }));
+  }, []);
+
   const updatePlace = useCallback((place: Place) => {
     setState((current) => ({
       ...current,
@@ -290,6 +309,7 @@ export function useTripPlanner() {
   const move = useCallback(
     (placeId: string, destinationId: ContainerId, destinationIndex: number) => {
       setState((current) => {
+        if (destinationId === 'unscheduled' && current.places.find((place) => place.id === placeId)?.type === 'placeholder') return current;
         const moved = movePlace(current, placeId, destinationId, destinationIndex);
         return { ...moved, days: moved.days.map(markRouteStale) };
       });
@@ -338,6 +358,8 @@ export function useTripPlanner() {
     placesById,
     addPlace,
     addPlaceToDay,
+    addPlaceholderToDay,
+    replacePlaceholder,
     updatePlace,
     removePlace,
     addDay,

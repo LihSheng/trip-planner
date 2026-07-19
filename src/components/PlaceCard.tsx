@@ -13,7 +13,7 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
-import { IconAlertTriangle, IconClock, IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconRoute, IconTrash } from '@tabler/icons-react';
+import { IconAlertTriangle, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconRoute, IconSun, IconToolsKitchen, IconTrash } from '@tabler/icons-react';
 import type { Place, PlaceCategory, StopSchedule } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
 
@@ -40,6 +40,7 @@ interface PlaceCardProps {
   warnings?: string[];
   onScheduleChange?: (updates: StopSchedule) => void;
   onEnableSchedule?: () => void;
+  onReplace?: (placeId: string) => void;
 }
 
 export function PlaceCard({
@@ -56,12 +57,16 @@ export function PlaceCard({
   warnings = [],
   onScheduleChange,
   onEnableSchedule,
+  onReplace,
 }: PlaceCardProps) {
   const { t } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: place.id,
     disabled: dragDisabled,
   });
+  const isPlaceholder = place.type === 'placeholder';
+  const placeholderLabel = place.placeholderKind === 'meal' ? t('lunchDinner') : place.placeholderKind === 'coffee' ? t('coffeeBreak') : place.placeholderKind === 'free-time' ? t('freeTime') : t('customStop');
+  const PlaceholderIcon = place.placeholderKind === 'meal' ? IconToolsKitchen : place.placeholderKind === 'coffee' ? IconCoffee : IconSun;
 
   return (
     <Paper
@@ -69,7 +74,7 @@ export function PlaceCard({
       withBorder
       radius="md"
       p="sm"
-      className={`place-card${dragDisabled ? '' : ' place-card--draggable'}`}
+      className={`place-card${dragDisabled ? '' : ' place-card--draggable'}${isPlaceholder ? ' place-card--placeholder' : ''}`}
       data-selected={selected || undefined}
       data-dragging={isDragging || undefined}
       data-visited={visited || undefined}
@@ -83,7 +88,7 @@ export function PlaceCard({
       onClick={() => onSelect?.(place.id)}
     >
       <Group align="flex-start" gap="xs" wrap="nowrap">
-        {onVisitedChange ? (
+        {onVisitedChange && !isPlaceholder ? (
           <Checkbox
             checked={visited}
             onChange={() => onVisitedChange(place.id)}
@@ -93,14 +98,14 @@ export function PlaceCard({
             onClick={(event) => event.stopPropagation()}
           />
         ) : null}
-        <Box className={`place-card__accent place-card__accent--${place.category.toLowerCase()}`} />
+        {isPlaceholder ? <PlaceholderIcon size={18} color="var(--mantine-color-orange-6)" /> : <Box className={`place-card__accent place-card__accent--${place.category.toLowerCase()}`} />}
 
         <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
           <Group justify="space-between" align="flex-start" gap="xs" wrap="nowrap">
             <Text fw={650} size="sm" lineClamp={1} className={visited ? 'place-card__name--visited' : undefined}>
-              {place.name}
+              {isPlaceholder ? placeholderLabel : place.name}
             </Text>
-            {(onEdit || onDelete || onEnableSchedule) && (
+            {(onEdit || onDelete || onEnableSchedule || onReplace) && (
               <Menu position="bottom-end" withinPortal shadow="md">
                 <Menu.Target>
                   <ActionIcon
@@ -115,11 +120,15 @@ export function PlaceCard({
                   </ActionIcon>
                 </Menu.Target>
                 <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
-                  {onEdit && (
+                  {onReplace ? (
+                    <Menu.Item leftSection={<IconMapPin size={15} />} onClick={() => onReplace(place.id)}>
+                      {t('choosePlace')}
+                    </Menu.Item>
+                  ) : onEdit ? (
                     <Menu.Item leftSection={<IconEdit size={15} />} onClick={() => onEdit(place)}>
                       {t('editPlace')}
                     </Menu.Item>
-                  )}
+                  ) : null}
                   {onEnableSchedule && !schedule ? (
                     <Menu.Item leftSection={<IconClock size={15} />} onClick={onEnableSchedule}>
                       Add time
@@ -138,15 +147,15 @@ export function PlaceCard({
               </Menu>
             )}
           </Group>
-          <Group gap={5} wrap="nowrap">
+          {!isPlaceholder ? <Group gap={5} wrap="nowrap">
             <IconMapPin size={13} color="var(--mantine-color-dimmed)" />
             <Text size="xs" c="dimmed" lineClamp={1}>
               {place.region}
             </Text>
-          </Group>
-          <Badge color={categoryColors[place.category]} variant="light" size="xs">
+          </Group> : null}
+          {!isPlaceholder ? <Badge color={categoryColors[place.category]} variant="light" size="xs">
             {categoryLabel(t, place.category)}
-          </Badge>
+          </Badge> : null}
           {schedule && onScheduleChange ? (
             <Box
               mt={2}

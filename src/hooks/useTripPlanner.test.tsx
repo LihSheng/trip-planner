@@ -81,4 +81,17 @@ describe('useTripPlanner', () => {
     expect(hook.result.current.state).toMatchObject({ tripName: 'Updated trip', startDate: '2027-01-02' });
     expect(JSON.parse(localStorage.getItem('taiwan-trip-planner:demo:v1') ?? '{}')).toMatchObject({ tripName: 'Updated trip' });
   });
+
+  it('keeps planned stops in a day and replaces one with a real place', async () => {
+    const hook = await planner();
+    const dayId = hook.result.current.state.days[0].id;
+    await act(async () => hook.result.current.addPlaceholderToDay(dayId, 'meal'));
+    const placeholder = hook.result.current.state.places.find((place) => place.type === 'placeholder');
+    expect(placeholder?.placeholderKind).toBe('meal');
+    expect(hook.result.current.state.days[0].placeIds).toContain(placeholder?.id);
+
+    await act(async () => hook.result.current.replacePlaceholder(placeholder!.id, { ...hotel, id: 'lunch-place', name: 'Lunch place' }));
+    expect(hook.result.current.state.places.some((place) => place.id === placeholder?.id)).toBe(false);
+    expect(hook.result.current.state.days[0].placeIds).toContain('lunch-place');
+  });
 });

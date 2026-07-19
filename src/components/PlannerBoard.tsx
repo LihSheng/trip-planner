@@ -13,7 +13,7 @@ import {
 import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Button, Group, ScrollArea, Stack, Text } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
-import type { ContainerId, Place, StopSchedule, TravelMode, TripState } from '../types';
+import type { ContainerId, PlaceholderKind, Place, StopSchedule, TravelMode, TripState } from '../types';
 import { findContainer, getContainerItems } from '../utils/itinerary';
 import { DayColumn } from './DayColumn';
 import { PlaceCardPreview } from './PlaceCard';
@@ -28,6 +28,8 @@ interface PlannerBoardProps {
   onSelect: (placeId: string) => void;
   onAddDay: () => void;
   onAddPlaceToDay: (dayId: string) => void;
+  onAddPlaceholderToDay: (dayId: string, kind: PlaceholderKind) => void;
+  onReplacePlaceholder: (placeholderId: string) => void;
   onMove: (placeId: string, destinationId: ContainerId, destinationIndex: number) => void;
   onLabelChange: (dayId: string, label: string) => void;
   onRemoveDay: (dayId: string) => void;
@@ -48,6 +50,8 @@ export function PlannerBoard({
   onSelect,
   onAddDay,
   onAddPlaceToDay,
+  onAddPlaceholderToDay,
+  onReplacePlaceholder,
   onMove,
   onLabelChange,
   onRemoveDay,
@@ -157,6 +161,8 @@ export function PlannerBoard({
                   visitedPlaceIds={visitedPlaceIds}
                   onSelect={onSelect}
                   onAddPlace={() => onAddPlaceToDay(day.id)}
+                  onAddPlaceholder={(kind) => onAddPlaceholderToDay(day.id, kind)}
+                  onReplacePlaceholder={onReplacePlaceholder}
                   onLabelChange={onLabelChange}
                   onRemove={onRemoveDay}
                   onEditPlace={onEditPlace}

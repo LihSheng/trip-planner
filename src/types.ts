@@ -6,7 +6,8 @@ export type PlaceCategory =
   | 'Shopping'
   | 'Relaxation';
 
-export type PlaceType = 'place' | 'hotel' | 'airport' | 'station' | 'transit';
+export type PlaceType = 'place' | 'hotel' | 'airport' | 'station' | 'transit' | 'placeholder';
+export type PlaceholderKind = 'meal' | 'coffee' | 'free-time' | 'custom';
 export type TravelMode = 'public' | 'walk' | 'bike' | 'car';
 
 export type RouteLegMode = TravelMode | 'default';
@@ -50,6 +51,7 @@ export interface Place {
   longitude: number;
   notes: string;
   type?: PlaceType;
+  placeholderKind?: PlaceholderKind;
   openingHours?: OpeningHours;
 }
 

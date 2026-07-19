@@ -590,6 +590,24 @@ select {
   background: var(--mantine-color-gray-1);
 }
 
+.planned-stop-placeholder {
+  display: flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px dashed var(--mantine-color-orange-4);
+  border-radius: var(--mantine-radius-md);
+  color: var(--mantine-color-orange-8);
+  background: var(--mantine-color-orange-0);
+}
+
+.place-card--placeholder {
+  border-style: dashed;
+  border-color: var(--mantine-color-orange-4);
+  background: var(--mantine-color-orange-0);
+}
+
 .place-card[data-visited] {
   background: var(--mantine-color-teal-0);
 }
