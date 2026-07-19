@@ -1,27 +1,92 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createInitialState } from '../data/seed';
+import { useAuth } from '../context/AuthContext';
 import type { ContainerId, Place, TripState } from '../types';
+import { isTripState, loadTripState, saveTripState } from '../lib/tripRepository';
 import { movePlace } from '../utils/itinerary';
 
-const STORAGE_KEY = 'taiwan-trip-planner:v1';
+const LEGACY_STORAGE_KEY = 'taiwan-trip-planner:v1';
+const SAVE_DEBOUNCE_MS = 700;
 
-function loadState(): TripState {
+export type SyncStatus = 'loading' | 'saving' | 'saved' | 'error';
+
+function loadLegacyState(): TripState | null {
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (!stored) return createInitialState();
-    const parsed = JSON.parse(stored) as TripState;
-    return parsed.version === 1 ? parsed : createInitialState();
+    const stored = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as unknown;
+    return isTripState(parsed) ? parsed : null;
   } catch {
-    return createInitialState();
+    return null;
   }
 }
 
 export function useTripPlanner() {
-  const [state, setState] = useState<TripState>(loadState);
+  const { accessToken, user } = useAuth();
+  const [state, setState] = useState<TripState>(createInitialState);
+  const [isReady, setIsReady] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const saveSequence = useRef(0);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+    let active = true;
+    setIsReady(false);
+    setSyncStatus('loading');
+    setSyncError(null);
+
+    async function hydrate() {
+      try {
+        const remoteState = await loadTripState(accessToken, user.id);
+        if (!active) return;
+
+        if (remoteState) {
+          setState(remoteState);
+        } else {
+          const initialState = loadLegacyState() ?? createInitialState();
+          setState(initialState);
+          await saveTripState(accessToken, user.id, initialState);
+          window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+        }
+
+        if (active) setSyncStatus('saved');
+      } catch (reason) {
+        if (!active) return;
+        setState(loadLegacyState() ?? createInitialState());
+        setSyncStatus('error');
+        setSyncError(reason instanceof Error ? reason.message : 'Unable to load the saved trip.');
+      } finally {
+        if (active) setIsReady(true);
+      }
+    }
+
+    void hydrate();
+    return () => {
+      active = false;
+    };
+  }, [user.id]);
+
+  useEffect(() => {
+    if (!isReady) return;
+
+    const sequence = ++saveSequence.current;
+    setSyncStatus('saving');
+    setSyncError(null);
+
+    const timeout = window.setTimeout(() => {
+      saveTripState(accessToken, user.id, state)
+        .then(() => {
+          if (saveSequence.current === sequence) setSyncStatus('saved');
+        })
+        .catch((reason: unknown) => {
+          if (saveSequence.current !== sequence) return;
+          setSyncStatus('error');
+          setSyncError(reason instanceof Error ? reason.message : 'Unable to save the trip.');
+        });
+    }, SAVE_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [accessToken, isReady, state, user.id]);
 
   const placesById = useMemo(
     () => new Map(state.places.map((place) => [place.id, place])),
@@ -120,6 +185,9 @@ export function useTripPlanner() {
 
   return {
     state,
+    isReady,
+    syncStatus,
+    syncError,
     placesById,
     addPlace,
     updatePlace,
