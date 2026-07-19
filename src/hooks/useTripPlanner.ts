@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createInitialState } from '../data/seed';
 import { useAuth } from '../context/AuthContext';
-import type { ContainerId, Place, TripState } from '../types';
+import type { ContainerId, Place, StopSchedule, TripState, TravelMode } from '../types';
 import { isTripState, loadTripState, saveTripState } from '../lib/tripRepository';
 import { movePlace } from '../utils/itinerary';
+import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
 
 const LEGACY_STORAGE_KEY = 'taiwan-trip-planner:v1';
 const DEMO_STORAGE_KEY = 'taiwan-trip-planner:demo:v1';
@@ -16,7 +17,13 @@ function loadStoredState(key: string): TripState | null {
     const stored = window.localStorage.getItem(key);
     if (!stored) return null;
     const parsed = JSON.parse(stored) as unknown;
-    return isTripState(parsed) ? { ...parsed, visitedPlaceIds: parsed.visitedPlaceIds ?? [] } : null;
+    return isTripState(parsed)
+      ? {
+          ...parsed,
+          visitedPlaceIds: parsed.visitedPlaceIds ?? [],
+          days: parsed.days.map((day) => ({ ...day, travelMode: day.travelMode ?? 'public', stopSchedules: day.stopSchedules ?? {}, timeManagementEnabled: day.timeManagementEnabled ?? false })),
+        }
+      : null;
   } catch {
     return null;
   }
@@ -120,6 +127,7 @@ export function useTripPlanner() {
       ...current,
       places: [...current.places, place],
       unscheduledIds: [...current.unscheduledIds, place.id],
+      hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId,
     }));
   }, []);
 
@@ -127,6 +135,7 @@ export function useTripPlanner() {
     setState((current) => ({
       ...current,
       places: current.places.map((item) => (item.id === place.id ? place : item)),
+      hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId === place.id ? undefined : current.hotelPlaceId,
     }));
   }, []);
 
@@ -136,9 +145,11 @@ export function useTripPlanner() {
       places: current.places.filter((place) => place.id !== placeId),
       unscheduledIds: current.unscheduledIds.filter((id) => id !== placeId),
       visitedPlaceIds: current.visitedPlaceIds.filter((id) => id !== placeId),
+      hotelPlaceId: current.hotelPlaceId === placeId ? undefined : current.hotelPlaceId,
       days: current.days.map((day) => ({
         ...day,
         placeIds: day.placeIds.filter((id) => id !== placeId),
+        lodgingPlaceId: day.lodgingPlaceId === placeId ? undefined : day.lodgingPlaceId,
       })),
     }));
   }, []);
@@ -150,7 +161,7 @@ export function useTripPlanner() {
         ...current,
         days: [
           ...current.days,
-          { id: `day-${crypto.randomUUID()}`, label: `Day ${dayNumber}`, placeIds: [] },
+          { id: `day-${crypto.randomUUID()}`, label: `Day ${dayNumber}`, placeIds: [], travelMode: 'public', stopSchedules: {}, timeManagementEnabled: false },
         ],
       };
     });
@@ -193,6 +204,55 @@ export function useTripPlanner() {
     });
   }, []);
 
+  const updateDaySchedule = useCallback((dayId: string, updates: { travelMode?: TravelMode; startTime?: string; lodgingPlaceId?: string; timeManagementEnabled?: boolean }) => {
+    setState((current) => {
+      const placesById = new Map(current.places.map((place) => [place.id, place]));
+      return {
+        ...current,
+        days: current.days.map((day) => {
+          if (day.id !== dayId) return day;
+          const firstPlaceId = day.placeIds[0];
+          const firstPlace = firstPlaceId ? placesById.get(firstPlaceId) : undefined;
+          const stopSchedules = { ...day.stopSchedules };
+          if (updates.startTime && firstPlace && !stopSchedules[firstPlace.id]?.startTime) {
+            stopSchedules[firstPlace.id] = { ...stopSchedules[firstPlace.id], startTime: updates.startTime, durationMinutes: defaultDuration(firstPlace.category) };
+          }
+          return { ...day, ...updates, stopSchedules };
+        }),
+      };
+    });
+  }, []);
+
+  const updateStopSchedule = useCallback((dayId: string, placeId: string, updates: StopSchedule) => {
+    setState((current) => {
+      const placesById = new Map(current.places.map((place) => [place.id, place]));
+      return {
+        ...current,
+        days: current.days.map((day) => {
+          if (day.id !== dayId) return day;
+          const stopSchedules = { ...day.stopSchedules, [placeId]: { ...day.stopSchedules?.[placeId], ...updates } };
+          const startIndex = day.placeIds.indexOf(placeId);
+          const firstPlace = placesById.get(placeId);
+          let nextStart = firstPlace && toMinutes(stopSchedules[placeId].startTime);
+          let previousPlace = firstPlace;
+          if (nextStart !== null && nextStart !== undefined && previousPlace && startIndex >= 0) {
+            nextStart += stopSchedules[placeId].durationMinutes ?? defaultDuration(previousPlace.category);
+            for (const nextPlaceId of day.placeIds.slice(startIndex + 1)) {
+              const nextPlace = placesById.get(nextPlaceId);
+              if (!nextPlace) continue;
+              nextStart += estimateTravelMinutes(previousPlace, nextPlace, day.travelMode);
+              if (stopSchedules[nextPlaceId]?.startTime) break;
+              stopSchedules[nextPlaceId] = { ...stopSchedules[nextPlaceId], startTime: toTime(nextStart), durationMinutes: stopSchedules[nextPlaceId]?.durationMinutes ?? defaultDuration(nextPlace.category) };
+              nextStart += stopSchedules[nextPlaceId].durationMinutes ?? defaultDuration(nextPlace.category);
+              previousPlace = nextPlace;
+            }
+          }
+          return { ...day, stopSchedules };
+        }),
+      };
+    });
+  }, []);
+
   const toggleVisited = useCallback((placeId: string) => {
     setState((current) => ({
       ...current,
@@ -226,6 +286,8 @@ export function useTripPlanner() {
     removePlace,
     addDay,
     updateDayLabel,
+    updateDaySchedule,
+    updateStopSchedule,
     removeDay,
     reorderDays,
     toggleVisited,

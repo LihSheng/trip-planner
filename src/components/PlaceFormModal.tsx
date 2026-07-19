@@ -14,7 +14,7 @@ import {
   TextInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import type { Place, PlaceCategory } from '../types';
+import type { Place, PlaceCategory, PlaceType } from '../types';
 import { useI18n } from '../i18n';
 
 const categoryOptions: PlaceCategory[] = [
@@ -33,6 +33,9 @@ interface PlaceFormValues {
   latitude: number | string;
   longitude: number | string;
   notes: string;
+  type: PlaceType;
+  opensAt: string;
+  closesAt: string;
 }
 
 interface PlaceFormModalProps {
@@ -97,6 +100,9 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
       latitude: 25.033,
       longitude: 121.5654,
       notes: '',
+      type: 'place',
+      opensAt: '',
+      closesAt: '',
     },
     validate: {
       name: (value) => (value.trim().length < 2 ? t('enterPlaceName') : null),
@@ -119,6 +125,9 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
             latitude: place.latitude,
             longitude: place.longitude,
             notes: place.notes,
+            type: place.type ?? 'place',
+            opensAt: place.openingHours?.opensAt ?? '',
+            closesAt: place.openingHours?.closesAt ?? '',
           }
         : {
             name: '',
@@ -127,6 +136,9 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
             latitude: 25.033,
             longitude: 121.5654,
             notes: '',
+            type: 'place',
+            opensAt: '',
+            closesAt: '',
           },
     );
     form.resetDirty();
@@ -226,6 +238,8 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
             latitude: Number(values.latitude),
             longitude: Number(values.longitude),
             notes: values.notes.trim(),
+            type: values.type,
+            openingHours: values.opensAt && values.closesAt ? { opensAt: values.opensAt, closesAt: values.closesAt } : undefined,
           });
           onClose();
         })}
@@ -262,9 +276,25 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
               {...form.getInputProps('category')}
             />
           </SimpleGrid>
+          <Select
+            label="Place type"
+            data={[
+              { value: 'place', label: 'Place' },
+              { value: 'hotel', label: 'Hotel' },
+              { value: 'airport', label: 'Airport' },
+              { value: 'station', label: 'Rail / bus station' },
+              { value: 'transit', label: 'Transit point' },
+            ]}
+            allowDeselect={false}
+            {...form.getInputProps('type')}
+          />
           <SimpleGrid cols={2}>
             <NumberInput label={t('latitude')} decimalScale={6} {...form.getInputProps('latitude')} />
             <NumberInput label={t('longitude')} decimalScale={6} {...form.getInputProps('longitude')} />
+          </SimpleGrid>
+          <SimpleGrid cols={2}>
+            <TextInput label="Opens" type="time" {...form.getInputProps('opensAt')} />
+            <TextInput label="Closes" type="time" {...form.getInputProps('closesAt')} />
           </SimpleGrid>
           <Textarea
             label={t('notes')}

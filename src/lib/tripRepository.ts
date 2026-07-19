@@ -41,6 +41,12 @@ function normalizeTripState(state: TripState): TripState {
     visitedPlaceIds: Array.isArray(state.visitedPlaceIds)
       ? state.visitedPlaceIds.filter((placeId): placeId is string => typeof placeId === 'string')
       : [],
+    days: state.days.map((day) => ({
+      ...day,
+      travelMode: day.travelMode ?? 'public',
+      stopSchedules: day.stopSchedules ?? {},
+      timeManagementEnabled: day.timeManagementEnabled ?? false,
+    })),
   };
 }
 

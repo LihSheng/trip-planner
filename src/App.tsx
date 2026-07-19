@@ -222,6 +222,8 @@ export default function App() {
       onRemoveDay={setDayDeleteTarget}
       onReorderDays={planner.reorderDays}
       onVisitedChange={planner.toggleVisited}
+      onDayScheduleChange={planner.updateDaySchedule}
+      onStopScheduleChange={planner.updateStopSchedule}
       onEditPlace={openEditPlace}
       onDeletePlace={setDeleteTarget}
     />

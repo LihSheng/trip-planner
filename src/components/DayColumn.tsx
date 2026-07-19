@@ -10,14 +10,16 @@ import {
   Stack,
   Text,
   TextInput,
+  Select,
   ThemeIcon,
   Tooltip,
 } from '@mantine/core';
-import { IconCalendar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconTrash } from '@tabler/icons-react';
-import type { Place, TripDay } from '../types';
+import { IconAlertTriangle, IconCalendar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconTrash } from '@tabler/icons-react';
+import type { Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
 import { useI18n } from '../i18n';
+import { dayWarnings, estimateTravelMinutes, scheduleFor } from '../utils/schedule';
 
 interface DayColumnProps {
   day: TripDay;
@@ -32,6 +34,10 @@ interface DayColumnProps {
   onEditPlace: (place: Place) => void;
   onDeletePlace: (place: Place) => void;
   onVisitedChange: (placeId: string) => void;
+  onDayScheduleChange: (dayId: string, updates: { travelMode?: TravelMode; startTime?: string; lodgingPlaceId?: string; timeManagementEnabled?: boolean }) => void;
+  onStopScheduleChange: (dayId: string, placeId: string, updates: StopSchedule) => void;
+  hotelPlaces: Place[];
+  tripHotelId?: string;
 }
 
 export function DayColumn({
@@ -47,6 +53,10 @@ export function DayColumn({
   onEditPlace,
   onDeletePlace,
   onVisitedChange,
+  onDayScheduleChange,
+  onStopScheduleChange,
+  hotelPlaces,
+  tripHotelId,
 }: DayColumnProps) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
@@ -57,6 +67,8 @@ export function DayColumn({
   const { onPointerDown, onKeyDown } = listeners ?? {};
   const visitedCount = places.filter((place) => visitedPlaceIds.includes(place.id)).length;
   const allPlacesVisited = places.length > 0 && visitedCount === places.length;
+  const warningsByPlace = day.timeManagementEnabled ? dayWarnings(day, places) : new Map<string, string[]>();
+  const warningCount = [...warningsByPlace.values()].reduce((total, warnings) => total + warnings.length, 0);
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     if (event.target instanceof Element && event.target.closest('button, input, .place-card')) {
@@ -135,8 +147,61 @@ export function DayColumn({
                 <IconTrash size={15} />
               </ActionIcon>
             </Tooltip>
+            <Tooltip label={day.timeManagementEnabled ? 'Hide time management' : 'Manage times'}>
+              <ActionIcon
+                variant="subtle"
+                color={day.timeManagementEnabled ? 'teal' : 'gray'}
+                size="sm"
+                aria-label={day.timeManagementEnabled ? 'Hide time management' : 'Manage times'}
+                onClick={() => onDayScheduleChange(day.id, { timeManagementEnabled: !day.timeManagementEnabled })}
+              >
+                <IconClock size={16} />
+              </ActionIcon>
+            </Tooltip>
           </Group>
         </Group>
+        {!collapsed && day.timeManagementEnabled ? (
+          <Stack gap="xs" mt="xs" onClick={(event) => event.stopPropagation()}>
+            <Group gap="xs" grow>
+              <Select
+                size="xs"
+                value={day.travelMode ?? 'public'}
+                aria-label={`Travel mode for ${t('day', { number: index + 1 })}`}
+                data={[
+                  { value: 'public', label: 'Public transport' },
+                  { value: 'walk', label: 'Walk' },
+                  { value: 'bike', label: 'Bike' },
+                  { value: 'car', label: 'Car' },
+                ]}
+                allowDeselect={false}
+                onChange={(value) => onDayScheduleChange(day.id, { travelMode: (value ?? 'public') as TravelMode })}
+              />
+              <TextInput
+                type="time"
+                size="xs"
+                value={day.startTime ?? '09:00'}
+                aria-label={`Day start time for ${t('day', { number: index + 1 })}`}
+                onChange={(event) => onDayScheduleChange(day.id, { startTime: event.currentTarget.value })}
+              />
+            </Group>
+            {hotelPlaces.length ? (
+              <Select
+                size="xs"
+                clearable
+                label="Stay at"
+                value={day.lodgingPlaceId || tripHotelId || null}
+                data={hotelPlaces.map((place) => ({ value: place.id, label: place.name }))}
+                onChange={(value) => onDayScheduleChange(day.id, { lodgingPlaceId: value ?? '' })}
+              />
+            ) : null}
+          </Stack>
+        ) : null}
+        {day.timeManagementEnabled && warningCount ? (
+          <Group gap={4} mt="xs">
+            <IconAlertTriangle size={14} color="var(--mantine-color-orange-6)" />
+            <Text size="xs" c="orange">{warningCount} schedule warning{warningCount === 1 ? '' : 's'}</Text>
+          </Group>
+        ) : null}
         {!collapsed ? (
           <TextInput
             mt="xs"
@@ -151,7 +216,7 @@ export function DayColumn({
       {!collapsed ? (
         <SortableContext items={day.placeIds} strategy={verticalListSortingStrategy}>
           <Stack gap="xs" p="sm" className="day-column__body">
-            {places.map((place) => (
+            {places.map((place, placeIndex) => (
               <PlaceCard
                 key={place.id}
                 place={place}
@@ -161,6 +226,11 @@ export function DayColumn({
                 onEdit={onEditPlace}
                 onDelete={onDeletePlace}
                 onVisitedChange={onVisitedChange}
+                schedule={day.timeManagementEnabled && day.stopSchedules?.[place.id] ? scheduleFor(day, place) : undefined}
+                travelMinutes={day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 ? estimateTravelMinutes(places[placeIndex - 1], place, day.travelMode) : undefined}
+                warnings={warningsByPlace.get(place.id)}
+                onScheduleChange={day.timeManagementEnabled ? (updates) => onStopScheduleChange(day.id, place.id, updates) : undefined}
+                onEnableSchedule={day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
               />
             ))}
             {places.length === 0 && (

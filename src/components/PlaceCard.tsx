@@ -7,12 +7,14 @@ import {
   Checkbox,
   Group,
   Menu,
+  NumberInput,
   Paper,
   Stack,
   Text,
+  TextInput,
 } from '@mantine/core';
-import { IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconTrash } from '@tabler/icons-react';
-import type { Place, PlaceCategory } from '../types';
+import { IconAlertTriangle, IconClock, IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconRoute, IconTrash } from '@tabler/icons-react';
+import type { Place, PlaceCategory, StopSchedule } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
 
 const categoryColors: Record<PlaceCategory, string> = {
@@ -33,6 +35,11 @@ interface PlaceCardProps {
   onDelete?: (place: Place) => void;
   visited?: boolean;
   onVisitedChange?: (placeId: string) => void;
+  schedule?: StopSchedule;
+  travelMinutes?: number;
+  warnings?: string[];
+  onScheduleChange?: (updates: StopSchedule) => void;
+  onEnableSchedule?: () => void;
 }
 
 export function PlaceCard({
@@ -44,6 +51,11 @@ export function PlaceCard({
   onDelete,
   visited = false,
   onVisitedChange,
+  schedule,
+  travelMinutes,
+  warnings = [],
+  onScheduleChange,
+  onEnableSchedule,
 }: PlaceCardProps) {
   const { t } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -88,7 +100,7 @@ export function PlaceCard({
             <Text fw={650} size="sm" lineClamp={1} className={visited ? 'place-card__name--visited' : undefined}>
               {place.name}
             </Text>
-            {(onEdit || onDelete) && (
+            {(onEdit || onDelete || onEnableSchedule) && (
               <Menu position="bottom-end" withinPortal shadow="md">
                 <Menu.Target>
                   <ActionIcon
@@ -108,6 +120,11 @@ export function PlaceCard({
                       {t('editPlace')}
                     </Menu.Item>
                   )}
+                  {onEnableSchedule && !schedule ? (
+                    <Menu.Item leftSection={<IconClock size={15} />} onClick={onEnableSchedule}>
+                      Add time
+                    </Menu.Item>
+                  ) : null}
                   {onDelete && (
                     <Menu.Item
                       color="red"
@@ -130,6 +147,47 @@ export function PlaceCard({
           <Badge color={categoryColors[place.category]} variant="light" size="xs">
             {categoryLabel(t, place.category)}
           </Badge>
+          {schedule && onScheduleChange ? (
+            <Box
+              mt={2}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {travelMinutes ? (
+                <Group gap={4} mb={4}>
+                  <IconRoute size={13} color="var(--mantine-color-dimmed)" />
+                  <Text size="xs" c="dimmed">~{travelMinutes} min travel</Text>
+                </Group>
+              ) : null}
+              <Group gap={6} wrap="nowrap">
+                <TextInput
+                  type="time"
+                  size="xs"
+                  value={schedule.startTime ?? ''}
+                  placeholder="09:00"
+                  aria-label={`Start time for ${place.name}`}
+                  onChange={(event) => onScheduleChange({ startTime: event.currentTarget.value || undefined })}
+                  styles={{ input: { minWidth: 96 } }}
+                />
+                <NumberInput
+                  size="xs"
+                  min={5}
+                  max={720}
+                  suffix=" min"
+                  value={schedule.durationMinutes ?? ''}
+                  aria-label={`Duration for ${place.name}`}
+                  onChange={(value) => onScheduleChange({ durationMinutes: typeof value === 'number' ? value : undefined })}
+                  styles={{ input: { minWidth: 92 } }}
+                />
+              </Group>
+              {warnings.length ? (
+                <Group gap={4} mt={4}>
+                  <IconAlertTriangle size={14} color="var(--mantine-color-orange-6)" />
+                  <Text size="xs" c="orange" lineClamp={1}>{warnings.join(' · ')}</Text>
+                </Group>
+              ) : null}
+            </Box>
+          ) : null}
         </Stack>
       </Group>
     </Paper>

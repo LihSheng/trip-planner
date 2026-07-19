@@ -13,7 +13,7 @@ import {
 import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Button, Group, ScrollArea, Stack, Text } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
-import type { ContainerId, Place, TripState } from '../types';
+import type { ContainerId, Place, StopSchedule, TravelMode, TripState } from '../types';
 import { findContainer, getContainerItems } from '../utils/itinerary';
 import { DayColumn } from './DayColumn';
 import { PlaceCardPreview } from './PlaceCard';
@@ -32,6 +32,8 @@ interface PlannerBoardProps {
   onRemoveDay: (dayId: string) => void;
   onReorderDays: (fromIndex: number, toIndex: number) => void;
   onVisitedChange: (placeId: string) => void;
+  onDayScheduleChange: (dayId: string, updates: { travelMode?: TravelMode; startTime?: string; lodgingPlaceId?: string; timeManagementEnabled?: boolean }) => void;
+  onStopScheduleChange: (dayId: string, placeId: string, updates: StopSchedule) => void;
   onEditPlace: (place: Place) => void;
   onDeletePlace: (place: Place) => void;
 }
@@ -48,6 +50,8 @@ export function PlannerBoard({
   onRemoveDay,
   onReorderDays,
   onVisitedChange,
+  onDayScheduleChange,
+  onStopScheduleChange,
   onEditPlace,
   onDeletePlace,
 }: PlannerBoardProps) {
@@ -63,6 +67,7 @@ export function PlannerBoard({
     const place = placesById.get(id);
     return place ? [place] : [];
   });
+  const hotelPlaces = state.places.filter((place) => place.type === 'hotel');
 
   function getDestination(overId: string): { containerId: ContainerId; index: number } | null {
     const dayId = overId.startsWith('day:') ? overId.slice(4) : overId;
@@ -152,6 +157,10 @@ export function PlannerBoard({
                   onEditPlace={onEditPlace}
                   onDeletePlace={onDeletePlace}
                   onVisitedChange={onVisitedChange}
+                  onDayScheduleChange={onDayScheduleChange}
+                  onStopScheduleChange={onStopScheduleChange}
+                  hotelPlaces={hotelPlaces}
+                  tripHotelId={state.hotelPlaceId}
                 />
               ))}
             </SortableContext>
