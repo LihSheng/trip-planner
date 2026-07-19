@@ -162,6 +162,7 @@ export default function App() {
           setSelectedId(placeId);
           setActiveMapView('all');
           setMapPanelTab('details');
+          setMobileView('map');
         }}
         onAdd={openAddPlace}
         onEdit={openEditPlace}
@@ -279,27 +280,13 @@ export default function App() {
               {desktopWorkspace === 'map' ? mapWorkspace : plannerPanel}
             </Stack>
           ) : (
-            <Stack gap="md">
-              <SegmentedControl
-                value={mobileView}
-                onChange={setMobileView}
-                fullWidth
-                data={mobileViews.map((item) => ({
-                  value: item.value,
-                  label: (
-                    <Box className="mobile-tab-label">
-                      {item.value === 'map' ? <IconMap size={15} /> : null}
-                      {item.value === 'places' ? <IconList size={15} /> : null}
-                      {item.value === 'planner' ? <IconCalendarEvent size={15} /> : null}
-                      <span>{item.label}</span>
-                    </Box>
-                  ),
-                }))}
-              />
+            <Stack gap="md" className="mobile-workspace">
               {mobileView === 'map' ? (
-                <Stack gap="md">
+                <Stack gap="sm">
                   {map}
-                  <PlaceDetails place={selectedPlace} onEdit={openEditPlace} />
+                  <Box className="mobile-place-details">
+                    <PlaceDetails place={selectedPlace} onEdit={openEditPlace} />
+                  </Box>
                 </Stack>
               ) : null}
               {mobileView === 'places' ? placesPanel : null}
@@ -308,6 +295,30 @@ export default function App() {
           )}
         </Container>
       </AppShell.Main>
+
+      {!isDesktop ? (
+        <Box component="nav" className="mobile-bottom-nav" aria-label="Trip planner navigation">
+          {mobileViews.map((item) => {
+            const active = mobileView === item.value;
+            const Icon =
+              item.value === 'map' ? IconMap : item.value === 'places' ? IconList : IconCalendarEvent;
+            return (
+              <Button
+                key={item.value}
+                variant="subtle"
+                color={active ? 'teal' : 'gray'}
+                className="mobile-bottom-nav__item"
+                data-active={active || undefined}
+                onClick={() => setMobileView(item.value)}
+                aria-current={active ? 'page' : undefined}
+              >
+                <Icon size={21} stroke={active ? 2.5 : 1.8} />
+                <span>{item.label}</span>
+              </Button>
+            );
+          })}
+        </Box>
+      ) : null}
 
       <PlaceFormModal
         opened={placeModalOpened}
