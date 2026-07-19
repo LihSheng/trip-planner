@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import {
   Alert,
   Button,
@@ -14,6 +14,7 @@ import {
 import { IconCloud, IconInfoCircle, IconMail } from '@tabler/icons-react';
 import { hasSupabaseConfig } from '../lib/supabaseConfig';
 import {
+  refreshAuthSession,
   restoreSession,
   sendMagicLink,
   signOutSession,
@@ -61,6 +62,23 @@ export function AuthGate({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!session) return;
+
+    const refreshInMs = Math.max(session.expiresAt * 1000 - Date.now() - 60_000, 1_000);
+    const timeout = window.setTimeout(() => {
+      refreshAuthSession(session.refreshToken)
+        .then(setSession)
+        .catch(() => {
+          void signOutSession(session.accessToken);
+          setSession(null);
+          setError('Your session expired. Request a new sign-in link to continue.');
+        });
+    }, refreshInMs);
+
+    return () => window.clearTimeout(timeout);
+  }, [session]);
+
   const contextValue = useMemo<AuthContextValue | null>(() => {
     if (!session) return null;
     return {
@@ -74,7 +92,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     };
   }, [session]);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) return;
