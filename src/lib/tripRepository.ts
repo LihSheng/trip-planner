@@ -5,7 +5,7 @@ interface TripRow {
   state: unknown;
 }
 
-function dataHeaders(accessToken: string, additional?: HeadersInit): HeadersInit {
+function dataHeaders(accessToken: string, additional?: Record<string, string>): HeadersInit {
   return {
     apikey: supabasePublishableKey,
     Authorization: `Bearer ${accessToken}`,
