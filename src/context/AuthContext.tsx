@@ -29,6 +29,7 @@ interface AuthContextValue {
   accessToken: string;
   isDemo: boolean;
   signOut: () => Promise<void>;
+  requestMagicLink: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -94,6 +95,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           setDemoMode(false);
           setSent(false);
         },
+        requestMagicLink: sendMagicLink,
       };
     }
     if (!session) return null;
@@ -106,6 +108,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         setSession(null);
         setSent(false);
       },
+      requestMagicLink: sendMagicLink,
     };
   }, [demoMode, session]);
 

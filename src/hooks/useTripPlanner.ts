@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createInitialState } from '../data/seed';
 import { useAuth } from '../context/AuthContext';
 import type { ContainerId, Place, StopSchedule, TripState, TravelMode } from '../types';
-import { isTripState, loadTripState, saveTripState } from '../lib/tripRepository';
+import { acceptTripInvitations, isTripState, loadSharedTripOwnerId, loadTripState, saveTripState } from '../lib/tripRepository';
 import { movePlace } from '../utils/itinerary';
 import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
 
@@ -43,6 +43,7 @@ export function useTripPlanner() {
   const [isReady, setIsReady] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [tripOwnerId, setTripOwnerId] = useState(user.id);
   const saveSequence = useRef(0);
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export function useTripPlanner() {
     setIsReady(false);
     setSyncStatus('loading');
     setSyncError(null);
+    setTripOwnerId(user.id);
 
     async function hydrate() {
       try {
@@ -57,6 +59,18 @@ export function useTripPlanner() {
           setState(loadDemoState() ?? createInitialState());
           setSyncStatus('saved');
           return;
+        }
+
+        await acceptTripInvitations(accessToken);
+        const sharedOwnerId = await loadSharedTripOwnerId(accessToken, user.id);
+        if (sharedOwnerId) {
+          const sharedState = await loadTripState(accessToken, sharedOwnerId);
+          if (sharedState) {
+            setTripOwnerId(sharedOwnerId);
+            setState(sharedState);
+            if (active) setSyncStatus('saved');
+            return;
+          }
         }
 
         const remoteState = await loadTripState(accessToken, user.id);
@@ -103,7 +117,7 @@ export function useTripPlanner() {
         return;
       }
 
-      saveTripState(accessToken, user.id, state)
+      saveTripState(accessToken, tripOwnerId, state)
         .then(() => {
           if (saveSequence.current === sequence) setSyncStatus('saved');
         })
@@ -115,7 +129,7 @@ export function useTripPlanner() {
     }, SAVE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timeout);
-  }, [accessToken, isDemo, isReady, state, user.id]);
+  }, [accessToken, isDemo, isReady, state, tripOwnerId, user.id]);
 
   const placesById = useMemo(
     () => new Map(state.places.map((place) => [place.id, place])),
@@ -274,12 +288,16 @@ export function useTripPlanner() {
   }, []);
 
   const reset = useCallback(() => setState(createInitialState()), []);
+  const persistForCloudSignIn = useCallback(() => {
+    if (isDemo) window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(state));
+  }, [isDemo, state]);
 
   return {
     state,
     isReady,
     syncStatus,
     syncError,
+    isOwner: isDemo || tripOwnerId === user.id,
     placesById,
     addPlace,
     updatePlace,
@@ -294,5 +312,6 @@ export function useTripPlanner() {
     move,
     updateTrip,
     reset,
+    persistForCloudSignIn,
   };
 }

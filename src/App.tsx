@@ -38,6 +38,7 @@ import { PlaceFormModal } from './components/PlaceFormModal';
 import { PlaceLibrary } from './components/PlaceLibrary';
 import { PlannerBoard } from './components/PlannerBoard';
 import { TripSettingsModal } from './components/TripSettingsModal';
+import { ShareTripModal } from './components/ShareTripModal';
 import { formatTripPlainText } from './utils/exportTrip';
 import { useI18n } from './i18n';
 
@@ -65,6 +66,7 @@ export default function App() {
   const [editingPlace, setEditingPlace] = useState<Place | undefined>();
   const [placeModalOpened, setPlaceModalOpened] = useState(false);
   const [settingsOpened, setSettingsOpened] = useState(false);
+  const [shareOpened, setShareOpened] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Place | undefined>();
   const [dayDeleteTarget, setDayDeleteTarget] = useState<string | null>(null);
 
@@ -305,6 +307,8 @@ export default function App() {
           accountEmail={user.email}
           onAddPlace={openAddPlace}
           onOpenSettings={() => setSettingsOpened(true)}
+          canShare={planner.isOwner}
+          onOpenShare={() => setShareOpened(true)}
           onExport={exportTrip}
           onCopyPlainText={copyItineraryText}
           onReset={resetTrip}
@@ -366,6 +370,7 @@ export default function App() {
           )}
         </Container>
       </AppShell.Main>
+      <ShareTripModal opened={shareOpened} onClose={() => setShareOpened(false)} onPrepareCloudSignIn={planner.persistForCloudSignIn} />
 
       {!isDesktop ? (
         <Box component="nav" className="mobile-bottom-nav" aria-label={t('navigation')}>

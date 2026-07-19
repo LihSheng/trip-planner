@@ -14,7 +14,7 @@ A responsive trip-planning workspace built with React, TypeScript, Mantine, Reac
 - Editable trip name, start date, and day labels
 - Add, edit, and remove places
 - Responsive Map / Places / Planner navigation
-- Passwordless email sign-in
+- Passwordless email sign-in and email-based trip collaborators
 - Supabase cloud persistence across laptop and mobile
 - Automatic migration of the existing browser `localStorage` trip
 - Cloud save status and exportable JSON backup
@@ -26,7 +26,7 @@ The frontend is configured for project `elqiycppfiafleglqkla` using its public p
 
 ### 1. Create the table and security policy
 
-Open **Supabase Dashboard → SQL Editor**, copy `supabase/schema.sql`, and run it once. The script creates one trip row per authenticated user and enables Row Level Security so users can only access their own itinerary.
+Open **Supabase Dashboard → SQL Editor**, copy `supabase/schema.sql`, and run it once. The script creates the trip and collaborator tables and enables Row Level Security. If the old schema is already installed, rerun this updated script to replace the trip policy and add collaboration support.
 
 ### 2. Configure authentication redirects
 
@@ -62,6 +62,12 @@ On the first successful login:
 4. Other devices signed in with the same email load the cloud copy.
 
 The Supabase authentication session still uses browser storage so a device remains signed in, but the itinerary itself is stored in Supabase.
+
+## Sharing a trip
+
+The owner selects **Share trip** in the header and enters a collaborator's email. The collaborator opens the app and uses the existing magic-link sign-in with that exact email; the database claims the pending invitation and grants editor access to the owner's trip. No password, shared account, or public edit link is used.
+
+Owners can remove a collaborator at any time. Access is enforced by Supabase Row Level Security, not only hidden in the UI.
 
 ## Local development
 

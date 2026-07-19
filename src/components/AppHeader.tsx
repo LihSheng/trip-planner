@@ -26,6 +26,7 @@ import {
   IconPlus,
   IconRefresh,
   IconSettings,
+  IconUsers,
 } from '@tabler/icons-react';
 import { useAuth } from '../context/AuthContext';
 import { loadTripState } from '../lib/tripRepository';
@@ -42,6 +43,8 @@ interface AppHeaderProps {
   accountEmail?: string;
   onAddPlace: () => void;
   onOpenSettings: () => void;
+  canShare: boolean;
+  onOpenShare: () => void;
   onExport: () => void;
   onCopyPlainText: () => Promise<void>;
   onReset: () => void;
@@ -58,6 +61,8 @@ export function AppHeader({
   accountEmail,
   onAddPlace,
   onOpenSettings,
+  canShare,
+  onOpenShare,
   onExport,
   onCopyPlainText,
   onReset,
@@ -149,6 +154,7 @@ export function AppHeader({
               <IconSettings size={18} />
             </ActionIcon>
           </Tooltip>
+          {canShare ? <Tooltip label="Share trip"><ActionIcon variant="default" size="lg" onClick={onOpenShare} aria-label="Share trip"><IconUsers size={18} /></ActionIcon></Tooltip> : null}
           <Menu position="bottom-end" withinPortal shadow="md">
             <Menu.Target>
               <ActionIcon variant="default" size="lg" aria-label={t('moreActions')}>
