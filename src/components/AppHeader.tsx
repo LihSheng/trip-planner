@@ -1,6 +1,7 @@
 import {
   ActionIcon,
   Avatar,
+  Badge,
   Box,
   Button,
   Group,
@@ -10,7 +11,10 @@ import {
   Tooltip,
 } from '@mantine/core';
 import {
+  IconCloudCheck,
+  IconCloudOff,
   IconDownload,
+  IconLogout,
   IconMap2,
   IconPlus,
   IconRefresh,
@@ -22,22 +26,39 @@ interface AppHeaderProps {
   startDate: string;
   placeCount: number;
   dayCount: number;
+  syncStatus: 'loading' | 'saving' | 'saved' | 'error';
+  syncError: string | null;
+  accountEmail?: string;
   onAddPlace: () => void;
   onOpenSettings: () => void;
   onExport: () => void;
   onReset: () => void;
+  onSignOut: () => void;
 }
+
+const syncLabels = {
+  loading: 'Loading',
+  saving: 'Saving…',
+  saved: 'Saved',
+  error: 'Sync failed',
+} as const;
 
 export function AppHeader({
   tripName,
   startDate,
   placeCount,
   dayCount,
+  syncStatus,
+  syncError,
+  accountEmail,
   onAddPlace,
   onOpenSettings,
   onExport,
   onReset,
+  onSignOut,
 }: AppHeaderProps) {
+  const syncFailed = syncStatus === 'error';
+
   return (
     <Box component="header" className="app-header">
       <Group justify="space-between" h="100%" wrap="nowrap">
@@ -56,6 +77,16 @@ export function AppHeader({
         </Group>
 
         <Group gap="xs" wrap="nowrap">
+          <Tooltip label={syncError ?? 'Your itinerary is synchronized with Supabase.'}>
+            <Badge
+              visibleFrom="sm"
+              variant="light"
+              color={syncFailed ? 'red' : syncStatus === 'saved' ? 'teal' : 'gray'}
+              leftSection={syncFailed ? <IconCloudOff size={13} /> : <IconCloudCheck size={13} />}
+            >
+              {syncLabels[syncStatus]}
+            </Badge>
+          </Tooltip>
           <Button
             color="teal"
             leftSection={<IconPlus size={17} />}
@@ -81,11 +112,18 @@ export function AppHeader({
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
+              {accountEmail ? <Menu.Label>{accountEmail}</Menu.Label> : null}
+              <Menu.Label>Cloud status: {syncLabels[syncStatus]}</Menu.Label>
+              <Menu.Divider />
               <Menu.Item leftSection={<IconDownload size={16} />} onClick={onExport}>
                 Export trip JSON
               </Menu.Item>
               <Menu.Item color="red" leftSection={<IconRefresh size={16} />} onClick={onReset}>
                 Reset demo data
+              </Menu.Item>
+              <Menu.Divider />
+              <Menu.Item leftSection={<IconLogout size={16} />} onClick={onSignOut}>
+                Sign out
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
