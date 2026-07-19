@@ -19,7 +19,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconCoffee, IconPlus, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconWalk } from '@tabler/icons-react';
+import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconCoffee, IconDots, IconPlus, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconWalk } from '@tabler/icons-react';
 import type { PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
@@ -107,14 +107,18 @@ export function DayColumn({
   }
 
   function legMapUrl(from: Place, to: Place, mode: TravelMode) {
-    const travelmode = mode === 'public' ? 'transit' : mode === 'walk' ? 'walking' : mode === 'bike' ? 'bicycling' : 'driving';
-    return `https://www.google.com/maps/dir/?${new URLSearchParams({ api: '1', origin: `${from.latitude},${from.longitude}`, destination: `${to.latitude},${to.longitude}`, travelmode }).toString()}`;
+    const travelmode = mode === 'public' ? 'transit' : mode === 'walk' ? 'walking' : mode === 'bike' ? 'bicycling' : mode === 'other' ? undefined : 'driving';
+    const params = new URLSearchParams({ api: '1', origin: `${from.latitude},${from.longitude}`, destination: `${to.latitude},${to.longitude}` });
+    if (travelmode) params.set('travelmode', travelmode);
+    return `https://www.google.com/maps/dir/?${params.toString()}`;
   }
 
   function transportIcon(mode: TravelMode) {
     if (mode === 'walk') return <IconWalk size={16} />;
     if (mode === 'bike') return <IconBike size={16} />;
     if (mode === 'car') return <IconCar size={16} />;
+    if (mode === 'taxi') return <IconCar size={16} />;
+    if (mode === 'other') return <IconDots size={16} />;
     return <IconBus size={16} />;
   }
 
@@ -212,6 +216,8 @@ export function DayColumn({
                   { value: 'walk', label: t('walk') },
                   { value: 'bike', label: t('bike') },
                   { value: 'car', label: t('car') },
+                  { value: 'taxi', label: t('taxi') },
+                  { value: 'other', label: t('otherTransport') },
                 ]}
                 allowDeselect={false}
                 onChange={(value) => onDayScheduleChange(day.id, { travelMode: (value ?? 'public') as TravelMode })}
@@ -298,6 +304,8 @@ export function DayColumn({
                         <Menu.Item leftSection={<IconWalk size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'walk')}>{t('walk')}</Menu.Item>
                         <Menu.Item leftSection={<IconBike size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'bike')}>{t('bike')}</Menu.Item>
                         <Menu.Item leftSection={<IconCar size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'car')}>{t('car')}</Menu.Item>
+                        <Menu.Item leftSection={<IconCar size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'taxi')}>{t('taxi')}</Menu.Item>
+                        <Menu.Item leftSection={<IconDots size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'other')}>{t('otherTransport')}</Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
                   </Group>

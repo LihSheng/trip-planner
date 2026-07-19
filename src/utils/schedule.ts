@@ -14,6 +14,8 @@ const TRAVEL_SPEEDS_KMH: Record<TravelMode, number> = {
   walk: 4.5,
   bike: 14,
   car: 45,
+  taxi: 42,
+  other: 20,
 };
 
 export function defaultDuration(category: PlaceCategory) {

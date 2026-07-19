@@ -8,7 +8,7 @@ export type PlaceCategory =
 
 export type PlaceType = 'place' | 'hotel' | 'airport' | 'station' | 'transit' | 'placeholder';
 export type PlaceholderKind = 'meal' | 'coffee' | 'free-time' | 'custom';
-export type TravelMode = 'public' | 'walk' | 'bike' | 'car';
+export type TravelMode = 'public' | 'walk' | 'bike' | 'car' | 'taxi' | 'other';
 
 export type RouteLegMode = TravelMode | 'default';
 
