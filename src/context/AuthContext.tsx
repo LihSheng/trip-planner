@@ -104,7 +104,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         setSent(false);
       },
     };
-  }, [session]);
+  }, [demoMode, session]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
