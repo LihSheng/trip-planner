@@ -65,10 +65,10 @@ export function AppHeader({
   onReset,
   onSignOut,
 }: AppHeaderProps) {
-  const { accessToken, user } = useAuth();
+  const { accessToken, user, isDemo } = useAuth();
   const [exporting, setExporting] = useState<'excel' | 'markdown' | null>(null);
   const syncFailed = syncStatus === 'error';
-  const cloudExportReady = syncStatus === 'saved' && !exporting;
+  const cloudExportReady = !isDemo && syncStatus === 'saved' && !exporting;
 
   async function exportCloudTrip(format: 'excel' | 'markdown') {
     setExporting(format);
@@ -147,7 +147,7 @@ export function AppHeader({
             </Menu.Target>
             <Menu.Dropdown>
               {accountEmail ? <Menu.Label>{accountEmail}</Menu.Label> : null}
-              <Menu.Label>Cloud status: {syncLabels[syncStatus]}</Menu.Label>
+              <Menu.Label>{isDemo ? 'Local demo data' : `Cloud status: ${syncLabels[syncStatus]}`}</Menu.Label>
               <Menu.Divider />
               <Menu.Label>Export itinerary</Menu.Label>
               <Menu.Item
@@ -173,7 +173,7 @@ export function AppHeader({
               </Menu.Item>
               <Menu.Divider />
               <Menu.Item leftSection={<IconLogout size={16} />} onClick={onSignOut}>
-                Sign out
+                {isDemo ? 'Sign in to sync' : 'Sign out'}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>

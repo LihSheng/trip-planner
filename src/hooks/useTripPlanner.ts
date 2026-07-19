@@ -6,13 +6,14 @@ import { isTripState, loadTripState, saveTripState } from '../lib/tripRepository
 import { movePlace } from '../utils/itinerary';
 
 const LEGACY_STORAGE_KEY = 'taiwan-trip-planner:v1';
+const DEMO_STORAGE_KEY = 'taiwan-trip-planner:demo:v1';
 const SAVE_DEBOUNCE_MS = 700;
 
 export type SyncStatus = 'loading' | 'saving' | 'saved' | 'error';
 
-function loadLegacyState(): TripState | null {
+function loadStoredState(key: string): TripState | null {
   try {
-    const stored = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    const stored = window.localStorage.getItem(key);
     if (!stored) return null;
     const parsed = JSON.parse(stored) as unknown;
     return isTripState(parsed) ? parsed : null;
@@ -21,8 +22,16 @@ function loadLegacyState(): TripState | null {
   }
 }
 
+function loadLegacyState(): TripState | null {
+  return loadStoredState(LEGACY_STORAGE_KEY);
+}
+
+function loadDemoState(): TripState | null {
+  return loadStoredState(DEMO_STORAGE_KEY);
+}
+
 export function useTripPlanner() {
-  const { accessToken, user } = useAuth();
+  const { accessToken, user, isDemo } = useAuth();
   const [state, setState] = useState<TripState>(createInitialState);
   const [isReady, setIsReady] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
@@ -37,18 +46,25 @@ export function useTripPlanner() {
 
     async function hydrate() {
       try {
+        if (isDemo) {
+          setState(loadDemoState() ?? createInitialState());
+          setSyncStatus('saved');
+          return;
+        }
+
         const remoteState = await loadTripState(accessToken, user.id);
         if (!active) return;
 
         if (remoteState) {
           setState(remoteState);
         } else {
-          const initialState = loadLegacyState() ?? createInitialState();
+          const initialState = loadDemoState() ?? loadLegacyState() ?? createInitialState();
           setState(initialState);
           await saveTripState(accessToken, user.id, initialState);
-          window.localStorage.removeItem(LEGACY_STORAGE_KEY);
         }
 
+        window.localStorage.removeItem(DEMO_STORAGE_KEY);
+        window.localStorage.removeItem(LEGACY_STORAGE_KEY);
         if (active) setSyncStatus('saved');
       } catch (reason) {
         if (!active) return;
@@ -64,7 +80,7 @@ export function useTripPlanner() {
     return () => {
       active = false;
     };
-  }, [user.id]);
+  }, [accessToken, isDemo, user.id]);
 
   useEffect(() => {
     if (!isReady) return;
@@ -74,6 +90,12 @@ export function useTripPlanner() {
     setSyncError(null);
 
     const timeout = window.setTimeout(() => {
+      if (isDemo) {
+        window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(state));
+        if (saveSequence.current === sequence) setSyncStatus('saved');
+        return;
+      }
+
       saveTripState(accessToken, user.id, state)
         .then(() => {
           if (saveSequence.current === sequence) setSyncStatus('saved');
@@ -86,7 +108,7 @@ export function useTripPlanner() {
     }, SAVE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timeout);
-  }, [accessToken, isReady, state, user.id]);
+  }, [accessToken, isDemo, isReady, state, user.id]);
 
   const placesById = useMemo(
     () => new Map(state.places.map((place) => [place.id, place])),

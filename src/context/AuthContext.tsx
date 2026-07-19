@@ -25,6 +25,7 @@ import {
 interface AuthContextValue {
   user: AuthUser;
   accessToken: string;
+  isDemo: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -43,6 +44,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -77,13 +79,25 @@ export function AuthGate({ children }: { children: ReactNode }) {
     }, refreshInMs);
 
     return () => window.clearTimeout(timeout);
-  }, [session]);
+  }, [demoMode, session]);
 
   const contextValue = useMemo<AuthContextValue | null>(() => {
+    if (demoMode) {
+      return {
+        user: { id: 'demo', email: 'Demo mode' },
+        accessToken: '',
+        isDemo: true,
+        signOut: async () => {
+          setDemoMode(false);
+          setSent(false);
+        },
+      };
+    }
     if (!session) return null;
     return {
       user: session.user,
       accessToken: session.accessToken,
+      isDemo: false,
       signOut: async () => {
         await signOutSession(session.accessToken);
         setSession(null);
@@ -171,6 +185,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
               <Button type="submit" color="teal" loading={sending} disabled={!hasSupabaseConfig}>
                 Email me a sign-in link
               </Button>
+              <Button type="button" variant="light" color="teal" onClick={() => setDemoMode(true)}>
+                Continue in demo mode
+              </Button>
+              <Text size="xs" c="dimmed" ta="center">
+                Demo changes are saved only in this browser and are not synchronized.
+              </Text>
             </Stack>
           </form>
         </Stack>
