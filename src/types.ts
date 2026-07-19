@@ -9,6 +9,28 @@ export type PlaceCategory =
 export type PlaceType = 'place' | 'hotel' | 'airport' | 'station' | 'transit';
 export type TravelMode = 'public' | 'walk' | 'bike' | 'car';
 
+export type RouteLegMode = TravelMode | 'default';
+
+export interface RouteStep {
+  instruction: string;
+  durationMinutes?: number;
+  distanceMeters?: number;
+  transitLine?: string;
+}
+
+export interface RouteLeg {
+  fromPlaceId: string;
+  toPlaceId: string;
+  mode: TravelMode;
+  durationMinutes: number;
+  distanceMeters: number;
+  departureTime?: string;
+  arrivalTime?: string;
+  fare?: string;
+  polyline?: string;
+  steps?: RouteStep[];
+}
+
 export interface OpeningHours {
   opensAt: string;
   closesAt: string;
@@ -40,6 +62,11 @@ export interface TripDay {
   stopSchedules?: Record<string, StopSchedule>;
   lodgingPlaceId?: string;
   timeManagementEnabled?: boolean;
+  routeLegs?: RouteLeg[];
+  legModeOverrides?: Record<string, RouteLegMode>;
+  routeUpdatedAt?: string;
+  routeStale?: boolean;
+  routeError?: string;
 }
 
 export interface TripState {

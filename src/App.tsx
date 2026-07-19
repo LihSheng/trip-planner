@@ -243,6 +243,14 @@ export default function App() {
       onStopScheduleChange={planner.updateStopSchedule}
       onEditPlace={openEditPlace}
       onDeletePlace={setDeleteTarget}
+      onOptimizeRoute={async (dayId) => {
+        try { await planner.optimizeDayRoute(dayId); notifications.show({ color: 'teal', message: t('routeReady') }); }
+        catch (error) { notifications.show({ color: 'red', title: t('routeError'), message: error instanceof Error ? error.message : t('routeUnavailable') }); }
+      }}
+      onLegModeChange={async (dayId, fromPlaceId, toPlaceId, mode) => {
+        try { await planner.updateLegMode(dayId, fromPlaceId, toPlaceId, mode); }
+        catch (error) { notifications.show({ color: 'red', title: t('routeError'), message: error instanceof Error ? error.message : t('routeUnavailable') }); }
+      }}
     />
   );
 

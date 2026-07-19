@@ -5,6 +5,8 @@ import type { ContainerId, Place, StopSchedule, TripState, TravelMode } from '..
 import { acceptTripInvitations, isTripState, loadSharedTripOwnerId, loadTripState, saveTripState } from '../lib/tripRepository';
 import { movePlace } from '../utils/itinerary';
 import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
+import { requestRoutePlan } from '../lib/routePlanner';
+import { markRouteStale, routeLegKey } from '../utils/routing';
 
 const LEGACY_STORAGE_KEY = 'taiwan-trip-planner:v1';
 const DEMO_STORAGE_KEY = 'taiwan-trip-planner:demo:v1';
@@ -21,7 +23,7 @@ function loadStoredState(key: string): TripState | null {
       ? {
           ...parsed,
           visitedPlaceIds: parsed.visitedPlaceIds ?? [],
-          days: parsed.days.map((day) => ({ ...day, travelMode: day.travelMode ?? 'public', stopSchedules: day.stopSchedules ?? {}, timeManagementEnabled: day.timeManagementEnabled ?? false })),
+      days: parsed.days.map((day) => ({ ...day, travelMode: day.travelMode ?? 'public', stopSchedules: day.stopSchedules ?? {}, timeManagementEnabled: day.timeManagementEnabled ?? false, legModeOverrides: day.legModeOverrides ?? {} })),
         }
       : null;
   } catch {
@@ -149,7 +151,7 @@ export function useTripPlanner() {
     setState((current) => ({
       ...current,
       places: [...current.places, place],
-      days: current.days.map((day) => (day.id === dayId ? { ...day, placeIds: [...day.placeIds, place.id] } : day)),
+      days: current.days.map((day) => (day.id === dayId ? markRouteStale({ ...day, placeIds: [...day.placeIds, place.id] }) : day)),
       hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId,
     }));
   }, []);
@@ -158,6 +160,7 @@ export function useTripPlanner() {
     setState((current) => ({
       ...current,
       places: current.places.map((item) => (item.id === place.id ? place : item)),
+      days: current.days.map((day) => day.placeIds.includes(place.id) ? markRouteStale(day) : day),
       hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId === place.id ? undefined : current.hotelPlaceId,
     }));
   }, []);
@@ -169,7 +172,7 @@ export function useTripPlanner() {
       unscheduledIds: current.unscheduledIds.filter((id) => id !== placeId),
       visitedPlaceIds: current.visitedPlaceIds.filter((id) => id !== placeId),
       hotelPlaceId: current.hotelPlaceId === placeId ? undefined : current.hotelPlaceId,
-      days: current.days.map((day) => ({
+      days: current.days.map((day) => markRouteStale({
         ...day,
         placeIds: day.placeIds.filter((id) => id !== placeId),
         lodgingPlaceId: day.lodgingPlaceId === placeId ? undefined : day.lodgingPlaceId,
@@ -240,7 +243,7 @@ export function useTripPlanner() {
           if (updates.startTime && firstPlace && !stopSchedules[firstPlace.id]?.startTime) {
             stopSchedules[firstPlace.id] = { ...stopSchedules[firstPlace.id], startTime: updates.startTime, durationMinutes: defaultDuration(firstPlace.category) };
           }
-          return { ...day, ...updates, stopSchedules };
+          return markRouteStale({ ...day, ...updates, stopSchedules });
         }),
       };
     });
@@ -270,7 +273,7 @@ export function useTripPlanner() {
               previousPlace = nextPlace;
             }
           }
-          return { ...day, stopSchedules };
+          return markRouteStale({ ...day, stopSchedules });
         }),
       };
     });
@@ -287,14 +290,57 @@ export function useTripPlanner() {
 
   const move = useCallback(
     (placeId: string, destinationId: ContainerId, destinationIndex: number) => {
-      setState((current) => movePlace(current, placeId, destinationId, destinationIndex));
+      setState((current) => {
+        const moved = movePlace(current, placeId, destinationId, destinationIndex);
+        return { ...moved, days: moved.days.map(markRouteStale) };
+      });
     },
     [],
   );
 
   const updateTrip = useCallback((tripName: string, startDate: string) => {
-    setState((current) => ({ ...current, tripName, startDate }));
+    setState((current) => ({ ...current, tripName, startDate, days: current.days.map(markRouteStale) }));
   }, []);
+
+  const optimizeDayRoute = useCallback(async (dayId: string) => {
+    if (isDemo) throw new Error('Route optimization is unavailable in demo mode. Sign in to use Google Routes.');
+    const day = state.days.find((item) => item.id === dayId);
+    if (!day || day.placeIds.length < 2) throw new Error('Add at least two places before optimizing a route.');
+    const result = await requestRoutePlan(accessToken, {
+      tripOwnerId, startDate: state.startDate, day, places: state.places, operation: 'optimize',
+    });
+    setState((current) => ({
+      ...current,
+      days: current.days.map((item) => item.id === dayId
+        ? { ...item, placeIds: result.placeIds ?? item.placeIds, routeLegs: result.legs, routeUpdatedAt: new Date().toISOString(), routeStale: false, routeError: result.routeError }
+        : item),
+    }));
+  }, [accessToken, isDemo, state, tripOwnerId]);
+
+  const updateLegMode = useCallback(async (dayId: string, fromPlaceId: string, toPlaceId: string, mode: TravelMode | 'default') => {
+    const key = routeLegKey(fromPlaceId, toPlaceId);
+    setState((current) => ({
+      ...current,
+      days: current.days.map((day) => day.id === dayId
+        ? markRouteStale({ ...day, legModeOverrides: { ...day.legModeOverrides, [key]: mode } })
+        : day),
+    }));
+    if (mode === 'default') return;
+    if (isDemo) throw new Error('Route updates are unavailable in demo mode. Sign in to use Google Routes.');
+    const day = state.days.find((item) => item.id === dayId);
+    if (!day) return;
+    const result = await requestRoutePlan(accessToken, {
+      tripOwnerId, startDate: state.startDate, day, places: state.places, operation: 'leg', fromPlaceId, toPlaceId, mode,
+    });
+    setState((current) => ({
+      ...current,
+      days: current.days.map((item) => {
+        if (item.id !== dayId) return item;
+        const legs = (item.routeLegs ?? []).filter((leg) => !(leg.fromPlaceId === fromPlaceId && leg.toPlaceId === toPlaceId));
+        return { ...item, routeLegs: [...legs, ...result.legs], routeUpdatedAt: new Date().toISOString(), routeStale: false, routeError: result.routeError };
+      }),
+    }));
+  }, [accessToken, isDemo, state, tripOwnerId]);
 
   const reset = useCallback(() => setState(createInitialState()), []);
   const syncNow = useCallback(async () => {
@@ -334,6 +380,8 @@ export function useTripPlanner() {
     toggleVisited,
     move,
     updateTrip,
+    optimizeDayRoute,
+    updateLegMode,
     reset,
     syncNow,
     persistForCloudSignIn,

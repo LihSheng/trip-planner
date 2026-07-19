@@ -4,6 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   ActionIcon,
   Badge,
+  Button,
   Box,
   Group,
   Paper,
@@ -16,12 +17,13 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconAlertTriangle, IconCalendar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconAlertTriangle, IconCalendar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconPlus, IconRoute, IconTrash } from '@tabler/icons-react';
 import type { Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
 import { useI18n } from '../i18n';
 import { dayWarnings, estimateTravelMinutes, scheduleFor } from '../utils/schedule';
+import { routeLegKey } from '../utils/routing';
 
 interface DayColumnProps {
   day: TripDay;
@@ -41,6 +43,8 @@ interface DayColumnProps {
   onStopScheduleChange: (dayId: string, placeId: string, updates: StopSchedule) => void;
   hotelPlaces: Place[];
   tripHotelId?: string;
+  onOptimizeRoute: (dayId: string) => Promise<void>;
+  onLegModeChange: (dayId: string, fromPlaceId: string, toPlaceId: string, mode: TravelMode | 'default') => Promise<void>;
 }
 
 export function DayColumn({
@@ -61,9 +65,12 @@ export function DayColumn({
   onStopScheduleChange,
   hotelPlaces,
   tripHotelId,
+  onOptimizeRoute,
+  onLegModeChange,
 }: DayColumnProps) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
+  const [routing, setRouting] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 75em)');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `day:${day.id}`,
@@ -90,6 +97,11 @@ export function DayColumn({
   function toggleCollapsedFromHeader(event: MouseEvent<HTMLDivElement>) {
     if (event.target instanceof Element && event.target.closest('button, input')) return;
     setCollapsed((value) => !value);
+  }
+
+  async function optimizeRoute() {
+    setRouting(true);
+    try { await onOptimizeRoute(day.id); } finally { setRouting(false); }
   }
 
   return (
@@ -161,12 +173,12 @@ export function DayColumn({
                 <IconTrash size={15} />
               </ActionIcon>
             </Tooltip>
-            <Tooltip label={day.timeManagementEnabled ? 'Hide time management' : 'Manage times'}>
+            <Tooltip label={day.timeManagementEnabled ? t('hideTimeManagement') : t('manageTimes')}>
               <ActionIcon
                 variant="subtle"
                 color={day.timeManagementEnabled ? 'teal' : 'gray'}
                 size="sm"
-                aria-label={day.timeManagementEnabled ? 'Hide time management' : 'Manage times'}
+                aria-label={day.timeManagementEnabled ? t('hideTimeManagement') : t('manageTimes')}
                 onClick={() => onDayScheduleChange(day.id, { timeManagementEnabled: !day.timeManagementEnabled })}
               >
                 <IconClock size={16} />
@@ -182,10 +194,10 @@ export function DayColumn({
                 value={day.travelMode ?? 'public'}
                 aria-label={`Travel mode for ${t('day', { number: index + 1 })}`}
                 data={[
-                  { value: 'public', label: 'Public transport' },
-                  { value: 'walk', label: 'Walk' },
-                  { value: 'bike', label: 'Bike' },
-                  { value: 'car', label: 'Car' },
+                  { value: 'public', label: t('publicTransport') },
+                  { value: 'walk', label: t('walk') },
+                  { value: 'bike', label: t('bike') },
+                  { value: 'car', label: t('car') },
                 ]}
                 allowDeselect={false}
                 onChange={(value) => onDayScheduleChange(day.id, { travelMode: (value ?? 'public') as TravelMode })}
@@ -202,7 +214,7 @@ export function DayColumn({
               <Select
                 size="xs"
                 clearable
-                label="Stay at"
+                label={t('stayAt')}
                 value={day.lodgingPlaceId || tripHotelId || null}
                 data={hotelPlaces.map((place) => ({ value: place.id, label: place.name }))}
                 onChange={(value) => onDayScheduleChange(day.id, { lodgingPlaceId: value ?? '' })}
@@ -231,6 +243,7 @@ export function DayColumn({
         <SortableContext items={day.placeIds} strategy={verticalListSortingStrategy}>
           <Stack gap="xs" p="sm" className="day-column__body">
             {places.map((place, placeIndex) => (
+              <Box key={place.id}>
               <PlaceCard
                 key={place.id}
                 place={place}
@@ -246,7 +259,25 @@ export function DayColumn({
                 onScheduleChange={day.timeManagementEnabled ? (updates) => onStopScheduleChange(day.id, place.id, updates) : undefined}
                 onEnableSchedule={day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
               />
+              {placeIndex < places.length - 1 ? (() => {
+                const nextPlace = places[placeIndex + 1];
+                const key = routeLegKey(place.id, nextPlace.id);
+                const leg = day.routeLegs?.find((item) => item.fromPlaceId === place.id && item.toPlaceId === nextPlace.id);
+                const mode = day.legModeOverrides?.[key] ?? 'default';
+                return (
+                  <Group className="route-leg" gap="xs" wrap="nowrap">
+                    <IconRoute size={14} />
+                    <Text size="xs" c="dimmed" style={{ flex: 1 }}>{leg ? `${leg.durationMinutes} min · ${(leg.distanceMeters / 1000).toFixed(1)} km` : t('routeStale')}</Text>
+                    <Select size="xs" w={130} aria-label={t('travelTo', { name: nextPlace.name })} value={mode} data={[
+                      { value: 'default', label: t('dayDefault') }, { value: 'public', label: t('publicTransport') }, { value: 'walk', label: t('walk') }, { value: 'bike', label: t('bike') }, { value: 'car', label: t('car') },
+                    ]} onChange={(value) => void onLegModeChange(day.id, place.id, nextPlace.id, (value ?? 'default') as TravelMode | 'default')} />
+                  </Group>
+                );
+              })() : null}
+              </Box>
             ))}
+            {places.length > 1 ? <Button size="xs" variant={day.routeStale ? 'light' : 'subtle'} color="teal" leftSection={<IconRoute size={15} />} loading={routing} onClick={() => void optimizeRoute()}>{day.routeLegs?.length ? t('refreshRoute') : t('optimizeRoute')}</Button> : null}
+            {day.routeError ? <Text c="orange" size="xs">{day.routeError}</Text> : null}
             <UnstyledButton className="add-place-placeholder" onClick={onAddPlace}>
               <IconPlus size={17} />
               <Text size="xs" fw={650}>

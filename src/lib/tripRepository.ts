@@ -51,6 +51,7 @@ function normalizeTripState(state: TripState): TripState {
       travelMode: day.travelMode ?? 'public',
       stopSchedules: day.stopSchedules ?? {},
       timeManagementEnabled: day.timeManagementEnabled ?? false,
+      legModeOverrides: day.legModeOverrides ?? {},
     })),
   };
 }

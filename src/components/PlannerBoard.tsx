@@ -37,6 +37,8 @@ interface PlannerBoardProps {
   onStopScheduleChange: (dayId: string, placeId: string, updates: StopSchedule) => void;
   onEditPlace: (place: Place) => void;
   onDeletePlace: (place: Place) => void;
+  onOptimizeRoute: (dayId: string) => Promise<void>;
+  onLegModeChange: (dayId: string, fromPlaceId: string, toPlaceId: string, mode: TravelMode | 'default') => Promise<void>;
 }
 
 export function PlannerBoard({
@@ -56,6 +58,8 @@ export function PlannerBoard({
   onStopScheduleChange,
   onEditPlace,
   onDeletePlace,
+  onOptimizeRoute,
+  onLegModeChange,
 }: PlannerBoardProps) {
   const { t } = useI18n();
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -164,6 +168,8 @@ export function PlannerBoard({
                   onStopScheduleChange={onStopScheduleChange}
                   hotelPlaces={hotelPlaces}
                   tripHotelId={state.hotelPlaceId}
+                  onOptimizeRoute={onOptimizeRoute}
+                  onLegModeChange={onLegModeChange}
                 />
               ))}
             </SortableContext>
