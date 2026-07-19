@@ -4,16 +4,19 @@ import {
   Box,
   Button,
   Container,
+  Group,
   Modal,
-  Skeleton,
+  Paper,
   SegmentedControl,
+  Skeleton,
   Stack,
+  Tabs,
   Text,
   useMantineTheme,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconCalendarEvent, IconList, IconMap } from '@tabler/icons-react';
+import { IconCalendarEvent, IconInfoCircle, IconList, IconMap, IconMapPin } from '@tabler/icons-react';
 import type { Place } from './types';
 import { useTripPlanner } from './hooks/useTripPlanner';
 import { AppHeader } from './components/AppHeader';
@@ -38,6 +41,9 @@ export default function App() {
   const theme = useMantineTheme();
   const isDesktop = useMediaQuery(`(min-width: ${theme.breakpoints.lg})`);
   const [selectedId, setSelectedId] = useState<string | null>(planner.state.places[0]?.id ?? null);
+  const [activeMapView, setActiveMapView] = useState('all');
+  const [desktopWorkspace, setDesktopWorkspace] = useState('map');
+  const [mapPanelTab, setMapPanelTab] = useState<string | null>('details');
   const [mobileView, setMobileView] = useState('map');
   const [editingPlace, setEditingPlace] = useState<Place | undefined>();
   const [placeModalOpened, setPlaceModalOpened] = useState(false);
@@ -66,6 +72,7 @@ export default function App() {
     } else {
       planner.addPlace(place);
       setSelectedId(place.id);
+      setActiveMapView('unscheduled');
       notifications.show({ color: 'teal', title: 'Place added', message: `${place.name} is ready to schedule.` });
     }
   }
@@ -76,6 +83,19 @@ export default function App() {
     if (selectedId === deleteTarget.id) setSelectedId(null);
     notifications.show({ color: 'red', title: 'Place removed', message: `${deleteTarget.name} was deleted.` });
     setDeleteTarget(undefined);
+  }
+
+  function handleMapViewChange(viewId: string) {
+    setActiveMapView(viewId);
+
+    const nextSelectedId =
+      viewId === 'all'
+        ? selectedId ?? planner.state.places[0]?.id
+        : viewId === 'unscheduled'
+          ? planner.state.unscheduledIds[0]
+          : planner.state.days.find((day) => day.id === viewId)?.placeIds[0];
+
+    setSelectedId(nextSelectedId ?? null);
   }
 
   function exportTrip() {
@@ -92,16 +112,24 @@ export default function App() {
   function resetTrip() {
     planner.reset();
     setSelectedId('taipei-101');
+    setActiveMapView('all');
     notifications.show({ title: 'Demo restored', message: 'The sample Taiwan trip has been reset.' });
   }
 
-  const mapPanel = (
-    <Stack gap="md">
-      <Suspense fallback={<Skeleton height={420} radius="lg" />}>
-        <TaiwanMap places={planner.state.places} selectedId={selectedId} onSelect={setSelectedId} />
-      </Suspense>
-      <PlaceDetails place={selectedPlace} onEdit={openEditPlace} />
-    </Stack>
+  const map = (
+    <Suspense fallback={<Skeleton height="calc(100vh - 176px)" mih={560} radius="lg" />}>
+      <TaiwanMap
+        places={planner.state.places}
+        days={planner.state.days}
+        unscheduledIds={planner.state.unscheduledIds}
+        startDate={planner.state.startDate}
+        selectedId={selectedId}
+        activeView={activeMapView}
+        onSelect={setSelectedId}
+        onActiveViewChange={handleMapViewChange}
+        onAddDay={planner.addDay}
+      />
+    </Suspense>
   );
 
   const placesPanel = (
@@ -109,7 +137,11 @@ export default function App() {
       <PlaceLibrary
         places={planner.state.places}
         selectedId={selectedId}
-        onSelect={setSelectedId}
+        onSelect={(placeId) => {
+          setSelectedId(placeId);
+          setActiveMapView('all');
+          setMapPanelTab('details');
+        }}
         onAdd={openAddPlace}
         onEdit={openEditPlace}
         onDelete={setDeleteTarget}
@@ -132,6 +164,41 @@ export default function App() {
     />
   );
 
+  const mapWorkspace = (
+    <Box className="map-workspace">
+      {map}
+      <Paper withBorder radius="lg" className="map-side-panel">
+        <Tabs value={mapPanelTab} onChange={setMapPanelTab} keepMounted={false}>
+          <Tabs.List grow>
+            <Tabs.Tab value="details" leftSection={<IconInfoCircle size={15} />}>
+              Details
+            </Tabs.Tab>
+            <Tabs.Tab value="places" leftSection={<IconList size={15} />}>
+              Places
+            </Tabs.Tab>
+          </Tabs.List>
+          <Tabs.Panel value="details" p="md">
+            <Stack gap="md">
+              <Group gap="xs" wrap="nowrap">
+                <IconMapPin size={17} />
+                <Text fw={750}>Selected place</Text>
+              </Group>
+              <PlaceDetails place={selectedPlace} onEdit={openEditPlace} />
+              {!selectedPlace ? (
+                <Button variant="light" color="teal" onClick={openAddPlace}>
+                  Add your first place
+                </Button>
+              ) : null}
+            </Stack>
+          </Tabs.Panel>
+          <Tabs.Panel value="places" p="md">
+            {placesPanel}
+          </Tabs.Panel>
+        </Tabs>
+      </Paper>
+    </Box>
+  );
+
   return (
     <AppShell header={{ height: 72 }} padding={0}>
       <AppShell.Header>
@@ -150,13 +217,41 @@ export default function App() {
       <AppShell.Main>
         <Container fluid px={{ base: 'sm', md: 'lg' }} py="lg" className="app-container">
           {isDesktop ? (
-            <Box className="desktop-layout">
-              <Stack gap="md" className="desktop-layout__left">
-                {mapPanel}
-                {placesPanel}
-              </Stack>
-              <Box className="desktop-layout__right">{plannerPanel}</Box>
-            </Box>
+            <Stack gap="md">
+              <Group justify="space-between" align="center" className="workspace-toolbar">
+                <div>
+                  <Text fw={800}>Trip workspace</Text>
+                  <Text size="sm" c="dimmed">
+                    Explore on the map or fine-tune the full itinerary board.
+                  </Text>
+                </div>
+                <SegmentedControl
+                  value={desktopWorkspace}
+                  onChange={setDesktopWorkspace}
+                  data={[
+                    {
+                      value: 'map',
+                      label: (
+                        <Box className="workspace-tab-label">
+                          <IconMap size={15} />
+                          <span>Map</span>
+                        </Box>
+                      ),
+                    },
+                    {
+                      value: 'planner',
+                      label: (
+                        <Box className="workspace-tab-label">
+                          <IconCalendarEvent size={15} />
+                          <span>Planner</span>
+                        </Box>
+                      ),
+                    },
+                  ]}
+                />
+              </Group>
+              {desktopWorkspace === 'map' ? mapWorkspace : plannerPanel}
+            </Stack>
           ) : (
             <Stack gap="md">
               <SegmentedControl
@@ -175,7 +270,12 @@ export default function App() {
                   ),
                 }))}
               />
-              {mobileView === 'map' ? mapPanel : null}
+              {mobileView === 'map' ? (
+                <Stack gap="md">
+                  {map}
+                  <PlaceDetails place={selectedPlace} onEdit={openEditPlace} />
+                </Stack>
+              ) : null}
               {mobileView === 'places' ? placesPanel : null}
               {mobileView === 'planner' ? plannerPanel : null}
             </Stack>
