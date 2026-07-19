@@ -89,7 +89,7 @@ async function fetchUser(accessToken: string): Promise<AuthUser> {
   return (await response.json()) as AuthUser;
 }
 
-async function refreshSession(refreshToken: string): Promise<AuthSession> {
+export async function refreshAuthSession(refreshToken: string): Promise<AuthSession> {
   const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
     method: 'POST',
     headers: authHeaders(),
@@ -136,7 +136,7 @@ export async function restoreSession(): Promise<AuthSession | null> {
 
   try {
     if (stored.expiresAt <= Math.floor(Date.now() / 1000) + SESSION_EXPIRY_BUFFER_SECONDS) {
-      return await refreshSession(stored.refreshToken);
+      return await refreshAuthSession(stored.refreshToken);
     }
 
     const session: AuthSession = {
@@ -147,7 +147,7 @@ export async function restoreSession(): Promise<AuthSession | null> {
     return session;
   } catch {
     try {
-      return await refreshSession(stored.refreshToken);
+      return await refreshAuthSession(stored.refreshToken);
     } catch {
       clearStoredSession();
       return null;
