@@ -268,14 +268,15 @@ export function DayColumn({
                 onScheduleChange={day.timeManagementEnabled ? (updates) => onStopScheduleChange(day.id, place.id, updates) : undefined}
                 onEnableSchedule={day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
               />
-              {place.type !== 'placeholder' && places[placeIndex + 1] && places[placeIndex + 1].type !== 'placeholder' ? (() => {
+              {places[placeIndex + 1] ? (() => {
                 const nextPlace = places[placeIndex + 1];
                 const key = routeLegKey(place.id, nextPlace.id);
                 const mode = day.legModeOverrides?.[key] ?? 'default';
                 const actualMode = mode === 'default' ? day.travelMode ?? 'public' : mode;
+                const canOpenRoute = place.type !== 'placeholder' && nextPlace.type !== 'placeholder';
                 return (
                   <Group className="route-leg" gap="xs" justify="center" wrap="nowrap">
-                    <Tooltip label={t('openRoute')}><ActionIcon component="a" href={legMapUrl(place, nextPlace, actualMode)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon></Tooltip>
+                    {canOpenRoute ? <Tooltip label={t('openRoute')}><ActionIcon component="a" href={legMapUrl(place, nextPlace, actualMode)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon></Tooltip> : <ActionIcon variant="subtle" color="gray" disabled aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon>}
                     <Menu position="bottom-end" shadow="md" withinPortal>
                       <Menu.Target>
                         <Tooltip label={t('routeMode')}>
