@@ -84,6 +84,7 @@ export function DayColumn({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `day:${day.id}`,
     data: { type: 'day', dayId: day.id },
+    disabled: readOnly,
   });
   const { onPointerDown, onKeyDown } = listeners ?? {};
   const visitedCount = places.filter((place) => visitedPlaceIds.includes(place.id)).length;
@@ -182,7 +183,7 @@ export function DayColumn({
                 </ActionIcon>
               </Tooltip>
             ) : null}
-            <Tooltip label={t('removeDay')}>
+            {!readOnly ? <Tooltip label={t('removeDay')}>
               <ActionIcon
                 variant="subtle"
                 color="gray"
@@ -192,8 +193,8 @@ export function DayColumn({
               >
                 <IconTrash size={15} />
               </ActionIcon>
-            </Tooltip>
-            <Tooltip label={day.timeManagementEnabled ? t('hideTimeManagement') : t('manageTimes')}>
+            </Tooltip> : null}
+            {!readOnly ? <Tooltip label={day.timeManagementEnabled ? t('hideTimeManagement') : t('manageTimes')}>
               <ActionIcon
                 variant="subtle"
                 color={day.timeManagementEnabled ? 'teal' : 'gray'}
@@ -203,10 +204,10 @@ export function DayColumn({
               >
                 <IconClock size={16} />
               </ActionIcon>
-            </Tooltip>
+            </Tooltip> : null}
           </Group>
         </Group>
-        {!collapsed && day.timeManagementEnabled ? (
+        {!readOnly && !collapsed && day.timeManagementEnabled ? (
           <Stack gap="xs" mt="xs" onClick={(event) => event.stopPropagation()}>
             <Group gap="xs" grow>
               <Select
@@ -250,7 +251,7 @@ export function DayColumn({
             <Text size="xs" c="orange">{warningCount} schedule warning{warningCount === 1 ? '' : 's'}</Text>
           </Group>
         ) : null}
-        {!collapsed ? (
+        {!readOnly && !collapsed ? (
           <TextInput
             mt="xs"
             value={day.label}
@@ -270,18 +271,19 @@ export function DayColumn({
                 key={place.id}
                 place={place}
                 selected={selectedId === place.id}
+                dragDisabled={readOnly}
                 visited={visitedPlaceIds.includes(place.id)}
                 onSelect={onSelect}
-                onEdit={onEditPlace}
-                onDelete={onDeletePlace}
-                onReplace={place.type === 'placeholder' ? onReplacePlaceholder : undefined}
-                onRename={place.type === 'placeholder' ? (target) => { setRenameTarget(target); setRenameLabel(target.name === target.placeholderKind ? '' : target.name); } : undefined}
-                onVisitedChange={onVisitedChange}
-                schedule={day.timeManagementEnabled && day.stopSchedules?.[place.id] ? scheduleFor(day, place) : undefined}
-                travelMinutes={day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 && place.type !== 'placeholder' && places[placeIndex - 1].type !== 'placeholder' ? estimateTravelMinutes(places[placeIndex - 1], place, day.travelMode) : undefined}
-                warnings={warningsByPlace.get(place.id)}
-                onScheduleChange={day.timeManagementEnabled ? (updates) => onStopScheduleChange(day.id, place.id, updates) : undefined}
-                onEnableSchedule={day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
+                onEdit={readOnly ? undefined : onEditPlace}
+                onDelete={readOnly ? undefined : onDeletePlace}
+                onReplace={!readOnly && place.type === 'placeholder' ? onReplacePlaceholder : undefined}
+                onRename={!readOnly && place.type === 'placeholder' ? (target) => { setRenameTarget(target); setRenameLabel(target.name === target.placeholderKind ? '' : target.name); } : undefined}
+                onVisitedChange={readOnly ? undefined : onVisitedChange}
+                schedule={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] ? scheduleFor(day, place) : undefined}
+                travelMinutes={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 && place.type !== 'placeholder' && places[placeIndex - 1].type !== 'placeholder' ? estimateTravelMinutes(places[placeIndex - 1], place, day.travelMode) : undefined}
+                warnings={readOnly ? undefined : warningsByPlace.get(place.id)}
+                onScheduleChange={!readOnly && day.timeManagementEnabled ? (updates) => onStopScheduleChange(day.id, place.id, updates) : undefined}
+                onEnableSchedule={!readOnly && day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
               />
               {places[placeIndex + 1] ? (() => {
                 const nextPlace = places[placeIndex + 1];
@@ -292,7 +294,7 @@ export function DayColumn({
                 return (
                   <Group className="route-leg" gap="xs" justify="center" wrap="nowrap">
                     {canOpenRoute ? <Tooltip label={t('openRoute')}><ActionIcon component="a" href={legMapUrl(place, nextPlace, actualMode)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon></Tooltip> : <ActionIcon variant="subtle" color="gray" disabled aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon>}
-                    <Menu position="bottom-end" shadow="md" withinPortal>
+                    {!readOnly ? <Menu position="bottom-end" shadow="md" withinPortal>
                       <Menu.Target>
                         <Tooltip label={t('routeMode')}>
                           <ActionIcon variant="light" color="teal" aria-label={t('routeMode')}>
@@ -309,7 +311,7 @@ export function DayColumn({
                         <Menu.Item leftSection={<IconCar size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'taxi')}>{t('taxi')}</Menu.Item>
                         <Menu.Item leftSection={<IconDots size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'other')}>{t('otherTransport')}</Menu.Item>
                       </Menu.Dropdown>
-                    </Menu>
+                    </Menu> : <Tooltip label={t('routeMode')}><ActionIcon variant="light" color="teal" aria-label={t('routeMode')} disabled>{transportIcon(actualMode)}</ActionIcon></Tooltip>}
                   </Group>
                 );
               })() : null}
