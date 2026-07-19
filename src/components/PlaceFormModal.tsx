@@ -15,7 +15,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import type { Place, PlaceCategory, PlaceType } from '../types';
-import { useI18n } from '../i18n';
+import { categoryLabel, useI18n } from '../i18n';
 
 const categoryOptions: PlaceCategory[] = [
   'Landmark',
@@ -268,22 +268,22 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
           ) : null}
           <TextInput label={t('placeName')} placeholder={t('searchExample')} required {...form.getInputProps('name')} />
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <TextInput label={t('regionCity')} placeholder="Taipei" required {...form.getInputProps('region')} />
+            <TextInput label={t('regionCity')} placeholder={t('cityPlaceholder')} required {...form.getInputProps('region')} />
             <Select
               label={t('category')}
-              data={categoryOptions.map((category) => ({ value: category, label: category === 'Nature' ? t('nature') : category === 'Culture' ? t('culture') : category === 'Food' ? t('food') : category }))}
+              data={categoryOptions.map((category) => ({ value: category, label: categoryLabel(t, category) }))}
               allowDeselect={false}
               {...form.getInputProps('category')}
             />
           </SimpleGrid>
           <Select
-            label="Place type"
+            label={t('placeType')}
             data={[
-              { value: 'place', label: 'Place' },
-              { value: 'hotel', label: 'Hotel' },
-              { value: 'airport', label: 'Airport' },
-              { value: 'station', label: 'Rail / bus station' },
-              { value: 'transit', label: 'Transit point' },
+              { value: 'place', label: t('typePlace') },
+              { value: 'hotel', label: t('typeHotel') },
+              { value: 'airport', label: t('typeAirport') },
+              { value: 'station', label: t('typeStation') },
+              { value: 'transit', label: t('typeTransit') },
             ]}
             allowDeselect={false}
             {...form.getInputProps('type')}
@@ -293,8 +293,8 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
             <NumberInput label={t('longitude')} decimalScale={6} {...form.getInputProps('longitude')} />
           </SimpleGrid>
           <SimpleGrid cols={2}>
-            <TextInput label="Opens" type="time" {...form.getInputProps('opensAt')} />
-            <TextInput label="Closes" type="time" {...form.getInputProps('closesAt')} />
+            <TextInput label={t('opensAt')} type="time" {...form.getInputProps('opensAt')} />
+            <TextInput label={t('closesAt')} type="time" {...form.getInputProps('closesAt')} />
           </SimpleGrid>
           <Textarea
             label={t('notes')}

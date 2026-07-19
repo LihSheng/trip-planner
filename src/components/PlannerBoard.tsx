@@ -27,6 +27,7 @@ interface PlannerBoardProps {
   visitedPlaceIds: string[];
   onSelect: (placeId: string) => void;
   onAddDay: () => void;
+  onAddPlaceToDay: (dayId: string) => void;
   onMove: (placeId: string, destinationId: ContainerId, destinationIndex: number) => void;
   onLabelChange: (dayId: string, label: string) => void;
   onRemoveDay: (dayId: string) => void;
@@ -45,6 +46,7 @@ export function PlannerBoard({
   visitedPlaceIds,
   onSelect,
   onAddDay,
+  onAddPlaceToDay,
   onMove,
   onLabelChange,
   onRemoveDay,
@@ -152,6 +154,7 @@ export function PlannerBoard({
                   selectedId={selectedId}
                   visitedPlaceIds={visitedPlaceIds}
                   onSelect={onSelect}
+                  onAddPlace={() => onAddPlaceToDay(day.id)}
                   onLabelChange={onLabelChange}
                   onRemove={onRemoveDay}
                   onEditPlace={onEditPlace}

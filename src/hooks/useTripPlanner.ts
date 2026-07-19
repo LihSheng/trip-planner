@@ -145,6 +145,15 @@ export function useTripPlanner() {
     }));
   }, []);
 
+  const addPlaceToDay = useCallback((place: Place, dayId: string) => {
+    setState((current) => ({
+      ...current,
+      places: [...current.places, place],
+      days: current.days.map((day) => (day.id === dayId ? { ...day, placeIds: [...day.placeIds, place.id] } : day)),
+      hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId,
+    }));
+  }, []);
+
   const updatePlace = useCallback((place: Place) => {
     setState((current) => ({
       ...current,
@@ -300,6 +309,7 @@ export function useTripPlanner() {
     isOwner: isDemo || tripOwnerId === user.id,
     placesById,
     addPlace,
+    addPlaceToDay,
     updatePlace,
     removePlace,
     addDay,

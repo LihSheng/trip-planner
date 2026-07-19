@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayWarningCount, estimateTravelMinutes, toMinutes, toTime } from './schedule';
+import { dayWarningCount, dayWarnings, defaultDuration, estimateTravelMinutes, scheduleFor, toMinutes, toTime } from './schedule';
 import type { Place, TripDay } from '../types';
 
 const first: Place = { id: 'first', name: 'First', region: 'Taipei', category: 'Landmark', latitude: 25.03, longitude: 121.56, notes: '' };
@@ -9,6 +9,9 @@ describe('schedule helpers', () => {
   it('formats 24-hour values', () => {
     expect(toMinutes('09:30')).toBe(570);
     expect(toTime(570)).toBe('09:30');
+    expect(toMinutes('9:30')).toBeNull();
+    expect(toTime(-10)).toBe('00:00');
+    expect(toTime(9999)).toBe('23:59');
   });
 
   it('uses transport modes for distance estimates', () => {
@@ -21,5 +24,13 @@ describe('schedule helpers', () => {
       stopSchedules: { first: { startTime: '09:00', durationMinutes: 90 }, second: { startTime: '09:40', durationMinutes: 60 } },
     };
     expect(dayWarningCount(day, [first, { ...second, openingHours: { opensAt: '10:00', closesAt: '18:00' } }])).toBe(2);
+  });
+
+  it('uses category defaults and preserves explicit stop schedules', () => {
+    const day: TripDay = { id: 'day-1', label: '', placeIds: ['first'], stopSchedules: { first: { durationMinutes: 45 } } };
+
+    expect(defaultDuration('Nature')).toBe(120);
+    expect(scheduleFor(day, first)).toEqual({ durationMinutes: 45 });
+    expect(dayWarnings({ ...day, stopSchedules: {} }, [first])).toEqual(new Map());
   });
 });

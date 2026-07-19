@@ -143,6 +143,11 @@ select {
   backdrop-filter: blur(14px);
 }
 
+.map-day-delete-target {
+  flex: 0 0 auto;
+  box-shadow: 0 6px 18px rgba(200, 40, 40, 0.22);
+}
+
 .map-workspace .map-day-switcher {
   right: 430px;
 }
@@ -182,7 +187,7 @@ select {
 }
 
 .map-workspace--panel-collapsed .map-expand-button {
-  right: 76px;
+  right: 18px;
 }
 
 .map-shell--expanded .map-day-switcher {
@@ -353,6 +358,84 @@ select {
   margin: 0 -4px;
 }
 
+@media (min-width: 75em) {
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .mantine-AppShell-main {
+    height: calc(100dvh - 72px);
+    overflow: hidden;
+  }
+
+  .app-container {
+    height: 100%;
+  }
+
+  .desktop-workspace {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .desktop-workspace > .workspace-toolbar {
+    flex: 0 0 auto;
+  }
+
+  .desktop-workspace > .planner-board {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .desktop-workspace > .map-workspace {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .desktop-workspace > .map-workspace .map-shell {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .map-shell .leaflet-top.leaflet-left {
+    top: 56px;
+  }
+
+  .planner-board {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .planner-board > .board-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .board-scroll .mantine-ScrollArea-viewport,
+  .board-scroll .mantine-ScrollArea-content,
+  .board-scroll .mantine-ScrollArea-content > .mantine-Group-root {
+    height: 100%;
+  }
+
+  .board-scroll .mantine-ScrollArea-viewport {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .board-scroll .mantine-ScrollArea-content > .mantine-Group-root {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .desktop-workspace .day-column {
+    height: 100%;
+    min-height: 0;
+  }
+}
+
 .day-column {
   width: 270px;
   min-width: 270px;
@@ -371,10 +454,19 @@ select {
   transform: translateY(-2px);
 }
 
+.day-column__completion-slot {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+}
+
 .day-column__header {
   min-height: 112px;
   padding: 13px;
   border-bottom: 1px solid rgba(31, 48, 45, 0.07);
+}
+
+.day-column__header[data-collapsible] {
   cursor: pointer;
 }
 
@@ -469,6 +561,25 @@ select {
 
 .place-card[data-dragging] {
   opacity: 0.35;
+}
+
+.add-place-placeholder {
+  display: flex;
+  min-height: 4.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px dashed var(--mantine-color-teal-4);
+  border-radius: var(--mantine-radius-md);
+  color: var(--mantine-color-teal-7);
+  background: rgba(237, 252, 248, 0.55);
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.add-place-placeholder:hover,
+.add-place-placeholder:focus-visible {
+  border-color: var(--mantine-color-teal-6);
+  background: var(--mantine-color-teal-0);
 }
 
 .place-card[data-visited] {

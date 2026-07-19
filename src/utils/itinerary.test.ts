@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialState } from '../data/seed';
-import { findContainer, movePlace } from './itinerary';
+import { findContainer, getContainerItems, movePlace, replaceContainerItems } from './itinerary';
 
 describe('itinerary moves', () => {
   it('moves a place into another day', () => {
@@ -16,5 +16,22 @@ describe('itinerary moves', () => {
     const next = movePlace(state, 'ximending', 'day-1', 0);
 
     expect(next.days[0].placeIds).toEqual(['ximending', 'taipei-101']);
+  });
+
+  it('moves places from a day to unscheduled and clamps destination indexes', () => {
+    const state = createInitialState();
+    const next = movePlace(state, 'taipei-101', 'unscheduled', 99);
+
+    expect(next.days[0].placeIds).toEqual(['ximending']);
+    expect(next.unscheduledIds).toEqual(['alishan', 'taipei-101']);
+    expect(getContainerItems(next, 'missing-day')).toEqual([]);
+  });
+
+  it('does not alter state for unknown places or same positions', () => {
+    const state = createInitialState();
+
+    expect(movePlace(state, 'missing', 'day-1', 0)).toBe(state);
+    expect(movePlace(state, 'taipei-101', 'day-1', 0)).toBe(state);
+    expect(replaceContainerItems(state, 'missing-day', ['x'])).toEqual(state);
   });
 });

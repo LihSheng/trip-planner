@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { ActionIcon, Badge, Box, Group, Paper, Stack, Text, Tooltip } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconChevronDown, IconChevronUp, IconInbox } from '@tabler/icons-react';
 import type { Place } from '../types';
 import { PlaceCard } from './PlaceCard';
@@ -24,7 +25,12 @@ export function UnscheduledColumn({
 }: UnscheduledColumnProps) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
+  const isDesktop = useMediaQuery('(min-width: 75em)');
   const { setNodeRef, isOver } = useDroppable({ id: 'unscheduled' });
+
+  useEffect(() => {
+    if (isDesktop) setCollapsed(false);
+  }, [isDesktop]);
 
   return (
     <Paper
@@ -36,7 +42,8 @@ export function UnscheduledColumn({
     >
       <Box
         className="day-column__header day-column__header--unscheduled"
-        onClick={() => setCollapsed((value) => !value)}
+        data-collapsible={!isDesktop || undefined}
+        onClick={isDesktop ? undefined : () => setCollapsed((value) => !value)}
       >
         <Group justify="space-between">
           <Group gap="xs">
@@ -49,20 +56,22 @@ export function UnscheduledColumn({
             <Badge variant="light" color="gray">
               {collapsed ? t('spots', { count: places.length }) : places.length}
             </Badge>
-            <Tooltip label={collapsed ? t('expandUnscheduled') : t('collapseUnscheduled')}>
-              <ActionIcon
-                variant="subtle"
-                color="gray"
-                size="sm"
-                aria-label={collapsed ? t('expandUnscheduled') : t('collapseUnscheduled')}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setCollapsed((value) => !value);
-                }}
-              >
-                {collapsed ? <IconChevronDown size={16} /> : <IconChevronUp size={16} />}
-              </ActionIcon>
-            </Tooltip>
+            {!isDesktop ? (
+              <Tooltip label={collapsed ? t('expandUnscheduled') : t('collapseUnscheduled')}>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="sm"
+                  aria-label={collapsed ? t('expandUnscheduled') : t('collapseUnscheduled')}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setCollapsed((value) => !value);
+                  }}
+                >
+                  {collapsed ? <IconChevronDown size={16} /> : <IconChevronUp size={16} />}
+                </ActionIcon>
+              </Tooltip>
+            ) : null}
           </Group>
         </Group>
         {!collapsed ? (

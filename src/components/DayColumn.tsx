@@ -1,4 +1,4 @@
-import { useState, type KeyboardEventHandler, type MouseEvent, type PointerEvent } from 'react';
+import { useEffect, useState, type KeyboardEventHandler, type MouseEvent, type PointerEvent } from 'react';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
@@ -13,8 +13,10 @@ import {
   Select,
   ThemeIcon,
   Tooltip,
+  UnstyledButton,
 } from '@mantine/core';
-import { IconAlertTriangle, IconCalendar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconTrash } from '@tabler/icons-react';
+import { useMediaQuery } from '@mantine/hooks';
+import { IconAlertTriangle, IconCalendar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconPlus, IconTrash } from '@tabler/icons-react';
 import type { Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
@@ -29,6 +31,7 @@ interface DayColumnProps {
   selectedId: string | null;
   visitedPlaceIds: string[];
   onSelect: (placeId: string) => void;
+  onAddPlace: () => void;
   onLabelChange: (dayId: string, label: string) => void;
   onRemove: (dayId: string) => void;
   onEditPlace: (place: Place) => void;
@@ -48,6 +51,7 @@ export function DayColumn({
   selectedId,
   visitedPlaceIds,
   onSelect,
+  onAddPlace,
   onLabelChange,
   onRemove,
   onEditPlace,
@@ -60,6 +64,7 @@ export function DayColumn({
 }: DayColumnProps) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
+  const isDesktop = useMediaQuery('(min-width: 75em)');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `day:${day.id}`,
     data: { type: 'day', dayId: day.id },
@@ -69,6 +74,10 @@ export function DayColumn({
   const allPlacesVisited = places.length > 0 && visitedCount === places.length;
   const warningsByPlace = day.timeManagementEnabled ? dayWarnings(day, places) : new Map<string, string[]>();
   const warningCount = [...warningsByPlace.values()].reduce((total, warnings) => total + warnings.length, 0);
+
+  useEffect(() => {
+    if (isDesktop) setCollapsed(false);
+  }, [isDesktop]);
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     if (event.target instanceof Element && event.target.closest('button, input, .place-card')) {
@@ -98,7 +107,8 @@ export function DayColumn({
     >
       <Box
         className={`day-column__header day-column__header--${index % 5}`}
-        onClick={toggleCollapsedFromHeader}
+        data-collapsible={!isDesktop || undefined}
+        onClick={isDesktop ? undefined : toggleCollapsedFromHeader}
       >
         <Group justify="space-between" align="flex-start" wrap="nowrap">
           <Stack gap={3} style={{ flex: 1 }}>
@@ -118,24 +128,28 @@ export function DayColumn({
             ) : null}
           </Stack>
           <Group gap={2} wrap="nowrap">
-            {allPlacesVisited ? (
+            <Box className="day-column__completion-slot">
+              {allPlacesVisited ? (
               <Tooltip label={t('allStopsVisited')}>
-                <ThemeIcon color="teal" variant="light" radius="xl" size="lg" className="day-column__completion" aria-label={t('allStopsVisited')}>
-                  <IconCircleCheckFilled size={22} />
+                <ThemeIcon color="teal" variant="light" radius="xl" size="sm" className="day-column__completion" aria-label={t('allStopsVisited')}>
+                  <IconCircleCheckFilled size={16} />
                 </ThemeIcon>
               </Tooltip>
+              ) : null}
+            </Box>
+            {!isDesktop ? (
+              <Tooltip label={collapsed ? t('expandDay') : t('collapseDay')}>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="sm"
+                  aria-label={`${collapsed ? t('expandDay') : t('collapseDay')} ${index + 1}`}
+                  onClick={() => setCollapsed((value) => !value)}
+                >
+                  {collapsed ? <IconChevronDown size={16} /> : <IconChevronUp size={16} />}
+                </ActionIcon>
+              </Tooltip>
             ) : null}
-            <Tooltip label={collapsed ? t('expandDay') : t('collapseDay')}>
-              <ActionIcon
-                variant="subtle"
-                color="gray"
-                size="sm"
-                aria-label={`${collapsed ? t('expandDay') : t('collapseDay')} ${index + 1}`}
-                onClick={() => setCollapsed((value) => !value)}
-              >
-                {collapsed ? <IconChevronDown size={16} /> : <IconChevronUp size={16} />}
-              </ActionIcon>
-            </Tooltip>
             <Tooltip label={t('removeDay')}>
               <ActionIcon
                 variant="subtle"
@@ -233,13 +247,12 @@ export function DayColumn({
                 onEnableSchedule={day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
               />
             ))}
-            {places.length === 0 && (
-              <Box className="drop-placeholder">
-                <Text size="xs" c="dimmed" ta="center">
-                  {t('dropPlace')}
-                </Text>
-              </Box>
-            )}
+            <UnstyledButton className="add-place-placeholder" onClick={onAddPlace}>
+              <IconPlus size={17} />
+              <Text size="xs" fw={650}>
+                {t('addPlace')}
+              </Text>
+            </UnstyledButton>
           </Stack>
         </SortableContext>
       ) : null}

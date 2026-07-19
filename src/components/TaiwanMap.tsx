@@ -20,6 +20,7 @@ import {
   IconMap,
   IconPlus,
   IconRoute,
+  IconTrash,
 } from '@tabler/icons-react';
 import { divIcon, latLngBounds } from 'leaflet';
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
@@ -49,6 +50,7 @@ interface TaiwanMapProps {
   onEditPlace: (place: Place) => void;
   onActiveViewChange: (viewId: string) => void;
   onAddDay: () => void;
+  onRemoveDay: (dayId: string) => void;
 }
 
 interface MapSurfaceProps extends TaiwanMapProps {
@@ -165,11 +167,13 @@ function MapSurface({
   onEditPlace,
   onActiveViewChange,
   onAddDay,
+  onRemoveDay,
   expanded,
   onToggleExpanded,
 }: MapSurfaceProps) {
   const { t } = useI18n();
   const [useOpenStreetMapFallback, setUseOpenStreetMapFallback] = useState(!geoapifyMapsApiKey);
+  const [draggedDayId, setDraggedDayId] = useState<string | null>(null);
   const placesById = useMemo(() => new Map(places.map((place) => [place.id, place])), [places]);
   const dayByPlaceId = useMemo(() => {
     const result = new Map<string, number>();
@@ -328,6 +332,7 @@ function MapSurface({
             {days.map((day, index) => (
               <Button
                 key={day.id}
+                draggable
                 size="xs"
                 radius="xl"
                 variant={activeView === day.id ? 'filled' : 'white'}
@@ -339,6 +344,12 @@ function MapSurface({
                   </Badge>
                 }
                 onClick={() => onActiveViewChange(day.id)}
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = 'move';
+                  event.dataTransfer.setData('text/plain', day.id);
+                  setDraggedDayId(day.id);
+                }}
+                onDragEnd={() => setDraggedDayId(null)}
               >
                 {t('day', { number: index + 1 })}
               </Button>
@@ -355,6 +366,26 @@ function MapSurface({
                 <IconPlus size={17} />
               </ActionIcon>
             </Tooltip>
+            {draggedDayId ? (
+              <Tooltip label={t('removeDay')}>
+                <ActionIcon
+                  size="lg"
+                  radius="xl"
+                  variant="filled"
+                  color="red"
+                  className="map-day-delete-target"
+                  aria-label={t('removeDay')}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    onRemoveDay(draggedDayId);
+                    setDraggedDayId(null);
+                  }}
+                >
+                  <IconTrash size={17} />
+                </ActionIcon>
+              </Tooltip>
+            ) : null}
           </Group>
         </Box>
       </Box>

@@ -64,6 +64,7 @@ export default function App() {
   const [mapPanelCollapsed, setMapPanelCollapsed] = useState(false);
   const [mobileView, setMobileView] = useState('map');
   const [editingPlace, setEditingPlace] = useState<Place | undefined>();
+  const [addPlaceDayId, setAddPlaceDayId] = useState<string | null>(null);
   const [placeModalOpened, setPlaceModalOpened] = useState(false);
   const [settingsOpened, setSettingsOpened] = useState(false);
   const [shareOpened, setShareOpened] = useState(false);
@@ -94,11 +95,19 @@ export default function App() {
 
   function openAddPlace() {
     setEditingPlace(undefined);
+    setAddPlaceDayId(null);
+    setPlaceModalOpened(true);
+  }
+
+  function openAddPlaceForDay(dayId: string) {
+    setEditingPlace(undefined);
+    setAddPlaceDayId(dayId);
     setPlaceModalOpened(true);
   }
 
   function openEditPlace(place: Place) {
     setEditingPlace(place);
+    setAddPlaceDayId(null);
     setPlaceModalOpened(true);
   }
 
@@ -107,9 +116,13 @@ export default function App() {
       planner.updatePlace(place);
       notifications.show({ color: 'teal', title: t('placeUpdated'), message: t('placeSaved', { name: place.name }) });
     } else {
-      planner.addPlace(place);
+      if (addPlaceDayId) {
+        planner.addPlaceToDay(place, addPlaceDayId);
+      } else {
+        planner.addPlace(place);
+      }
       setSelectedId(place.id);
-      setActiveMapView('unscheduled');
+      setActiveMapView(addPlaceDayId ?? 'unscheduled');
       notifications.show({ color: 'teal', title: t('placeAdded'), message: t('placeReady', { name: place.name }) });
     }
   }
@@ -189,6 +202,7 @@ export default function App() {
         onEditPlace={openEditPlace}
         onActiveViewChange={handleMapViewChange}
         onAddDay={planner.addDay}
+        onRemoveDay={setDayDeleteTarget}
       />
     </Suspense>
   );
@@ -219,6 +233,7 @@ export default function App() {
       visitedPlaceIds={planner.state.visitedPlaceIds}
       onSelect={setSelectedId}
       onAddDay={planner.addDay}
+      onAddPlaceToDay={openAddPlaceForDay}
       onMove={planner.move}
       onLabelChange={planner.updateDayLabel}
       onRemoveDay={setDayDeleteTarget}
@@ -319,7 +334,7 @@ export default function App() {
       <AppShell.Main>
         <Container fluid px={{ base: 'sm', md: 'lg' }} py="lg" className="app-container">
           {isDesktop ? (
-            <Stack gap="md">
+            <Stack gap="md" className="desktop-workspace">
               <Group justify="space-between" align="center" className="workspace-toolbar">
                 <div>
                   <Text fw={800}>{t('tripWorkspace')}</Text>
