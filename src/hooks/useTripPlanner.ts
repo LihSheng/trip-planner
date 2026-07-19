@@ -11,15 +11,23 @@ const SAVE_DEBOUNCE_MS = 700;
 
 export type SyncStatus = 'loading' | 'saving' | 'saved' | 'error';
 
-function loadLegacyState(): TripState | null {
+function loadStoredState(key: string): TripState | null {
   try {
-    const stored = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    const stored = window.localStorage.getItem(key);
     if (!stored) return null;
     const parsed = JSON.parse(stored) as unknown;
     return isTripState(parsed) ? parsed : null;
   } catch {
     return null;
   }
+}
+
+function loadLegacyState(): TripState | null {
+  return loadStoredState(LEGACY_STORAGE_KEY);
+}
+
+function loadDemoState(): TripState | null {
+  return loadStoredState(DEMO_STORAGE_KEY);
 }
 
 export function useTripPlanner() {
@@ -39,9 +47,7 @@ export function useTripPlanner() {
     async function hydrate() {
       try {
         if (isDemo) {
-          const stored = window.localStorage.getItem(DEMO_STORAGE_KEY);
-          const parsed = stored ? (JSON.parse(stored) as unknown) : null;
-          setState(isTripState(parsed) ? parsed : createInitialState());
+          setState(loadDemoState() ?? createInitialState());
           setSyncStatus('saved');
           return;
         }
@@ -52,12 +58,13 @@ export function useTripPlanner() {
         if (remoteState) {
           setState(remoteState);
         } else {
-          const initialState = loadLegacyState() ?? createInitialState();
+          const initialState = loadDemoState() ?? loadLegacyState() ?? createInitialState();
           setState(initialState);
           await saveTripState(accessToken, user.id, initialState);
-          window.localStorage.removeItem(LEGACY_STORAGE_KEY);
         }
 
+        window.localStorage.removeItem(DEMO_STORAGE_KEY);
+        window.localStorage.removeItem(LEGACY_STORAGE_KEY);
         if (active) setSyncStatus('saved');
       } catch (reason) {
         if (!active) return;
