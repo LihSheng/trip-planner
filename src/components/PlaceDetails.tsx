@@ -6,9 +6,10 @@ import { categoryLabel, useI18n } from '../i18n';
 interface PlaceDetailsProps {
   place?: Place;
   onEdit: (place: Place) => void;
+  readOnly?: boolean;
 }
 
-export function PlaceDetails({ place, onEdit }: PlaceDetailsProps) {
+export function PlaceDetails({ place, onEdit, readOnly = false }: PlaceDetailsProps) {
   const { t } = useI18n();
   if (!place) {
     return (
@@ -39,11 +40,11 @@ export function PlaceDetails({ place, onEdit }: PlaceDetailsProps) {
             </Group>
           </Stack>
         </Group>
-        <Tooltip label={t('editPlace')}>
+        {!readOnly ? <Tooltip label={t('editPlace')}>
           <ActionIcon variant="subtle" color="gray" onClick={() => onEdit(place)}>
             <IconEdit size={18} />
           </ActionIcon>
-        </Tooltip>
+        </Tooltip> : null}
       </Group>
       <Group mt="md" gap="xs" align="flex-start" wrap="nowrap">
         <IconNotes size={16} color="var(--mantine-color-dimmed)" style={{ marginTop: 2 }} />
