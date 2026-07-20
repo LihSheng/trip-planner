@@ -364,7 +364,6 @@ export default function App({ shareToken }: { shareToken?: string }) {
           accountEmail={user.email}
           readOnly={planner.isReadOnly}
           onAddPlace={openAddPlace}
-          onOpenAiImport={() => setAiImportOpened(true)}
           onOpenSettings={() => setSettingsOpened(true)}
           canShare={planner.isOwner}
           onOpenShare={() => setShareOpened(true)}
