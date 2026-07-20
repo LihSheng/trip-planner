@@ -41,6 +41,17 @@ select {
 .app-header__title {
   min-width: 0;
   max-width: min(42vw, 520px);
+  text-align: left;
+}
+
+.app-header__plan-button {
+  height: auto;
+  min-width: 0;
+  color: inherit;
+}
+
+.app-header__plan-button .mantine-Button-label {
+  min-width: 0;
 }
 
 .app-container {

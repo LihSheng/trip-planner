@@ -5,7 +5,7 @@ import type { TripState } from '../types';
 import type { AiImportRequest, AiItineraryDraft, ConfirmedAiDraft } from '../types/aiImport';
 import { useAiImport } from '../hooks/useAiImport';
 
-export function AiImportDrawer({ opened, onClose, state, onApply }: { opened: boolean; onClose: () => void; state: TripState; onApply: (confirmed: ConfirmedAiDraft) => void }) {
+export function AiImportDrawer({ opened, planId, onClose, state, onApply }: { opened: boolean; planId: string | null; onClose: () => void; state: TripState; onApply: (confirmed: ConfirmedAiDraft) => void }) {
   const { draft, setDraft, loading, error, createDraft, cancel, reset } = useAiImport();
   const [sourceType, setSourceType] = useState<'text' | 'url'>('text');
   const [content, setContent] = useState('');
@@ -13,9 +13,10 @@ export function AiImportDrawer({ opened, onClose, state, onApply }: { opened: bo
   const [mergeMode, setMergeMode] = useState<'new-days' | 'unscheduled'>('new-days');
   const [requestedDays, setRequestedDays] = useState<number | undefined>();
   const request = useMemo<AiImportRequest>(() => ({
+    planId: planId ?? '',
     source: sourceType === 'text' ? { type: 'text', content } : { type: 'url', url: content }, preferences: { pace, mergeMode, requestedDays },
     existingTrip: { tripName: state.tripName, startDate: state.startDate, places: state.places.map(({ id, name, region, latitude, longitude }) => ({ id, name, region, latitude, longitude })) },
-  }), [content, mergeMode, pace, requestedDays, sourceType, state]);
+  }), [content, mergeMode, pace, planId, requestedDays, sourceType, state]);
 
   function close() { reset(); onClose(); }
   function setIncluded(tempId: string, included: boolean) {
@@ -40,10 +41,11 @@ export function AiImportDrawer({ opened, onClose, state, onApply }: { opened: bo
       <Radio.Group label="Add imported places" value={mergeMode} onChange={(value) => setMergeMode(value as typeof mergeMode)}>
         <Group mt="xs"><Radio value="new-days" label="As new days" /><Radio value="unscheduled" label="Unscheduled" /></Group>
       </Radio.Group>
+      {!planId ? <Alert color="orange">Select a cloud trip plan before importing.</Alert> : null}
       {error ? <Alert color="red">{error}</Alert> : null}
       {loading ? <Alert color="blue">Creating a draft. You can cancel safely; your trip will not change.</Alert> : null}
       <Group grow>
-        <Button leftSection={<IconSparkles size={17} />} loading={loading} disabled={loading || (sourceType === 'text' ? content.trim().length < 30 : !/^https?:\/\//i.test(content.trim()))} onClick={() => void createDraft(request)}>Create draft</Button>
+        <Button leftSection={<IconSparkles size={17} />} loading={loading} disabled={!planId || loading || (sourceType === 'text' ? content.trim().length < 30 : !/^https?:\/\//i.test(content.trim()))} onClick={() => void createDraft(request)}>Create draft</Button>
         {loading ? <Button variant="default" onClick={cancel}>Cancel</Button> : null}
       </Group>
     </Stack> : <Stack>

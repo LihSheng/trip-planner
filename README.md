@@ -1,4 +1,4 @@
-# Taiwan Trip Planner
+# Trip Planner
 
 A responsive trip-planning workspace built with React, TypeScript, Mantine, React Leaflet, dnd-kit, and Supabase.
 
@@ -6,7 +6,7 @@ A responsive trip-planning workspace built with React, TypeScript, Mantine, Reac
 
 ## Features
 
-- Map-first desktop workspace with a large interactive Taiwan map
+- Map-first desktop workspace with a large interactive map
 - All / Unscheduled / Day filters displayed directly over the map
 - Day-numbered and stop-numbered map pins
 - Route lines between ordered places for each itinerary day
@@ -14,8 +14,9 @@ A responsive trip-planning workspace built with React, TypeScript, Mantine, Reac
 - Searchable place library with categories and notes
 - Drag-and-drop scheduling across itinerary days
 - Today mode for current stop, next stop, navigation, and day timeline
-- Expense tracking with Taiwan-dollar totals and home-currency conversion
+- Expense tracking with trip totals and home-currency conversion
 - Editable trip name, start date, and day labels
+- Multiple cloud trip plans per user, with header-based switching and blank-plan creation
 - Add, edit, and remove places
 - Responsive Map / Places / Planner navigation
 - Passwordless email sign-in and email-based trip collaborators
@@ -74,20 +75,20 @@ Never add a Supabase secret key, service-role key, database password, or JWT sig
 
 ## Data and synchronization model
 
-Each authenticated user has one row in `public.trip_plans`. The complete `TripState` is stored as JSONB and automatically saved after edits.
+Each authenticated user can own many rows in `public.trip_plans`. Each row has a plan `id`, `owner_id`, read-only `share_token`, and complete `TripState` stored as JSONB. The currently selected plan is automatically saved after edits.
 
 On the first successful login:
 
-1. The app checks Supabase for an existing cloud trip.
-2. If none exists, it imports the previous `taiwan-trip-planner:v1` browser data when available.
-3. The imported trip is uploaded to Supabase and the old local trip record is removed.
-4. Other devices signed in with the same email load the cloud copy.
+1. The app checks Supabase for accessible cloud plans.
+2. It opens the `?plan=<id>` deep link, the last opened plan, or the most recently updated accessible plan.
+3. If no plan exists, it imports the previous `taiwan-trip-planner:v1` browser data when available; otherwise it creates a blank trip.
+4. The selected plan id is remembered per user in browser storage.
 
 The Supabase authentication session still uses browser storage so a device remains signed in, but the itinerary itself is stored in Supabase.
 
 ## Sharing a trip
 
-The owner selects **Share trip** in the header and enters a collaborator's email. The collaborator opens the app and uses the existing magic-link sign-in with that exact email; the database claims the pending invitation and grants editor access to the owner's trip. No password, shared account, or public edit link is used.
+The owner selects **Share trip** in the header and enters a collaborator's email. The collaborator opens the app and uses the existing magic-link sign-in with that exact email; the database claims the pending invitation and grants editor access to that specific trip plan. No password, shared account, or public edit link is used.
 
 The same dialog also creates a **read-only share link**. Anyone with that URL can open the map, places, and planner without signing in, but cannot make changes. The link uses a random token and calls a dedicated Supabase function that only returns the trip JSON; it does not grant anonymous table access or write permission.
 

@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Place } from '../types';
 import { createInitialState } from '../data/seed';
-import { loadPublicTrip, loadTripState, saveTripState } from '../lib/tripRepository';
+import { createTripPlan, listTripPlans, loadPublicTrip, loadTripState, saveTripState } from '../lib/tripRepository';
 
 const authState = { accessToken: '', user: { id: 'demo', email: 'Demo mode' }, isDemo: true };
 
@@ -12,7 +12,8 @@ vi.mock('../lib/tripRepository', async () => {
   return {
     ...actual,
     acceptTripInvitations: vi.fn(),
-    loadSharedTripOwnerId: vi.fn(),
+    createTripPlan: vi.fn(),
+    listTripPlans: vi.fn(),
     loadPublicTrip: vi.fn(),
     loadTripState: vi.fn(),
     saveTripState: vi.fn(),
@@ -31,6 +32,8 @@ describe('useTripPlanner', () => {
     authState.user = { id: 'demo', email: 'Demo mode' };
     authState.isDemo = true;
     vi.mocked(loadPublicTrip).mockReset();
+    vi.mocked(createTripPlan).mockReset();
+    vi.mocked(listTripPlans).mockReset();
     vi.mocked(loadTripState).mockReset();
     vi.mocked(saveTripState).mockReset();
   });
@@ -133,16 +136,21 @@ describe('useTripPlanner', () => {
     expect(hook.result.current.state.days[0].placeIds).toEqual(['taipei-101', 'ximending']);
   });
 
-  it('hydrates an empty cloud trip, persists its initial state, and reports save failures', async () => {
+  it('creates the first cloud plan, selects it, and reports save failures', async () => {
     authState.accessToken = 'token';
     authState.user = { id: 'cloud-user', email: 'cloud@example.com' };
     authState.isDemo = false;
-    vi.mocked(loadTripState).mockResolvedValue(null);
+    vi.mocked(listTripPlans)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 'plan-1', ownerId: 'cloud-user', tripName: 'Untitled trip', startDate: '2026-01-01', updatedAt: '2026-01-01T00:00:00Z', isOwner: true }]);
+    vi.mocked(createTripPlan).mockResolvedValue('plan-1');
+    vi.mocked(loadTripState).mockResolvedValue(createInitialState());
     vi.mocked(saveTripState).mockResolvedValue(undefined);
 
     const hook = await planner();
-    expect(loadTripState).toHaveBeenCalledWith('token', 'cloud-user');
-    expect(saveTripState).toHaveBeenCalledWith('token', 'cloud-user', expect.objectContaining({ version: 1 }));
+    expect(createTripPlan).toHaveBeenCalledWith('token', 'cloud-user', expect.objectContaining({ version: 1 }));
+    expect(loadTripState).toHaveBeenCalledWith('token', 'plan-1');
+    expect(hook.result.current.planId).toBe('plan-1');
     expect(hook.result.current.syncStatus).toBe('saving');
 
     vi.mocked(saveTripState).mockRejectedValueOnce(new Error('Network unavailable'));

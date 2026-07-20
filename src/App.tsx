@@ -49,8 +49,8 @@ const TaiwanMap = lazy(() =>
   import('./components/TaiwanMap').then((module) => ({ default: module.TaiwanMap })),
 );
 
-export default function App({ shareToken }: { shareToken?: string }) {
-  const planner = useTripPlanner(shareToken);
+export default function App({ shareToken, requestedPlanId }: { shareToken?: string; requestedPlanId?: string }) {
+  const planner = useTripPlanner(shareToken, requestedPlanId);
   const { user, signOut } = useAuth();
   const { t } = useI18n();
   const mobileViews = [
@@ -87,6 +87,14 @@ export default function App({ shareToken }: { shareToken?: string }) {
     if (selectedId && planner.state.places.some((place) => place.id === selectedId)) return;
     setSelectedId(planner.state.places[0]?.id ?? null);
   }, [planner.isReady, planner.state.places, selectedId]);
+
+  useEffect(() => {
+    if (!planner.planId || planner.isReadOnly) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('plan') === planner.planId) return;
+    url.searchParams.set('plan', planner.planId);
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [planner.isReadOnly, planner.planId]);
 
   if (!planner.isReady) {
     return (
@@ -355,6 +363,8 @@ export default function App({ shareToken }: { shareToken?: string }) {
       <AppShell.Header>
         <AppHeader
           tripName={planner.state.tripName}
+          activePlanId={planner.planId}
+          plans={planner.plans}
           startDate={planner.state.startDate}
           placeCount={planner.state.places.filter((place) => place.type !== 'placeholder').length}
           dayCount={planner.state.days.length}
@@ -364,6 +374,8 @@ export default function App({ shareToken }: { shareToken?: string }) {
           accountEmail={user.email}
           readOnly={planner.isReadOnly}
           onAddPlace={openAddPlace}
+          onSwitchPlan={(planId) => void planner.switchPlan(planId)}
+          onCreatePlan={() => void planner.createPlan()}
           onOpenAiImport={() => setAiImportOpened(true)}
           onOpenSettings={() => setSettingsOpened(true)}
           canShare={planner.isOwner}
@@ -439,10 +451,11 @@ export default function App({ shareToken }: { shareToken?: string }) {
           )}
         </Container>
       </AppShell.Main>
-      <ShareTripModal opened={shareOpened} onClose={() => setShareOpened(false)} onPrepareCloudSignIn={planner.persistForCloudSignIn} />
+      <ShareTripModal opened={shareOpened} planId={planner.planId} onClose={() => setShareOpened(false)} onPrepareCloudSignIn={planner.persistForCloudSignIn} />
       <AiImportDrawer
         opened={aiImportOpened}
         onClose={() => setAiImportOpened(false)}
+        planId={planner.planId}
         state={planner.state}
         onApply={(draft) => {
           planner.applyAiDraft(draft);

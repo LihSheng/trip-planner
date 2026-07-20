@@ -4,9 +4,9 @@ import { IconCheck, IconCopy, IconInfoCircle, IconMail, IconTrash, IconUsers } f
 import { useAuth } from '../context/AuthContext';
 import { getOrCreateShareToken, inviteTripCollaborator, loadTripCollaborators, removeTripCollaborator, type TripCollaborator } from '../lib/tripRepository';
 
-interface ShareTripModalProps { opened: boolean; onClose: () => void; onPrepareCloudSignIn: () => void; }
+interface ShareTripModalProps { opened: boolean; planId: string | null; onClose: () => void; onPrepareCloudSignIn: () => void; }
 
-export function ShareTripModal({ opened, onClose, onPrepareCloudSignIn }: ShareTripModalProps) {
+export function ShareTripModal({ opened, planId, onClose, onPrepareCloudSignIn }: ShareTripModalProps) {
   const { accessToken, user, isDemo, requestMagicLink } = useAuth();
   const [email, setEmail] = useState('');
   const [members, setMembers] = useState<TripCollaborator[]>([]);
@@ -15,21 +15,21 @@ export function ShareTripModal({ opened, onClose, onPrepareCloudSignIn }: ShareT
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
-    if (isDemo) return;
+    if (isDemo || !planId) return;
     setLoading(true); setError(null);
-    try { setMembers(await loadTripCollaborators(accessToken, user.id)); }
+    try { setMembers(await loadTripCollaborators(accessToken, planId)); }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not load collaborators.'); }
     finally { setLoading(false); }
   }
   useEffect(() => {
-    if (!opened || isDemo) return;
+    if (!opened || isDemo || !planId) return;
     void refresh();
     setLoading(true);
-    getOrCreateShareToken(accessToken, user.id)
+    getOrCreateShareToken(accessToken, planId)
       .then((token) => setShareUrl(`${window.location.origin}${window.location.pathname}?share=${token}`))
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Could not create a share link.'))
       .finally(() => setLoading(false));
-  }, [opened, isDemo, accessToken, user.id]);
+  }, [opened, isDemo, accessToken, planId]);
 
   async function copyShareUrl() {
     try { await navigator.clipboard.writeText(shareUrl); }
@@ -39,14 +39,16 @@ export function ShareTripModal({ opened, onClose, onPrepareCloudSignIn }: ShareT
   async function invite() {
     const normalized = email.trim().toLowerCase();
     if (!normalized || !normalized.includes('@')) { setError('Enter a valid email address.'); return; }
+    if (!planId) { setError('No trip plan is selected.'); return; }
     setLoading(true); setError(null);
-    try { await inviteTripCollaborator(accessToken, user.id, normalized); setEmail(''); await refresh(); }
+    try { await inviteTripCollaborator(accessToken, planId, normalized); setEmail(''); await refresh(); }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not add collaborator.'); }
     finally { setLoading(false); }
   }
   async function remove(emailToRemove: string) {
+    if (!planId) { setError('No trip plan is selected.'); return; }
     setLoading(true); setError(null);
-    try { await removeTripCollaborator(accessToken, user.id, emailToRemove); await refresh(); }
+    try { await removeTripCollaborator(accessToken, planId, emailToRemove); await refresh(); }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not remove collaborator.'); }
     finally { setLoading(false); }
   }

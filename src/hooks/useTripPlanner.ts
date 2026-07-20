@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createInitialState } from '../data/seed';
+import { createBlankTripState, createInitialState } from '../data/seed';
 import { useAuth } from '../context/AuthContext';
 import type { ContainerId, CurrencyCode, DayExecutionState, PlaceholderKind, Place, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
-import { acceptTripInvitations, isTripState, loadPublicTrip, loadSharedTripOwnerId, loadTripState, saveTripState } from '../lib/tripRepository';
+import { acceptTripInvitations, createTripPlan, isTripState, listTripPlans, loadPublicTrip, loadTripState, saveTripState, type TripPlanSummary } from '../lib/tripRepository';
 import { movePlace } from '../utils/itinerary';
 import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
 import { markRouteStale, routeLegKey } from '../utils/routing';
@@ -43,21 +43,31 @@ function loadDemoState(): TripState | null {
   return loadStoredState(DEMO_STORAGE_KEY);
 }
 
-export function useTripPlanner(shareToken?: string) {
+function selectedPlanStorageKey(userId: string) {
+  return `trip-planner:selected-plan:${userId}`;
+}
+
+export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
   const { accessToken, user, isDemo } = useAuth();
   const [state, setState] = useState<TripState>(createInitialState);
   const [isReady, setIsReady] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [tripOwnerId, setTripOwnerId] = useState(user.id);
+  const [planId, setPlanId] = useState<string | null>(null);
+  const [plans, setPlans] = useState<TripPlanSummary[]>([]);
   const saveSequence = useRef(0);
+
+  const activePlan = useMemo(
+    () => plans.find((plan) => plan.id === planId),
+    [planId, plans],
+  );
 
   useEffect(() => {
     let active = true;
     setIsReady(false);
     setSyncStatus('loading');
     setSyncError(null);
-    setTripOwnerId(user.id);
+    setPlanId(null);
 
     async function hydrate() {
       try {
@@ -71,33 +81,38 @@ export function useTripPlanner(shareToken?: string) {
 
         if (isDemo) {
           setState(loadDemoState() ?? createInitialState());
+          setPlans([]);
           setSyncStatus('saved');
           return;
         }
 
         await acceptTripInvitations(accessToken);
-        const sharedOwnerId = await loadSharedTripOwnerId(accessToken, user.id);
-        if (sharedOwnerId) {
-          const sharedState = await loadTripState(accessToken, sharedOwnerId);
-          if (sharedState) {
-            setTripOwnerId(sharedOwnerId);
-            setState(sharedState);
-            if (active) setSyncStatus('saved');
-            return;
+        let remotePlans = await listTripPlans(accessToken, user.id);
+        if (!active) return;
+
+        if (!remotePlans.length) {
+          const initialState = loadDemoState() ?? loadLegacyState() ?? createBlankTripState();
+          const createdPlanId = await createTripPlan(accessToken, user.id, initialState);
+          if (!active) return;
+          remotePlans = await listTripPlans(accessToken, user.id);
+          if (!remotePlans.some((plan) => plan.id === createdPlanId)) {
+            remotePlans = [{ id: createdPlanId, ownerId: user.id, tripName: initialState.tripName, startDate: initialState.startDate, updatedAt: new Date().toISOString(), isOwner: true }, ...remotePlans];
           }
         }
 
-        const remoteState = await loadTripState(accessToken, user.id);
+        const storedPlanId = window.localStorage.getItem(selectedPlanStorageKey(user.id));
+        const selectedPlan =
+          remotePlans.find((plan) => plan.id === requestedPlanId) ??
+          remotePlans.find((plan) => plan.id === storedPlanId) ??
+          remotePlans[0];
+        const remoteState = await loadTripState(accessToken, selectedPlan.id);
         if (!active) return;
+        if (!remoteState) throw new Error('The selected trip plan is no longer available.');
 
-        if (remoteState) {
-          setState(remoteState);
-        } else {
-          const initialState = loadDemoState() ?? loadLegacyState() ?? createInitialState();
-          setState(initialState);
-          await saveTripState(accessToken, user.id, initialState);
-        }
-
+        setPlanId(selectedPlan.id);
+        setPlans(remotePlans);
+        setState(remoteState);
+        window.localStorage.setItem(selectedPlanStorageKey(user.id), selectedPlan.id);
         window.localStorage.removeItem(DEMO_STORAGE_KEY);
         window.localStorage.removeItem(LEGACY_STORAGE_KEY);
         if (active) setSyncStatus('saved');
@@ -115,10 +130,10 @@ export function useTripPlanner(shareToken?: string) {
     return () => {
       active = false;
     };
-  }, [accessToken, isDemo, shareToken, user.id]);
+  }, [accessToken, isDemo, requestedPlanId, shareToken, user.id]);
 
   useEffect(() => {
-    if (!isReady || shareToken) return;
+    if (!isReady || shareToken || !planId) return;
 
     const sequence = ++saveSequence.current;
     setSyncStatus('saving');
@@ -131,9 +146,10 @@ export function useTripPlanner(shareToken?: string) {
         return;
       }
 
-      saveTripState(accessToken, tripOwnerId, state)
+      saveTripState(accessToken, planId, state)
         .then(() => {
           if (saveSequence.current === sequence) setSyncStatus('saved');
+          setPlans((current) => current.map((plan) => plan.id === planId ? { ...plan, tripName: state.tripName, startDate: state.startDate, updatedAt: new Date().toISOString() } : plan));
         })
         .catch((reason: unknown) => {
           if (saveSequence.current !== sequence) return;
@@ -143,7 +159,7 @@ export function useTripPlanner(shareToken?: string) {
     }, SAVE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timeout);
-  }, [accessToken, isDemo, isReady, shareToken, state, tripOwnerId, user.id]);
+  }, [accessToken, isDemo, isReady, planId, shareToken, state, user.id]);
 
   const placesById = useMemo(
     () => new Map(state.places.map((place) => [place.id, place])),
@@ -422,29 +438,79 @@ export function useTripPlanner(shareToken?: string) {
   }, [isDemo, shareToken]);
 
   const reset = useCallback(() => { if (!shareToken) setState(createInitialState()); }, [shareToken]);
+  const switchPlan = useCallback(async (nextPlanId: string) => {
+    if (isDemo || shareToken || nextPlanId === planId) return;
+
+    setIsReady(false);
+    setSyncStatus('loading');
+    setSyncError(null);
+    try {
+      const nextState = await loadTripState(accessToken, nextPlanId);
+      if (!nextState) throw new Error('The selected trip plan is no longer available.');
+      setPlanId(nextPlanId);
+      setState(nextState);
+      window.localStorage.setItem(selectedPlanStorageKey(user.id), nextPlanId);
+      setSyncStatus('saved');
+    } catch (reason) {
+      setSyncStatus('error');
+      setSyncError(reason instanceof Error ? reason.message : 'Unable to load the selected trip.');
+    } finally {
+      setIsReady(true);
+    }
+  }, [accessToken, isDemo, planId, shareToken, user.id]);
+
+  const createPlan = useCallback(async () => {
+    if (isDemo || shareToken) return null;
+
+    const nextState = createBlankTripState();
+    setSyncStatus('saving');
+    setSyncError(null);
+    try {
+      const nextPlanId = await createTripPlan(accessToken, user.id, nextState);
+      let nextPlans = await listTripPlans(accessToken, user.id);
+      if (!nextPlans.some((plan) => plan.id === nextPlanId)) {
+        nextPlans = [{ id: nextPlanId, ownerId: user.id, tripName: nextState.tripName, startDate: nextState.startDate, updatedAt: new Date().toISOString(), isOwner: true }, ...nextPlans];
+      }
+      setPlans(nextPlans);
+      setPlanId(nextPlanId);
+      setState(nextState);
+      window.localStorage.setItem(selectedPlanStorageKey(user.id), nextPlanId);
+      setSyncStatus('saved');
+      return nextPlanId;
+    } catch (reason) {
+      setSyncStatus('error');
+      setSyncError(reason instanceof Error ? reason.message : 'Unable to create a trip plan.');
+      return null;
+    }
+  }, [accessToken, isDemo, shareToken, user.id]);
+
   const syncNow = useCallback(async () => {
-    if (isDemo || shareToken) return;
+    if (isDemo || shareToken || !planId) return;
 
     setSyncStatus('saving');
     setSyncError(null);
     try {
-      await saveTripState(accessToken, tripOwnerId, state);
+      await saveTripState(accessToken, planId, state);
       setSyncStatus('saved');
+      setPlans((current) => current.map((plan) => plan.id === planId ? { ...plan, tripName: state.tripName, startDate: state.startDate, updatedAt: new Date().toISOString() } : plan));
     } catch (reason) {
       setSyncStatus('error');
       setSyncError(reason instanceof Error ? reason.message : 'Unable to save the trip.');
     }
-  }, [accessToken, isDemo, shareToken, state, tripOwnerId]);
+  }, [accessToken, isDemo, planId, shareToken, state]);
   const persistForCloudSignIn = useCallback(() => {
     if (isDemo) window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(state));
   }, [isDemo, state]);
 
   return {
     state,
+    planId,
+    plans,
+    activePlan,
     isReady,
     syncStatus,
     syncError,
-    isOwner: !shareToken && (isDemo || tripOwnerId === user.id),
+    isOwner: !shareToken && (isDemo || activePlan?.isOwner === true),
     isReadOnly: Boolean(shareToken),
     placesById,
     addPlace,
@@ -468,6 +534,8 @@ export function useTripPlanner(shareToken?: string) {
     updateLegMode,
     applyAiDraft,
     reset,
+    switchPlan,
+    createPlan,
     syncNow,
     persistForCloudSignIn,
   };

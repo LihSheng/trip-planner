@@ -17,6 +17,7 @@ import {
   IconCloudOff,
   IconCloudUpload,
   IconCopy,
+  IconChevronDown,
   IconDownload,
   IconFileSpreadsheet,
   IconFileText,
@@ -30,12 +31,14 @@ import {
   IconUsers,
 } from '@tabler/icons-react';
 import { useAuth } from '../context/AuthContext';
-import { loadTripState } from '../lib/tripRepository';
+import { loadTripState, type TripPlanSummary } from '../lib/tripRepository';
 import { exportTripExcel, exportTripMarkdown } from '../utils/exportTrip';
 import { LanguageToggle, useI18n } from '../i18n';
 
 interface AppHeaderProps {
   tripName: string;
+  activePlanId: string | null;
+  plans: TripPlanSummary[];
   startDate: string;
   placeCount: number;
   dayCount: number;
@@ -45,6 +48,8 @@ interface AppHeaderProps {
   accountEmail?: string;
   readOnly?: boolean;
   onAddPlace: () => void;
+  onSwitchPlan: (planId: string) => void;
+  onCreatePlan: () => void;
   onOpenAiImport: () => void;
   onOpenSettings: () => void;
   canShare: boolean;
@@ -57,6 +62,8 @@ interface AppHeaderProps {
 
 export function AppHeader({
   tripName,
+  activePlanId,
+  plans,
   startDate,
   placeCount,
   dayCount,
@@ -66,6 +73,8 @@ export function AppHeader({
   accountEmail,
   readOnly = false,
   onAddPlace,
+  onSwitchPlan,
+  onCreatePlan,
   onOpenAiImport,
   onOpenSettings,
   canShare,
@@ -79,12 +88,13 @@ export function AppHeader({
   const { t } = useI18n();
   const [exporting, setExporting] = useState<'excel' | 'markdown' | null>(null);
   const syncFailed = syncStatus === 'error';
-  const cloudExportReady = !isDemo && syncStatus === 'saved' && !exporting;
+  const cloudExportReady = !isDemo && Boolean(activePlanId) && syncStatus === 'saved' && !exporting;
 
   async function exportCloudTrip(format: 'excel' | 'markdown') {
+    if (!activePlanId) return;
     setExporting(format);
     try {
-      const state = await loadTripState(accessToken, user.id);
+      const state = await loadTripState(accessToken, activePlanId);
       if (!state) throw new Error(t('noSynchronizedTrip'));
       if (format === 'excel') exportTripExcel(state);
       else exportTripMarkdown(state);
@@ -104,6 +114,9 @@ export function AppHeader({
     }
   }
 
+  const ownedPlans = plans.filter((plan) => plan.isOwner);
+  const sharedPlans = plans.filter((plan) => !plan.isOwner);
+
   return (
     <Box component="header" className="app-header">
       <Group justify="space-between" h="100%" wrap="nowrap">
@@ -111,14 +124,44 @@ export function AppHeader({
           <Avatar color="teal" variant="light" radius="md">
             <IconMap2 size={24} />
           </Avatar>
-          <Stack gap={0} className="app-header__title">
-            <Text fw={850} size="lg" lh={1.15} lineClamp={1}>
-              {tripName}
-            </Text>
-            <Text size="xs" c="dimmed" lineClamp={1}>
-              {t('startsSummary', { date: startDate, days: dayCount, places: placeCount })}
-            </Text>
-          </Stack>
+          <Menu position="bottom-start" withinPortal shadow="md" width={320} disabled={readOnly || isDemo}>
+            <Menu.Target>
+              <Button variant="subtle" color="gray" px="xs" rightSection={!readOnly && !isDemo ? <IconChevronDown size={16} /> : undefined} className="app-header__plan-button">
+                <Stack gap={0} className="app-header__title">
+                  <Text fw={850} size="lg" lh={1.15} lineClamp={1}>
+                    {tripName}
+                  </Text>
+                  <Text size="xs" c="dimmed" lineClamp={1}>
+                    {t('startsSummary', { date: startDate, days: dayCount, places: placeCount })}
+                  </Text>
+                </Stack>
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Label>My plans</Menu.Label>
+              {ownedPlans.map((plan) => (
+                <Menu.Item key={plan.id} disabled={plan.id === activePlanId} onClick={() => onSwitchPlan(plan.id)}>
+                  <Text size="sm" fw={plan.id === activePlanId ? 750 : 600} lineClamp={1}>{plan.tripName}</Text>
+                  <Text size="xs" c="dimmed" lineClamp={1}>Starts {plan.startDate}</Text>
+                </Menu.Item>
+              ))}
+              {!ownedPlans.length ? <Menu.Item disabled>No owned plans</Menu.Item> : null}
+              <Menu.Divider />
+              <Menu.Item leftSection={<IconPlus size={16} />} onClick={onCreatePlan}>
+                New blank plan
+              </Menu.Item>
+              {sharedPlans.length ? <>
+                <Menu.Divider />
+                <Menu.Label>Shared with me</Menu.Label>
+                {sharedPlans.map((plan) => (
+                  <Menu.Item key={plan.id} disabled={plan.id === activePlanId} onClick={() => onSwitchPlan(plan.id)}>
+                    <Text size="sm" fw={plan.id === activePlanId ? 750 : 600} lineClamp={1}>{plan.tripName}</Text>
+                    <Text size="xs" c="dimmed" lineClamp={1}>Starts {plan.startDate}</Text>
+                  </Menu.Item>
+                ))}
+              </> : null}
+            </Menu.Dropdown>
+          </Menu>
         </Group>
 
         <Group gap="xs" wrap="nowrap">

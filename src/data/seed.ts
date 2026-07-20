@@ -91,3 +91,16 @@ export const createInitialState = (): TripState => ({
     { id: 'day-5', label: 'Kaohsiung', placeIds: ['pier-2'] },
   ],
 });
+
+export const createBlankTripState = (startDate = new Date().toISOString().slice(0, 10)): TripState => ({
+  version: 1,
+  tripName: 'Untitled trip',
+  startDate,
+  displayCurrency: 'MYR',
+  places: [],
+  unscheduledIds: [],
+  visitedPlaceIds: [],
+  days: [
+    { id: `day-${crypto.randomUUID()}`, label: 'Day 1', placeIds: [] },
+  ],
+});

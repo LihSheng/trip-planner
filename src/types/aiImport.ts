@@ -50,6 +50,7 @@ export interface AiItineraryDraft {
 }
 
 export interface AiImportRequest {
+  planId: string;
   source: AiImportSource;
   preferences: { requestedDays?: number; pace: 'relaxed' | 'balanced' | 'packed'; travelMode?: TravelMode; mergeMode: 'new-days' | 'unscheduled' };
   existingTrip: Pick<TripState, 'tripName' | 'startDate'> & { places: Array<Pick<TripState['places'][number], 'id' | 'name' | 'region' | 'latitude' | 'longitude'>> };

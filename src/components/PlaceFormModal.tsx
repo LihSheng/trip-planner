@@ -185,7 +185,7 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
               {
                 placeId: properties.place_id,
                 label: properties.formatted ?? properties.name,
-                region: properties.city ?? properties.state ?? properties.country ?? 'Taiwan',
+                region: properties.city ?? properties.state ?? properties.country ?? '',
                 latitude: properties.lat,
                 longitude: properties.lon,
                 category: categoryFromGeoapifyTypes(properties.categories),

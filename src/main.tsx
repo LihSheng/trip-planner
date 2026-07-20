@@ -35,6 +35,7 @@ const theme = createTheme({
 });
 
 const shareToken = new URLSearchParams(window.location.search).get('share') ?? undefined;
+const planId = shareToken ? undefined : new URLSearchParams(window.location.search).get('plan') ?? undefined;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -44,7 +45,7 @@ createRoot(document.getElementById('root')!).render(
         {shareToken ? (
           <ReadOnlyAuthProvider><App shareToken={shareToken} /></ReadOnlyAuthProvider>
         ) : (
-          <AuthGate><App /></AuthGate>
+          <AuthGate><App requestedPlanId={planId} /></AuthGate>
         )}
       </I18nProvider>
     </MantineProvider>
