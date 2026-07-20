@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { extractPublicUrl, SourceError } from '../_shared/sourceExtractor.ts';
+import { extractPublicUrl, SourceError } from './_shared/sourceExtractor.ts';
 
 const allowedCategories = new Set(['Landmark', 'Food', 'Nature', 'Culture', 'Shopping', 'Relaxation']);
 const allowedTypes = new Set(['place', 'hotel', 'airport', 'station', 'transit']);

@@ -437,14 +437,15 @@ The hook does not persist the trip.
 ```text
 supabase/functions/
 ├── ai-itinerary-import/
-│   └── index.ts
+│   ├── index.ts
+│   └── _shared/
+│       └── sourceExtractor.ts
 └── _shared/
     ├── aiImportSchemas.ts
     ├── auth.ts
     ├── geoapify.ts
     ├── openCodeGo.ts
     ├── rateLimit.ts
-    ├── sourceExtractor.ts
     └── urlSecurity.ts
 ```
 
