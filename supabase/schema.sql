@@ -94,6 +94,44 @@ create unique index if not exists trip_collaborators_trip_plan_member_key on pub
 alter table public.trip_collaborators drop column if exists trip_owner_id cascade;
 alter table public.trip_plans drop column if exists user_id cascade;
 
+create or replace function public.can_access_trip_plan(requested_plan_id uuid, requested_owner_id uuid, require_editor boolean default false)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select (select auth.uid()) = requested_owner_id
+    or exists (
+      select 1
+      from public.trip_collaborators
+      where trip_plan_id = requested_plan_id
+        and member_id = (select auth.uid())
+        and (not require_editor or role = 'editor')
+    );
+$$;
+
+revoke all on function public.can_access_trip_plan(uuid, uuid, boolean) from public;
+grant execute on function public.can_access_trip_plan(uuid, uuid, boolean) to authenticated;
+
+create or replace function public.owns_trip_plan(requested_plan_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.trip_plans
+    where id = requested_plan_id
+      and owner_id = (select auth.uid())
+  );
+$$;
+
+revoke all on function public.owns_trip_plan(uuid) from public;
+grant execute on function public.owns_trip_plan(uuid) to authenticated;
+
 alter table public.trip_collaborators enable row level security;
 revoke all on table public.trip_collaborators from anon;
 grant select, insert, update, delete on table public.trip_collaborators to authenticated;
@@ -101,8 +139,8 @@ grant select, insert, update, delete on table public.trip_collaborators to authe
 drop policy if exists "Owners manage trip collaborators" on public.trip_collaborators;
 create policy "Owners manage trip collaborators"
 on public.trip_collaborators for all to authenticated
-using (exists (select 1 from public.trip_plans where trip_plans.id = trip_collaborators.trip_plan_id and trip_plans.owner_id = (select auth.uid())))
-with check (exists (select 1 from public.trip_plans where trip_plans.id = trip_collaborators.trip_plan_id and trip_plans.owner_id = (select auth.uid())));
+using (public.owns_trip_plan(trip_plan_id))
+with check (public.owns_trip_plan(trip_plan_id));
 
 drop policy if exists "Collaborators view their memberships" on public.trip_collaborators;
 create policy "Collaborators view their memberships"
@@ -116,14 +154,8 @@ grant select, insert, update, delete on table public.trip_plans to authenticated
 drop policy if exists "Users manage their own trip" on public.trip_plans;
 create policy "Users manage their own trip"
 on public.trip_plans for all to authenticated
-using (
-  (select auth.uid()) = owner_id
-  or exists (select 1 from public.trip_collaborators where trip_plan_id = trip_plans.id and member_id = (select auth.uid()))
-)
-with check (
-  (select auth.uid()) = owner_id
-  or exists (select 1 from public.trip_collaborators where trip_plan_id = trip_plans.id and member_id = (select auth.uid()) and role = 'editor')
-);
+using (public.can_access_trip_plan(id, owner_id, false))
+with check (public.can_access_trip_plan(id, owner_id, true));
 
 -- Called after magic-link sign-in. The email comparison happens in the database,
 -- so an invite cannot be claimed by another signed-in account.
