@@ -453,12 +453,16 @@ supabase/functions/
 ```text
 OPENCODE_GO_API_KEY=<secret>
 OPENCODE_GO_MODEL=deepseek-v4-flash
+NVIDIA_NIM_API_KEY=<secret>
+NVIDIA_NIM_MODEL=meta/llama-3.1-8b-instruct
 GEOAPIFY_API_KEY=<secret>
 AI_IMPORT_DAILY_LIMIT=20
 AI_IMPORT_MAX_TEXT_LENGTH=30000
 ```
 
 These values are deployed through Supabase secrets and are not exposed as Vite variables.
+NVIDIA NIM is an optional fallback. It is attempted only when the OpenCode Go
+request fails or times out.
 
 ## 9.3 Request contract
 
