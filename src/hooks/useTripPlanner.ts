@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createInitialState } from '../data/seed';
 import { useAuth } from '../context/AuthContext';
-import type { ContainerId, DayExecutionState, PlaceholderKind, Place, StopExecutionStatus, StopSchedule, TripState, TravelMode } from '../types';
+import type { ContainerId, CurrencyCode, DayExecutionState, PlaceholderKind, Place, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
 import { acceptTripInvitations, isTripState, loadPublicTrip, loadSharedTripOwnerId, loadTripState, saveTripState } from '../lib/tripRepository';
 import { movePlace } from '../utils/itinerary';
 import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
@@ -23,6 +23,8 @@ function loadStoredState(key: string): TripState | null {
           ...parsed,
           visitedPlaceIds: parsed.visitedPlaceIds ?? [],
           executionByDay: parsed.executionByDay ?? {},
+          expenses: parsed.expenses ?? [],
+          displayCurrency: parsed.displayCurrency ?? 'MYR',
       days: parsed.days.map((day) => ({ ...day, travelMode: day.travelMode ?? 'public', stopSchedules: day.stopSchedules ?? {}, timeManagementEnabled: day.timeManagementEnabled ?? false, legModeOverrides: day.legModeOverrides ?? {} })),
         }
       : null;
@@ -379,6 +381,11 @@ export function useTripPlanner(shareToken?: string) {
     });
   }, [shareToken]);
 
+  const addExpense = useCallback((expense: TripExpense) => {
+    if (shareToken) return;
+    setState((current) => ({ ...current, expenses: [...(current.expenses ?? []), expense] }));
+  }, [shareToken]);
+
   const move = useCallback(
     (placeId: string, destinationId: ContainerId, destinationIndex: number) => {
       if (shareToken) return;
@@ -391,9 +398,9 @@ export function useTripPlanner(shareToken?: string) {
     [],
   );
 
-  const updateTrip = useCallback((tripName: string, startDate: string) => {
+  const updateTrip = useCallback((tripName: string, startDate: string, displayCurrency?: CurrencyCode) => {
     if (shareToken) return;
-    setState((current) => ({ ...current, tripName, startDate, days: current.days.map(markRouteStale) }));
+    setState((current) => ({ ...current, tripName, startDate, displayCurrency: displayCurrency ?? current.displayCurrency ?? 'MYR', days: current.days.map(markRouteStale) }));
   }, []);
 
   const updateLegMode = useCallback((dayId: string, fromPlaceId: string, toPlaceId: string, mode: TravelMode | 'default') => {
@@ -448,6 +455,7 @@ export function useTripPlanner(shareToken?: string) {
     reorderDays,
     toggleVisited,
     updateExecution,
+    addExpense,
     move,
     updateTrip,
     updateLegMode,

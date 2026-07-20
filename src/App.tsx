@@ -344,6 +344,7 @@ export default function App({ shareToken }: { shareToken?: string }) {
       readOnly={planner.isReadOnly}
       onUpdateExecution={planner.updateExecution}
       onUpdatePlace={planner.updatePlace}
+      onAddExpense={planner.addExpense}
     />
   );
 
@@ -471,6 +472,7 @@ export default function App({ shareToken }: { shareToken?: string }) {
         opened={settingsOpened}
         tripName={planner.state.tripName}
         startDate={planner.state.startDate}
+        displayCurrency={planner.state.displayCurrency ?? 'MYR'}
         onClose={() => setSettingsOpened(false)}
         onSubmit={planner.updateTrip}
       />

@@ -58,6 +58,8 @@ function normalizeTripState(state: TripState): TripState {
       legModeOverrides: day.legModeOverrides ?? {},
     })),
     executionByDay: state.executionByDay ?? {},
+    expenses: Array.isArray(state.expenses) ? state.expenses : [],
+    displayCurrency: state.displayCurrency ?? 'MYR',
   };
 }
 

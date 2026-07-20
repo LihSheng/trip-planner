@@ -79,6 +79,7 @@ export const createInitialState = (): TripState => ({
   version: 1,
   tripName: 'Taiwan Adventure',
   startDate: '2026-11-07',
+  displayCurrency: 'MYR',
   places: seedPlaces,
   unscheduledIds: ['alishan'],
   visitedPlaceIds: [],

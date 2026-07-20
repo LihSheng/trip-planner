@@ -89,6 +89,19 @@ export interface DayExecutionState {
   updatedAt: string;
 }
 
+export type ExpenseCategory = 'food' | 'transport' | 'ticket' | 'shopping' | 'accommodation' | 'other';
+
+export interface TripExpense {
+  id: string;
+  dayId: string;
+  placeId?: string;
+  amount: number;
+  currency: 'TWD';
+  category: ExpenseCategory;
+  note?: string;
+  createdAt: string;
+}
+
 export interface TripState {
   version: 1;
   tripName: string;
@@ -99,6 +112,10 @@ export interface TripState {
   days: TripDay[];
   hotelPlaceId?: string;
   executionByDay?: Record<string, DayExecutionState>;
+  expenses?: TripExpense[];
+  displayCurrency?: CurrencyCode;
 }
+
+export type CurrencyCode = 'MYR' | 'SGD' | 'USD' | 'EUR' | 'JPY' | 'CNY' | 'AUD' | 'GBP';
 
 export type ContainerId = 'unscheduled' | string;

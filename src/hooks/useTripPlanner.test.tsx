@@ -107,4 +107,14 @@ describe('useTripPlanner', () => {
     expect(hook.result.current.state.unscheduledIds).not.toContain('alishan');
     expect(hook.result.current.state.places.some((place) => place.id === placeholderId)).toBe(false);
   });
+
+  it('records an expense without changing itinerary planning data', async () => {
+    const hook = await planner();
+    const dayId = hook.result.current.state.days[0].id;
+    await act(async () => hook.result.current.addExpense({
+      id: 'expense-1', dayId, placeId: 'taipei-101', amount: 350, currency: 'TWD', category: 'food', createdAt: '2026-11-07T10:00:00.000Z',
+    }));
+    expect(hook.result.current.state.expenses).toEqual([expect.objectContaining({ amount: 350, category: 'food', placeId: 'taipei-101' })]);
+    expect(hook.result.current.state.days[0].placeIds).toEqual(['taipei-101', 'ximending']);
+  });
 });

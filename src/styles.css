@@ -734,6 +734,19 @@ select {
 .today-quick-actions .mantine-Button-root { min-height: 52px; }
 .today-complete { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; padding: 18px 20px; color: var(--mantine-color-teal-8); }
 .today-empty { padding: 48px 24px; text-align: center; }
+.today-expense-summary { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: 2px 14px; align-items: center; margin-top: 18px; padding: 17px 20px; border: 1px solid rgba(23, 48, 44, .09); box-shadow: 0 8px 22px rgba(23, 48, 44, .05); }
+.today-expense-summary span { display: flex; align-items: center; gap: 8px; color: var(--mantine-color-teal-8); }
+.today-expense-summary > .mantine-Text-root:nth-child(2) { white-space: nowrap; }
+.today-expense-summary__conversion,
+.today-expense-summary__attribution { grid-column: 1 / -1; }
+.today-expense-summary__conversion { color: var(--mantine-color-gray-6); }
+.today-expense-summary > small { grid-column: 1 / -1; }
+.expense-sheet { border-radius: 22px 22px 0 0; }
+.expense-sheet__header { padding-top: 16px; }
+.expense-sheet__amount input { height: 66px; font-size: 2rem; font-weight: 800; text-align: center; }
+.expense-sheet__categories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.expense-sheet__categories .mantine-Button-root { min-height: 48px; }
+.expense-sheet__context { padding: 13px 14px; border-radius: 12px; background: var(--mantine-color-teal-0); }
 
 .modal-actions {
   display: flex;

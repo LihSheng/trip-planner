@@ -5,8 +5,10 @@ import {
   IconCalendar, IconCar, IconCheck, IconChevronDown, IconCircle, IconClock, IconDots,
   IconExternalLink, IconFileText, IconMapPin, IconPlayerSkipForward, IconReceipt, IconRoute,
 } from '@tabler/icons-react';
-import type { DayExecutionState, Place, StopExecutionStatus, TripDay, TripState } from '../types';
+import type { DayExecutionState, Place, StopExecutionStatus, TripDay, TripExpense, TripState } from '../types';
 import { addDays } from '../utils/date';
+import { ExpenseSheet } from './ExpenseSheet';
+import { getTwdExchangeRate } from '../lib/exchangeRates';
 
 type Props = {
   state: TripState;
@@ -14,6 +16,7 @@ type Props = {
   readOnly: boolean;
   onUpdateExecution: (dayId: string, placeId: string, status: StopExecutionStatus) => void;
   onUpdatePlace: (place: Place) => void;
+  onAddExpense: (expense: TripExpense) => void;
 };
 
 const labels: Record<StopExecutionStatus, string> = {
@@ -48,11 +51,13 @@ function timeRange(day: TripDay, placeId: string) {
   return `${schedule.startTime}–${end.toTimeString().slice(0, 5)}`;
 }
 
-export function TodayModePage({ state, placesById, readOnly, onUpdateExecution, onUpdatePlace }: Props) {
+export function TodayModePage({ state, placesById, readOnly, onUpdateExecution, onUpdatePlace, onAddExpense }: Props) {
   const sessionKey = `trip-planner:today-day:${state.tripName}`;
   const [activeDayId, setActiveDayId] = useState(() => sessionStorage.getItem(sessionKey) ?? '');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
+  const [expenseOpened, setExpenseOpened] = useState(false);
+  const [displayRate, setDisplayRate] = useState<number | null>(null);
 
   const activeDay = useMemo(() => {
     const selected = state.days.find((day) => day.id === activeDayId);
@@ -80,10 +85,20 @@ export function TodayModePage({ state, placesById, readOnly, onUpdateExecution, 
   const next = stops.find((place) => place.id !== current?.id && placeStatus(activeDay, execution, place.id) === 'upcoming');
   const complete = stops.length > 0 && stops.every((place) => ['completed', 'skipped', 'rescheduled'].includes(placeStatus(activeDay, execution, place.id)));
   const detail = detailId ? placesById.get(detailId) : undefined;
+  const dayExpenses = (state.expenses ?? []).filter((expense) => expense.dayId === activeDay.id);
+  const dayTotal = dayExpenses.reduce((total, expense) => total + expense.amount, 0);
 
   useEffect(() => {
     setNoteDraft(detail?.notes ?? '');
   }, [detail?.id, detail?.notes]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getTwdExchangeRate(state.displayCurrency ?? 'MYR')
+      .then((rate) => { if (!cancelled) setDisplayRate(rate); })
+      .catch(() => { if (!cancelled) setDisplayRate(null); });
+    return () => { cancelled = true; };
+  }, [state.displayCurrency]);
 
   function update(placeId: string, status: StopExecutionStatus) {
     onUpdateExecution(activeDay.id, placeId, status);
@@ -112,11 +127,12 @@ export function TodayModePage({ state, placesById, readOnly, onUpdateExecution, 
         </Stack>
       </Paper>
 
-      {!readOnly ? <Paper className="today-quick-actions" radius="xl"><Button variant="subtle" leftSection={<IconFileText size={19} />} onClick={() => setDetailId(current?.id ?? next?.id ?? null)} disabled={!current && !next}>Notes</Button><Button variant="subtle" leftSection={<IconReceipt size={19} />} onClick={() => notifications.show({ title: 'Expense', message: 'Expense entry is ready for the next release.' })}>Expense</Button><Button variant="subtle" leftSection={<IconPlayerSkipForward size={19} />} onClick={() => current && update(current.id, 'skipped')}>Skip</Button></Paper> : null}
+      {!readOnly ? <><Paper className="today-quick-actions" radius="xl"><Button variant="subtle" leftSection={<IconFileText size={19} />} onClick={() => setDetailId(current?.id ?? next?.id ?? null)} disabled={!current && !next}>Notes</Button><Button variant="subtle" leftSection={<IconReceipt size={19} />} onClick={() => setExpenseOpened(true)}>Expense</Button><Button variant="subtle" leftSection={<IconPlayerSkipForward size={19} />} onClick={() => current && update(current.id, 'skipped')}>Skip</Button></Paper><Paper className="today-expense-summary" radius="xl"><span><IconReceipt size={20} /><Text fw={750}>Today’s spending</Text></span><Text fw={800}>{dayTotal.toLocaleString('en-MY', { style: 'currency', currency: 'TWD', maximumFractionDigits: 2 })}</Text>{displayRate ? <Text size="sm" c="dimmed" className="today-expense-summary__conversion">≈ {(dayTotal * displayRate).toLocaleString('en-MY', { style: 'currency', currency: state.displayCurrency ?? 'MYR', maximumFractionDigits: 2 })} · Daily rate</Text> : null}{dayExpenses.length ? <Text size="sm" c="dimmed">{dayExpenses.length} {dayExpenses.length === 1 ? 'expense' : 'expenses'} recorded</Text> : null}<Text size="xs" c="dimmed" className="today-expense-summary__attribution">Rates by ExchangeRate-API</Text></Paper></> : null}
 
       <Modal opened={Boolean(detail)} onClose={() => setDetailId(null)} title={detail?.name} centered>
         {detail ? <Stack><Badge color="teal" variant="light">{labels[placeStatus(activeDay, execution, detail.id)]}</Badge>{readOnly ? <Text size="sm">{detail.notes || 'No notes added.'}</Text> : <><Textarea label="Notes" description="Add visit details, tips, or memories for this place." value={noteDraft} onChange={(event) => setNoteDraft(event.currentTarget.value)} minRows={4} autosize /><Button variant="light" color="teal" disabled={noteDraft === detail.notes} onClick={() => { onUpdatePlace({ ...detail, notes: noteDraft.trim() }); notifications.show({ color: 'teal', title: 'Notes saved', message: `Notes for ${detail.name} were updated.` }); }}>Save notes</Button></>}<Text size="sm" c="dimmed">{detail.region} · {timeRange(activeDay, detail.id)}</Text><Button component="a" href={mapsUrl(detail)} target="_blank" leftSection={<IconRoute size={18} />}>Open navigation</Button>{!readOnly ? <Button variant="light" color="teal" onClick={() => update(detail.id, 'current')}>Make current stop</Button> : null}</Stack> : null}
       </Modal>
+      {!readOnly ? <ExpenseSheet opened={expenseOpened} onClose={() => setExpenseOpened(false)} dayId={activeDay.id} dayLabel={`Day ${state.days.indexOf(activeDay) + 1}`} currentStop={current} onSave={(expense) => { onAddExpense(expense); notifications.show({ color: 'teal', title: 'Expense added', message: `${expense.currency} ${expense.amount.toLocaleString()} ${expense.category} expense added.` }); }} /> : null}
     </main>
   );
 }
