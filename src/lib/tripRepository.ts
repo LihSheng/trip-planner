@@ -57,6 +57,7 @@ function normalizeTripState(state: TripState): TripState {
       timeManagementEnabled: day.timeManagementEnabled ?? false,
       legModeOverrides: day.legModeOverrides ?? {},
     })),
+    executionByDay: state.executionByDay ?? {},
   };
 }
 

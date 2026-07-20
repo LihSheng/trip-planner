@@ -28,6 +28,7 @@ import {
   IconList,
   IconMap,
   IconMapPin,
+  IconSun,
 } from '@tabler/icons-react';
 import type { Place } from './types';
 import { useAuth } from './context/AuthContext';
@@ -39,6 +40,7 @@ import { PlaceLibrary } from './components/PlaceLibrary';
 import { PlannerBoard } from './components/PlannerBoard';
 import { TripSettingsModal } from './components/TripSettingsModal';
 import { ShareTripModal } from './components/ShareTripModal';
+import { TodayModePage } from './components/TodayModePage';
 import { formatTripPlainText } from './utils/exportTrip';
 import { useI18n } from './i18n';
 
@@ -51,6 +53,7 @@ export default function App({ shareToken }: { shareToken?: string }) {
   const { user, signOut } = useAuth();
   const { t } = useI18n();
   const mobileViews = [
+    { label: 'Today', value: 'today' },
     { label: t('map'), value: 'map' },
     { label: t('places'), value: 'places' },
     { label: t('planner'), value: 'planner' },
@@ -62,7 +65,7 @@ export default function App({ shareToken }: { shareToken?: string }) {
   const [desktopWorkspace, setDesktopWorkspace] = useState('map');
   const [mapPanelTab, setMapPanelTab] = useState<string | null>('details');
   const [mapPanelCollapsed, setMapPanelCollapsed] = useState(false);
-  const [mobileView, setMobileView] = useState('map');
+  const [mobileView, setMobileView] = useState('today');
   const [editingPlace, setEditingPlace] = useState<Place | undefined>();
   const [addPlaceDayId, setAddPlaceDayId] = useState<string | null>(null);
   const [replacePlaceholderId, setReplacePlaceholderId] = useState<string | null>(null);
@@ -332,6 +335,16 @@ export default function App({ shareToken }: { shareToken?: string }) {
     </Box>
   );
 
+  const todayPanel = (
+    <TodayModePage
+      state={planner.state}
+      placesById={planner.placesById}
+      readOnly={planner.isReadOnly}
+      onUpdateExecution={planner.updateExecution}
+      onUpdatePlace={planner.updatePlace}
+    />
+  );
+
   return (
     <AppShell header={{ height: 72 }} padding={0}>
       <AppShell.Header>
@@ -372,6 +385,15 @@ export default function App({ shareToken }: { shareToken?: string }) {
                   onChange={setDesktopWorkspace}
                   data={[
                     {
+                      value: 'today',
+                      label: (
+                        <Box className="workspace-tab-label">
+                          <IconSun size={15} />
+                          <span>Today</span>
+                        </Box>
+                      ),
+                    },
+                    {
                       value: 'map',
                       label: (
                         <Box className="workspace-tab-label">
@@ -392,10 +414,11 @@ export default function App({ shareToken }: { shareToken?: string }) {
                   ]}
                 />
               </Group>
-              {desktopWorkspace === 'map' ? mapWorkspace : plannerPanel}
+              {desktopWorkspace === 'map' ? mapWorkspace : desktopWorkspace === 'today' ? todayPanel : plannerPanel}
             </Stack>
           ) : (
             <Stack gap="md" className="mobile-workspace">
+              {mobileView === 'today' ? todayPanel : null}
               {mobileView === 'map' ? (
                 <Stack gap="sm">
                   {map}
@@ -417,7 +440,7 @@ export default function App({ shareToken }: { shareToken?: string }) {
           {mobileViews.map((item) => {
             const active = mobileView === item.value;
             const Icon =
-              item.value === 'map' ? IconMap : item.value === 'places' ? IconList : IconCalendarEvent;
+              item.value === 'today' ? IconSun : item.value === 'map' ? IconMap : item.value === 'places' ? IconList : IconCalendarEvent;
             return (
               <Button
                 key={item.value}

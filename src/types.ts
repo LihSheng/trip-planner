@@ -71,6 +71,24 @@ export interface TripDay {
   routeError?: string;
 }
 
+export type StopExecutionStatus = 'upcoming' | 'current' | 'completed' | 'skipped' | 'rescheduled';
+
+export interface StopExecutionState {
+  placeId: string;
+  status: StopExecutionStatus;
+  arrivedAt?: string;
+  completedAt?: string;
+  skippedAt?: string;
+}
+
+/** Execution data is intentionally separate from place and schedule planning fields. */
+export interface DayExecutionState {
+  dayId: string;
+  selectedAt: string;
+  stopStates: Record<string, StopExecutionState>;
+  updatedAt: string;
+}
+
 export interface TripState {
   version: 1;
   tripName: string;
@@ -80,6 +98,7 @@ export interface TripState {
   visitedPlaceIds: string[];
   days: TripDay[];
   hotelPlaceId?: string;
+  executionByDay?: Record<string, DayExecutionState>;
 }
 
 export type ContainerId = 'unscheduled' | string;

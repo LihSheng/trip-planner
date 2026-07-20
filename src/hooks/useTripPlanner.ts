@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createInitialState } from '../data/seed';
 import { useAuth } from '../context/AuthContext';
-import type { ContainerId, PlaceholderKind, Place, StopSchedule, TripState, TravelMode } from '../types';
+import type { ContainerId, DayExecutionState, PlaceholderKind, Place, StopExecutionStatus, StopSchedule, TripState, TravelMode } from '../types';
 import { acceptTripInvitations, isTripState, loadPublicTrip, loadSharedTripOwnerId, loadTripState, saveTripState } from '../lib/tripRepository';
 import { movePlace } from '../utils/itinerary';
 import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
@@ -22,6 +22,7 @@ function loadStoredState(key: string): TripState | null {
       ? {
           ...parsed,
           visitedPlaceIds: parsed.visitedPlaceIds ?? [],
+          executionByDay: parsed.executionByDay ?? {},
       days: parsed.days.map((day) => ({ ...day, travelMode: day.travelMode ?? 'public', stopSchedules: day.stopSchedules ?? {}, timeManagementEnabled: day.timeManagementEnabled ?? false, legModeOverrides: day.legModeOverrides ?? {} })),
         }
       : null;
@@ -345,6 +346,39 @@ export function useTripPlanner(shareToken?: string) {
     }));
   }, []);
 
+  const updateExecution = useCallback((dayId: string, placeId: string, status: StopExecutionStatus) => {
+    if (shareToken) return;
+    setState((current) => {
+      const day = current.days.find((item) => item.id === dayId);
+      if (!day || !day.placeIds.includes(placeId)) return current;
+      const now = new Date().toISOString();
+      const previous = current.executionByDay?.[dayId];
+      const stopStates = { ...(previous?.stopStates ?? {}) };
+      const currentState = stopStates[placeId] ?? { placeId, status: 'upcoming' as const };
+
+      if (status === 'current') {
+        Object.entries(stopStates).forEach(([id, item]) => {
+          if (id !== placeId && item.status === 'current') stopStates[id] = { ...item, status: 'upcoming' };
+        });
+      }
+      stopStates[placeId] = {
+        ...currentState,
+        status,
+        arrivedAt: status === 'current' ? now : currentState.arrivedAt,
+        completedAt: status === 'completed' ? now : currentState.completedAt,
+        skippedAt: status === 'skipped' ? now : currentState.skippedAt,
+      };
+
+      if (status === 'completed' || status === 'skipped') {
+        const nextId = day.placeIds.find((id) => id !== placeId && !['completed', 'skipped', 'rescheduled'].includes(stopStates[id]?.status ?? 'upcoming'));
+        if (nextId) stopStates[nextId] = { ...(stopStates[nextId] ?? { placeId: nextId }), status: 'current', arrivedAt: now };
+      }
+
+      const execution: DayExecutionState = { dayId, selectedAt: previous?.selectedAt ?? now, stopStates, updatedAt: now };
+      return { ...current, executionByDay: { ...current.executionByDay, [dayId]: execution } };
+    });
+  }, [shareToken]);
+
   const move = useCallback(
     (placeId: string, destinationId: ContainerId, destinationIndex: number) => {
       if (shareToken) return;
@@ -413,6 +447,7 @@ export function useTripPlanner(shareToken?: string) {
     removeDay,
     reorderDays,
     toggleVisited,
+    updateExecution,
     move,
     updateTrip,
     updateLegMode,
