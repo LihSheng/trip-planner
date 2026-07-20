@@ -1,5 +1,5 @@
 const MAX_BYTES = 1_000_000;
-const MAX_REDIRECTS = 3;
+const MAX_REDIRECTS = 8;
 
 export class SourceError extends Error {
   constructor(public readonly code: 'INVALID_SOURCE' | 'SOURCE_TOO_LARGE' | 'SOURCE_CONTENT_UNAVAILABLE', message: string) { super(message); }
@@ -76,11 +76,32 @@ function extractHtml(html: string) {
   return { title, content: decodeEntities(content) };
 }
 
+function googleMapsContent(url: URL, html: string) {
+  const title = decodeEntities(
+    (html.match(/<meta[^>]+(?:property|name)=["'](?:og:title|title)["'][^>]+content=["']([^"']+)/i)?.[1]
+      ?? html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]
+      ?? '')
+      .replace(/\s+-\s+Google Maps\s*$/i, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  );
+  const fromPath = url.pathname.match(/\/maps\/place\/([^/@?]+)/i)?.[1];
+  const fromQuery = ['q', 'query', 'destination', 'daddr'].map((key) => url.searchParams.get(key)).find(Boolean);
+  const name = (fromQuery ?? fromPath ? decodeURIComponent(fromQuery ?? fromPath ?? '').replace(/\+/g, ' ') : title).trim();
+  const coordinates = url.href.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/)?.slice(1, 3);
+  if (!name || /^google maps$/i.test(name)) return null;
+  return {
+    title: title || name,
+    content: `Google Maps location: ${name}${coordinates ? `\nCoordinates: ${coordinates[0]}, ${coordinates[1]}` : ''}\nThis is one saved place. Return it as a single itinerary candidate with dayLabel "Imported places".`,
+  };
+}
+
 export async function extractPublicUrl(value: string) {
   if (value.length > 2048) throw new SourceError('INVALID_SOURCE', 'This link is too long.');
   let url = await validateUrl(value);
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
-    const response = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(12_000), headers: { Accept: 'text/html,text/plain;q=0.9' } });
+    const response = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(12_000), headers: { Accept: 'text/html,text/plain;q=0.9', 'Accept-Language': 'en-US,en;q=0.8', 'User-Agent': 'Mozilla/5.0 (compatible; TripPlannerImport/1.0)' } });
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get('location');
       if (!location || redirects === MAX_REDIRECTS) throw new SourceError('SOURCE_CONTENT_UNAVAILABLE', 'This link redirects too many times. Paste the post text instead.');
@@ -92,11 +113,14 @@ export async function extractPublicUrl(value: string) {
     if (!type.includes('text/html') && !type.includes('text/plain')) throw new SourceError('SOURCE_CONTENT_UNAVAILABLE', 'This link is not a readable web page. Paste the post text instead.');
     if (/(noai|noindex|none)/i.test(response.headers.get('x-robots-tag') ?? '')) throw new SourceError('SOURCE_CONTENT_UNAVAILABLE', 'This page does not allow automated reading. Paste the post text instead.');
     const raw = await readLimited(response);
+    if (/(^|\.)google\.[a-z.]+$/i.test(url.hostname) && url.pathname.includes('/maps')) {
+      const mapSource = googleMapsContent(url, raw);
+      if (mapSource) return { ...mapSource, url: url.toString() };
+    }
     const extracted = type.includes('text/html') ? extractHtml(raw) : { title: '', content: raw.trim().slice(0, 30_000) };
     if (extracted.content.length < 30) throw new SourceError('SOURCE_CONTENT_UNAVAILABLE', 'We could not find useful travel content. Paste the post text instead.');
     return { ...extracted, url: url.toString() };
   }
   throw new SourceError('SOURCE_CONTENT_UNAVAILABLE', 'We could not read this page. Paste the post text instead.');
 }
-
 

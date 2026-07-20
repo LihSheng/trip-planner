@@ -2,6 +2,8 @@
 
 A responsive trip-planning workspace built with React, TypeScript, Mantine, React Leaflet, dnd-kit, and Supabase.
 
+![Taiwan Trip Planner map overview](docs/readme-assets/taiwan-trip-planner-map-overview.png)
+
 ## Features
 
 - Map-first desktop workspace with a large interactive Taiwan map
@@ -11,14 +13,34 @@ A responsive trip-planning workspace built with React, TypeScript, Mantine, Reac
 - One-click handoff of a selected day route to Google Maps
 - Searchable place library with categories and notes
 - Drag-and-drop scheduling across itinerary days
+- Today mode for current stop, next stop, navigation, and day timeline
+- Expense tracking with Taiwan-dollar totals and home-currency conversion
 - Editable trip name, start date, and day labels
 - Add, edit, and remove places
 - Responsive Map / Places / Planner navigation
 - Passwordless email sign-in and email-based trip collaborators
+- Read-only share links for public trip viewing without edit access
 - Supabase cloud persistence across laptop and mobile
 - Automatic migration of the existing browser `localStorage` trip
-- Cloud save status and exportable JSON backup
+- Cloud save status, plain-text copy, and exportable JSON backup
+- AI-assisted itinerary import from travel notes, public links, and Google Maps short links
 - GitHub Pages deployment workflow
+
+## Import with AI
+
+Select **Import with AI** in the header, then paste travel notes, a public itinerary link, or a Google Maps short link such as `https://maps.app.goo.gl/...`.
+
+- Google Maps links resolve the place name and coordinates directly, then create a reviewable scheduled card under **Imported places**.
+- Text and public itinerary links use the configured GPT-5.6/provider model to propose places, notes, timing hints, and day groupings.
+- The Supabase Edge Function authenticates the user, enforces quota, validates model JSON, and resolves locations with Geoapify.
+- Nothing is added until the traveller reviews and confirms the draft. Existing itinerary data is preserved.
+- The model never writes directly to the persisted trip; confirmed imports apply through the existing `TripState` update flow.
+
+The import Edge Function requires an authenticated account and the provider/Geoapify secrets described in [the AI import specification](docs/AI_ITINERARY_IMPORT_SPEC.md).
+
+## Hackathon screenshots
+
+The README hero image is stored in `docs/readme-assets/` so it stays lightweight and tracked. Full hackathon capture folders such as `docs/hackathon-screenshots/` and generated video output under `output/` are local artifacts and are ignored by git.
 
 ## Supabase setup
 

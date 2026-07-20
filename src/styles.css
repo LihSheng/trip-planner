@@ -216,7 +216,8 @@ select {
 
 .map-side-panel {
   position: absolute;
-  z-index: 720;
+  /* Keep map details above the map, but below application modals and their overlay. */
+  z-index: 100;
   top: 76px;
   right: 18px;
   bottom: 18px;
@@ -236,7 +237,7 @@ select {
 }
 
 .map-side-panel-restore {
-  z-index: 720;
+  z-index: 100;
   right: 18px;
   top: 18px;
   box-shadow: 0 8px 22px rgba(25, 48, 44, 0.18);

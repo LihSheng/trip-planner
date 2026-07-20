@@ -45,12 +45,18 @@ export function applyAiDraft(state: TripState, confirmed: ConfirmedAiDraft): Tri
   if (confirmed.preferences.mergeMode === 'unscheduled') {
     confirmed.draft.days.flatMap((day) => day.places).forEach(addUnscheduled);
   }
-  confirmed.draft.unscheduled.forEach(addUnscheduled);
+  // A one-place source (for example a Google Maps link) often has no natural
+  // itinerary day. Put it on an import day by default instead of silently
+  // leaving it in the unscheduled library.
+  const standaloneCandidates = confirmed.preferences.mergeMode === 'new-days'
+    ? confirmed.draft.unscheduled
+    : [];
+  if (confirmed.preferences.mergeMode === 'unscheduled') confirmed.draft.unscheduled.forEach(addUnscheduled);
 
   const days: TripDay[] = confirmed.preferences.mergeMode === 'new-days'
     ? [
       ...state.days,
-      ...confirmed.draft.days.map((draftDay) => {
+      ...[...confirmed.draft.days, ...(standaloneCandidates.length ? [{ tempId: 'standalone', label: 'Imported places', places: standaloneCandidates }] : [])].map((draftDay) => {
         const stopSchedules: NonNullable<TripDay['stopSchedules']> = {};
         const placeIds = draftDay.places.flatMap((candidate) => {
           const placeId = resolveCandidate(candidate);

@@ -25,4 +25,14 @@ describe('applyAiDraft', () => {
     draft.draft.days[0].places[0] = { ...draft.draft.days[0].places[0], resolution: 'not-found', latitude: undefined, longitude: undefined };
     expect(applyAiDraft(createInitialState(), draft).places).toHaveLength(8);
   });
+
+  it('schedules a reviewed standalone imported location on a new day', () => {
+    const draft = structuredClone(confirmed);
+    draft.draft.days = [];
+    draft.draft.unscheduled = [draft.draft.days[0]?.places[0] ?? confirmed.draft.days[0].places[0]];
+    const result = applyAiDraft(createInitialState(), draft);
+    expect(result.days).toHaveLength(createInitialState().days.length + 1);
+    expect(result.days.at(-1)?.placeIds).toEqual(['place-test-id']);
+    expect(result.unscheduledIds).not.toContain('place-test-id');
+  });
 });

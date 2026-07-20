@@ -32,7 +32,7 @@ export function AiImportDrawer({ opened, onClose, state, onApply }: { opened: bo
       <SegmentedControl value={sourceType} onChange={(value) => { setSourceType(value as typeof sourceType); setContent(''); }} data={[{ value: 'text', label: 'Paste text' }, { value: 'url', label: 'Paste link' }]} />
       {sourceType === 'text'
         ? <Textarea label="Travel content" minRows={10} maxLength={30000} value={content} onChange={(event) => setContent(event.currentTarget.value)} placeholder="Day 1: Visit Taipei 101 at 10:00, then lunch at Din Tai Fung…" />
-        : <TextInput label="Public link" maxLength={2048} value={content} onChange={(event) => setContent(event.currentTarget.value)} placeholder="https://example.com/travel-itinerary" />}
+        : <TextInput label="Public link" description="Google Maps short links (maps.app.goo.gl) are supported." maxLength={2048} value={content} onChange={(event) => setContent(event.currentTarget.value)} placeholder="https://maps.app.goo.gl/..." />}
       <Group grow>
         <Select label="Pace" value={pace} onChange={(value) => setPace((value ?? 'balanced') as typeof pace)} data={['relaxed', 'balanced', 'packed']} />
         <NumberInput label="Days (optional)" min={1} max={14} value={requestedDays ?? ''} onChange={(value) => setRequestedDays(typeof value === 'number' ? value : undefined)} />
