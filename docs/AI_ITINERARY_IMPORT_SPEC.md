@@ -454,7 +454,7 @@ supabase/functions/
 OPENCODE_GO_API_KEY=<secret>
 OPENCODE_GO_MODEL=deepseek-v4-flash
 NVIDIA_NIM_API_KEY=<secret>
-NVIDIA_NIM_MODEL=meta/llama-3.3-70b-instruct
+NVIDIA_NIM_MODEL=deepseek-ai/deepseek-v4-flash
 GEOAPIFY_API_KEY=<secret>
 AI_IMPORT_DAILY_LIMIT=20
 AI_IMPORT_MAX_TEXT_LENGTH=30000
