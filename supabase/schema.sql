@@ -91,6 +91,9 @@ alter table public.trip_collaborators drop constraint if exists trip_collaborato
 alter table public.trip_collaborators add primary key (trip_plan_id, invite_email);
 create unique index if not exists trip_collaborators_trip_plan_member_key on public.trip_collaborators (trip_plan_id, member_id);
 
+alter table public.trip_collaborators drop column if exists trip_owner_id cascade;
+alter table public.trip_plans drop column if exists user_id cascade;
+
 alter table public.trip_collaborators enable row level security;
 revoke all on table public.trip_collaborators from anon;
 grant select, insert, update, delete on table public.trip_collaborators to authenticated;
