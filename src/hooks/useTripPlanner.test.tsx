@@ -1,6 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Place } from '../types';
+import { createInitialState } from '../data/seed';
+import { loadPublicTrip, loadTripState, saveTripState } from '../lib/tripRepository';
 
 const authState = { accessToken: '', user: { id: 'demo', email: 'Demo mode' }, isDemo: true };
 
@@ -11,6 +13,7 @@ vi.mock('../lib/tripRepository', async () => {
     ...actual,
     acceptTripInvitations: vi.fn(),
     loadSharedTripOwnerId: vi.fn(),
+    loadPublicTrip: vi.fn(),
     loadTripState: vi.fn(),
     saveTripState: vi.fn(),
   };
@@ -23,7 +26,19 @@ const hotel: Place = {
 };
 
 describe('useTripPlanner', () => {
-  afterEach(() => localStorage.clear());
+  beforeEach(() => {
+    authState.accessToken = '';
+    authState.user = { id: 'demo', email: 'Demo mode' };
+    authState.isDemo = true;
+    vi.mocked(loadPublicTrip).mockReset();
+    vi.mocked(loadTripState).mockReset();
+    vi.mocked(saveTripState).mockReset();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+    vi.clearAllTimers();
+  });
 
   async function planner() {
     const hook = renderHook(() => useTripPlanner());
@@ -116,5 +131,43 @@ describe('useTripPlanner', () => {
     }));
     expect(hook.result.current.state.expenses).toEqual([expect.objectContaining({ amount: 350, category: 'food', placeId: 'taipei-101' })]);
     expect(hook.result.current.state.days[0].placeIds).toEqual(['taipei-101', 'ximending']);
+  });
+
+  it('hydrates an empty cloud trip, persists its initial state, and reports save failures', async () => {
+    authState.accessToken = 'token';
+    authState.user = { id: 'cloud-user', email: 'cloud@example.com' };
+    authState.isDemo = false;
+    vi.mocked(loadTripState).mockResolvedValue(null);
+    vi.mocked(saveTripState).mockResolvedValue(undefined);
+
+    const hook = await planner();
+    expect(loadTripState).toHaveBeenCalledWith('token', 'cloud-user');
+    expect(saveTripState).toHaveBeenCalledWith('token', 'cloud-user', expect.objectContaining({ version: 1 }));
+    expect(hook.result.current.syncStatus).toBe('saving');
+
+    vi.mocked(saveTripState).mockRejectedValueOnce(new Error('Network unavailable'));
+    await act(async () => hook.result.current.syncNow());
+    expect(hook.result.current).toMatchObject({ syncStatus: 'error', syncError: 'Network unavailable' });
+  });
+
+  it('loads shared trips as read-only and prevents all planner mutations', async () => {
+    const sharedState = structuredClone(createInitialState());
+    vi.mocked(loadPublicTrip).mockResolvedValue(sharedState);
+
+    const hook = renderHook(() => useTripPlanner('shared-token'));
+    await waitFor(() => expect(hook.result.current.isReady).toBe(true));
+    const original = structuredClone(hook.result.current.state);
+
+    await act(async () => {
+      hook.result.current.addPlace(hotel);
+      hook.result.current.updateTrip('Changed', '2027-01-01');
+      hook.result.current.removePlace('taipei-101');
+      await hook.result.current.syncNow();
+    });
+
+    expect(loadPublicTrip).toHaveBeenCalledWith('shared-token');
+    expect(hook.result.current.isReadOnly).toBe(true);
+    expect(hook.result.current.state).toEqual(original);
+    expect(saveTripState).not.toHaveBeenCalled();
   });
 });
