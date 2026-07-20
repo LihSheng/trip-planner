@@ -393,11 +393,7 @@ These types are not persisted as part of `TripState`.
 `src/lib/aiImportRepository.ts` calls:
 
 ```text
-POST {VITE_SUPABASE_URL}/functions/v1/{VITE_AI_IMPORT_FUNCTION_NAME}
-
-The default deployed function name is `bright-handler`; set
-`VITE_AI_IMPORT_FUNCTION_NAME=ai-itinerary-import` if deploying it under the
-specification name instead.
+POST {VITE_SUPABASE_URL}/functions/v1/ai-itinerary-import
 ```
 
 Headers:
