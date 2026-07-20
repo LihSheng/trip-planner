@@ -6,6 +6,8 @@ import { acceptTripInvitations, isTripState, loadPublicTrip, loadSharedTripOwner
 import { movePlace } from '../utils/itinerary';
 import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
 import { markRouteStale, routeLegKey } from '../utils/routing';
+import { applyAiDraft as applyConfirmedAiDraft } from '../utils/applyAiDraft';
+import type { ConfirmedAiDraft } from '../types/aiImport';
 
 const LEGACY_STORAGE_KEY = 'taiwan-trip-planner:v1';
 const DEMO_STORAGE_KEY = 'taiwan-trip-planner:demo:v1';
@@ -414,6 +416,11 @@ export function useTripPlanner(shareToken?: string) {
     }));
   }, []);
 
+  const applyAiDraft = useCallback((draft: ConfirmedAiDraft) => {
+    if (shareToken || isDemo) return;
+    setState((current) => applyConfirmedAiDraft(current, draft));
+  }, [isDemo, shareToken]);
+
   const reset = useCallback(() => { if (!shareToken) setState(createInitialState()); }, [shareToken]);
   const syncNow = useCallback(async () => {
     if (isDemo || shareToken) return;
@@ -459,6 +466,7 @@ export function useTripPlanner(shareToken?: string) {
     move,
     updateTrip,
     updateLegMode,
+    applyAiDraft,
     reset,
     syncNow,
     persistForCloudSignIn,

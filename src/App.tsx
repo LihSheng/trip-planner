@@ -41,6 +41,7 @@ import { PlannerBoard } from './components/PlannerBoard';
 import { TripSettingsModal } from './components/TripSettingsModal';
 import { ShareTripModal } from './components/ShareTripModal';
 import { TodayModePage } from './components/TodayModePage';
+import { AiImportDrawer } from './components/AiImportDrawer';
 import { formatTripPlainText } from './utils/exportTrip';
 import { useI18n } from './i18n';
 
@@ -74,6 +75,7 @@ export default function App({ shareToken }: { shareToken?: string }) {
   const [shareOpened, setShareOpened] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Place | undefined>();
   const [dayDeleteTarget, setDayDeleteTarget] = useState<string | null>(null);
+  const [aiImportOpened, setAiImportOpened] = useState(false);
 
   const selectedPlace = useMemo(
     () => planner.state.places.find((place) => place.id === selectedId),
@@ -362,6 +364,7 @@ export default function App({ shareToken }: { shareToken?: string }) {
           accountEmail={user.email}
           readOnly={planner.isReadOnly}
           onAddPlace={openAddPlace}
+          onOpenAiImport={() => setAiImportOpened(true)}
           onOpenSettings={() => setSettingsOpened(true)}
           canShare={planner.isOwner}
           onOpenShare={() => setShareOpened(true)}
@@ -437,6 +440,17 @@ export default function App({ shareToken }: { shareToken?: string }) {
         </Container>
       </AppShell.Main>
       <ShareTripModal opened={shareOpened} onClose={() => setShareOpened(false)} onPrepareCloudSignIn={planner.persistForCloudSignIn} />
+      <AiImportDrawer
+        opened={aiImportOpened}
+        onClose={() => setAiImportOpened(false)}
+        state={planner.state}
+        onApply={(draft) => {
+          planner.applyAiDraft(draft);
+          setDesktopWorkspace('planner');
+          setMobileView('planner');
+          notifications.show({ color: 'teal', title: 'Import complete', message: 'Your reviewed places were added to the itinerary.' });
+        }}
+      />
 
       {!isDesktop ? (
         <Box component="nav" className="mobile-bottom-nav" aria-label={t('navigation')}>

@@ -26,6 +26,7 @@ import {
   IconPlus,
   IconRefresh,
   IconSettings,
+  IconSparkles,
   IconUsers,
 } from '@tabler/icons-react';
 import { useAuth } from '../context/AuthContext';
@@ -44,6 +45,7 @@ interface AppHeaderProps {
   accountEmail?: string;
   readOnly?: boolean;
   onAddPlace: () => void;
+  onOpenAiImport: () => void;
   onOpenSettings: () => void;
   canShare: boolean;
   onOpenShare: () => void;
@@ -64,6 +66,7 @@ export function AppHeader({
   accountEmail,
   readOnly = false,
   onAddPlace,
+  onOpenAiImport,
   onOpenSettings,
   canShare,
   onOpenShare,
@@ -151,6 +154,11 @@ export function AppHeader({
           >
             {t('addPlace')}
           </Button> : null}
+          {!readOnly ? <Tooltip label={isDemo ? 'Sign in to use AI import' : 'Import with AI'}>
+            <ActionIcon variant="light" color="violet" size="lg" disabled={isDemo} onClick={onOpenAiImport} aria-label="Import with AI">
+              <IconSparkles size={18} />
+            </ActionIcon>
+          </Tooltip> : null}
           {!readOnly ? <Tooltip label={t('addPlace')}>
             <ActionIcon color="teal" size="lg" hiddenFrom="sm" onClick={onAddPlace} aria-label={t('addPlace')}>
               <IconPlus size={18} />
