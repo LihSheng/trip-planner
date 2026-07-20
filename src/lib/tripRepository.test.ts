@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createInitialState } from '../data/seed';
 import {
   acceptTripInvitations,
   createTripPlan,
+  getOrCreateShareToken,
   inviteTripCollaborator,
   isTripState,
   listTripPlans,
@@ -19,6 +20,10 @@ describe('trip repository', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock);
     fetchMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('recognizes only supported trip state payloads', () => {
@@ -44,7 +49,10 @@ describe('trip repository', () => {
   it('creates, lists, saves trips, and translates repository failure responses', async () => {
     fetchMock
       .mockResolvedValueOnce(new Response(JSON.stringify([{ id: 'created-plan' }]), { status: 201 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: 'plan-1', owner_id: 'owner', state: createInitialState(), updated_at: '2026-01-01T00:00:00Z' }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([
+        { id: 'plan-1', owner_id: 'owner', state: createInitialState(), updated_at: '2026-01-01T00:00:00Z' },
+        { id: 'plan-2', owner_id: 'friend', state: { version: 2 }, updated_at: '2026-01-02T00:00:00Z' },
+      ]), { status: 200 }))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
 
     await expect(createTripPlan('token', 'owner', createInitialState())).resolves.toBe('created-plan');
@@ -57,6 +65,23 @@ describe('trip repository', () => {
 
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Denied' }), { status: 403 }));
     await expect(loadTripState('token', 'plan-1')).rejects.toThrow('Denied');
+  });
+
+  it('gets or creates read-only share tokens for one selected plan', async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ share_token: 'existing-token' }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ share_token: null }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ share_token: 'new-token' }]), { status: 200 }));
+    vi.stubGlobal('crypto', { randomUUID: () => 'new-token' });
+
+    await expect(getOrCreateShareToken('token', 'plan-1')).resolves.toBe('existing-token');
+    await expect(getOrCreateShareToken('token', 'plan-2')).resolves.toBe('new-token');
+
+    expect(fetchMock.mock.calls[0][0]).toContain('id=eq.plan-1');
+    expect(fetchMock.mock.calls[1][0]).toContain('id=eq.plan-2');
+    expect(fetchMock.mock.calls[2][0]).toContain('id=eq.plan-2');
+    expect(fetchMock.mock.calls[2][1].method).toBe('PATCH');
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body).share_token).toBe('new-token');
   });
 
   it('handles invitation, collaborator, and removal requests', async () => {

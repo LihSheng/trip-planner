@@ -26,6 +26,13 @@ const hotel: Place = {
   id: 'hotel', name: 'Hotel', region: 'Taipei', category: 'Relaxation', latitude: 25.04, longitude: 121.56, notes: '', type: 'hotel',
 };
 
+const planOneState = { ...createInitialState(), tripName: 'Taiwan Adventure' };
+const planTwoState = { ...createInitialState(), tripName: 'Japan Spring' };
+const cloudPlans = [
+  { id: 'plan-1', ownerId: 'cloud-user', tripName: 'Taiwan Adventure', startDate: '2026-11-07', updatedAt: '2026-01-01T00:00:00Z', isOwner: true },
+  { id: 'plan-2', ownerId: 'friend-user', tripName: 'Japan Spring', startDate: '2027-04-01', updatedAt: '2026-01-02T00:00:00Z', isOwner: false },
+];
+
 describe('useTripPlanner', () => {
   beforeEach(() => {
     authState.accessToken = '';
@@ -156,6 +163,57 @@ describe('useTripPlanner', () => {
     vi.mocked(saveTripState).mockRejectedValueOnce(new Error('Network unavailable'));
     await act(async () => hook.result.current.syncNow());
     expect(hook.result.current).toMatchObject({ syncStatus: 'error', syncError: 'Network unavailable' });
+  });
+
+  it('opens the requested plan id before stored or most-recent plans', async () => {
+    authState.accessToken = 'token';
+    authState.user = { id: 'cloud-user', email: 'cloud@example.com' };
+    authState.isDemo = false;
+    localStorage.setItem('trip-planner:selected-plan:cloud-user', 'plan-1');
+    vi.mocked(listTripPlans).mockResolvedValue(cloudPlans);
+    vi.mocked(loadTripState).mockResolvedValue(planTwoState);
+    vi.mocked(saveTripState).mockResolvedValue(undefined);
+
+    const hook = renderHook(() => useTripPlanner(undefined, 'plan-2'));
+    await waitFor(() => expect(hook.result.current.isReady).toBe(true));
+
+    expect(loadTripState).toHaveBeenCalledWith('token', 'plan-2');
+    expect(hook.result.current.planId).toBe('plan-2');
+    expect(hook.result.current.state.tripName).toBe('Japan Spring');
+    expect(hook.result.current.activePlan).toMatchObject({ id: 'plan-2', isOwner: false });
+    expect(hook.result.current.isOwner).toBe(false);
+    expect(localStorage.getItem('trip-planner:selected-plan:cloud-user')).toBe('plan-2');
+  });
+
+  it('switches plans and creates a blank plan even when the refreshed list lags', async () => {
+    authState.accessToken = 'token';
+    authState.user = { id: 'cloud-user', email: 'cloud@example.com' };
+    authState.isDemo = false;
+    vi.mocked(listTripPlans)
+      .mockResolvedValueOnce(cloudPlans)
+      .mockResolvedValueOnce(cloudPlans);
+    vi.mocked(loadTripState)
+      .mockResolvedValueOnce(planOneState)
+      .mockResolvedValueOnce(planTwoState);
+    vi.mocked(createTripPlan).mockResolvedValue('plan-3');
+    vi.mocked(saveTripState).mockResolvedValue(undefined);
+
+    const hook = await planner();
+    expect(hook.result.current.planId).toBe('plan-1');
+
+    await act(async () => hook.result.current.switchPlan('plan-2'));
+    expect(loadTripState).toHaveBeenLastCalledWith('token', 'plan-2');
+    expect(hook.result.current).toMatchObject({ planId: 'plan-2', isOwner: false });
+
+    await act(async () => {
+      await hook.result.current.createPlan();
+    });
+
+    expect(createTripPlan).toHaveBeenCalledWith('token', 'cloud-user', expect.objectContaining({ tripName: 'Untitled trip', places: [] }));
+    expect(hook.result.current.planId).toBe('plan-3');
+    expect(hook.result.current.state).toMatchObject({ tripName: 'Untitled trip', places: [] });
+    expect(hook.result.current.plans[0]).toMatchObject({ id: 'plan-3', isOwner: true });
+    expect(localStorage.getItem('trip-planner:selected-plan:cloud-user')).toBe('plan-3');
   });
 
   it('loads shared trips as read-only and prevents all planner mutations', async () => {
