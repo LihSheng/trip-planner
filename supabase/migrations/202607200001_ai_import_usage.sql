@@ -1,7 +1,7 @@
 create table if not exists public.ai_import_usage (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  source_type text not null check (source_type in ('text')),
+  source_type text not null check (source_type in ('text', 'url')),
   model text not null,
   status text not null check (status in ('started', 'completed', 'failed', 'rejected')),
   input_characters integer not null default 0,

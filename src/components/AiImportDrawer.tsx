@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, Badge, Button, Checkbox, Divider, Drawer, Group, NumberInput, Paper, Radio, Select, Stack, Text, Textarea, Title } from '@mantine/core';
+import { Alert, Badge, Button, Checkbox, Divider, Drawer, Group, NumberInput, Paper, Radio, SegmentedControl, Select, Stack, Text, Textarea, TextInput, Title } from '@mantine/core';
 import { IconSparkles } from '@tabler/icons-react';
 import type { TripState } from '../types';
 import type { AiImportRequest, AiItineraryDraft, ConfirmedAiDraft } from '../types/aiImport';
@@ -7,14 +7,15 @@ import { useAiImport } from '../hooks/useAiImport';
 
 export function AiImportDrawer({ opened, onClose, state, onApply }: { opened: boolean; onClose: () => void; state: TripState; onApply: (confirmed: ConfirmedAiDraft) => void }) {
   const { draft, setDraft, loading, error, createDraft, cancel, reset } = useAiImport();
+  const [sourceType, setSourceType] = useState<'text' | 'url'>('text');
   const [content, setContent] = useState('');
   const [pace, setPace] = useState<'relaxed' | 'balanced' | 'packed'>('balanced');
   const [mergeMode, setMergeMode] = useState<'new-days' | 'unscheduled'>('new-days');
   const [requestedDays, setRequestedDays] = useState<number | undefined>();
   const request = useMemo<AiImportRequest>(() => ({
-    source: { type: 'text', content }, preferences: { pace, mergeMode, requestedDays },
+    source: sourceType === 'text' ? { type: 'text', content } : { type: 'url', url: content }, preferences: { pace, mergeMode, requestedDays },
     existingTrip: { tripName: state.tripName, startDate: state.startDate, places: state.places.map(({ id, name, region, latitude, longitude }) => ({ id, name, region, latitude, longitude })) },
-  }), [content, mergeMode, pace, requestedDays, state]);
+  }), [content, mergeMode, pace, requestedDays, sourceType, state]);
 
   function close() { reset(); onClose(); }
   function setIncluded(tempId: string, included: boolean) {
@@ -28,7 +29,10 @@ export function AiImportDrawer({ opened, onClose, state, onApply }: { opened: bo
   return <Drawer opened={opened} onClose={close} title={<Group gap="xs"><IconSparkles size={18} /><Text fw={700}>Import with AI</Text></Group>} position="right" size="lg">
     {!draft ? <Stack>
       <Text size="sm" c="dimmed">Paste an itinerary, article, chat message, or notes. AI creates a draft; nothing changes until you approve it.</Text>
-      <Textarea label="Travel content" minRows={10} maxLength={30000} value={content} onChange={(event) => setContent(event.currentTarget.value)} placeholder="Day 1: Visit Taipei 101 at 10:00, then lunch at Din Tai Fung…" />
+      <SegmentedControl value={sourceType} onChange={(value) => { setSourceType(value as typeof sourceType); setContent(''); }} data={[{ value: 'text', label: 'Paste text' }, { value: 'url', label: 'Paste link' }]} />
+      {sourceType === 'text'
+        ? <Textarea label="Travel content" minRows={10} maxLength={30000} value={content} onChange={(event) => setContent(event.currentTarget.value)} placeholder="Day 1: Visit Taipei 101 at 10:00, then lunch at Din Tai Fung…" />
+        : <TextInput label="Public link" maxLength={2048} value={content} onChange={(event) => setContent(event.currentTarget.value)} placeholder="https://example.com/travel-itinerary" />}
       <Group grow>
         <Select label="Pace" value={pace} onChange={(value) => setPace((value ?? 'balanced') as typeof pace)} data={['relaxed', 'balanced', 'packed']} />
         <NumberInput label="Days (optional)" min={1} max={14} value={requestedDays ?? ''} onChange={(value) => setRequestedDays(typeof value === 'number' ? value : undefined)} />
@@ -39,11 +43,12 @@ export function AiImportDrawer({ opened, onClose, state, onApply }: { opened: bo
       {error ? <Alert color="red">{error}</Alert> : null}
       {loading ? <Alert color="blue">Creating a draft. You can cancel safely; your trip will not change.</Alert> : null}
       <Group grow>
-        <Button leftSection={<IconSparkles size={17} />} loading={loading} disabled={loading || content.trim().length < 30} onClick={() => void createDraft(request)}>Create draft</Button>
+        <Button leftSection={<IconSparkles size={17} />} loading={loading} disabled={loading || (sourceType === 'text' ? content.trim().length < 30 : !/^https?:\/\//i.test(content.trim()))} onClick={() => void createDraft(request)}>Create draft</Button>
         {loading ? <Button variant="default" onClick={cancel}>Cancel</Button> : null}
       </Group>
     </Stack> : <Stack>
       <Title order={4}>Review your draft</Title>
+      {draft.sourceTitle ? <Text size="sm" c="dimmed">Source: {draft.sourceTitle}</Text> : null}
       <Text size="sm">{draft.summary}</Text>
       {draft.warnings.map((warning) => <Alert key={warning} color="yellow">{warning}</Alert>)}
       {draft.days.map((day) => <Paper withBorder p="sm" key={day.tempId}><Text fw={700} mb="xs">{day.label}</Text><CandidateList places={day.places} onIncluded={setIncluded} /></Paper>)}

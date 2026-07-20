@@ -1,6 +1,6 @@
 import type { PlaceCategory, PlaceType, TravelMode, TripState } from '../types';
 
-export type AiImportSource = { type: 'text'; content: string };
+export type AiImportSource = { type: 'text'; content: string } | { type: 'url'; url: string };
 export type AiPlaceResolution = 'resolved' | 'ambiguous' | 'not-found' | 'existing-place';
 
 export interface AiPlaceAlternative {
@@ -38,6 +38,8 @@ export interface AiDraftDay {
 
 export interface AiItineraryDraft {
   requestId: string;
+  sourceTitle?: string;
+  sourceUrl?: string;
   summary: string;
   destination?: string;
   days: AiDraftDay[];
