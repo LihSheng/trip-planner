@@ -14,7 +14,8 @@ export function useAiImport() {
     controller.current?.abort();
     const nextController = new AbortController();
     let timedOut = false;
-    const timeout = window.setTimeout(() => { timedOut = true; nextController.abort(); }, 45_000);
+    // OpenCode and the NIM fallback each have a bounded 30-second server timeout.
+    const timeout = window.setTimeout(() => { timedOut = true; nextController.abort(); }, 70_000);
     controller.current = nextController;
     setLoading(true); setError(undefined);
     try {
