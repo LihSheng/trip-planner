@@ -13,6 +13,8 @@ export function useAiImport() {
   const createDraft = useCallback(async (request: AiImportRequest) => {
     controller.current?.abort();
     const nextController = new AbortController();
+    let timedOut = false;
+    const timeout = window.setTimeout(() => { timedOut = true; nextController.abort(); }, 45_000);
     controller.current = nextController;
     setLoading(true); setError(undefined);
     try {
@@ -21,10 +23,15 @@ export function useAiImport() {
       return nextDraft;
     } catch (reason) {
       if ((reason as Error).name !== 'AbortError') setError(reason instanceof Error ? reason.message : 'Unable to create an AI draft.');
+      else if (timedOut) setError('AI service timed out. Your trip was not changed; try again later.');
       return undefined;
-    } finally { if (controller.current === nextController) setLoading(false); }
+    } finally {
+      window.clearTimeout(timeout);
+      if (controller.current === nextController) setLoading(false);
+    }
   }, [accessToken]);
 
-  const reset = useCallback(() => { controller.current?.abort(); setDraft(undefined); setError(undefined); setLoading(false); }, []);
-  return { draft, setDraft, loading, error, createDraft, reset };
+  const cancel = useCallback(() => { controller.current?.abort(); setLoading(false); }, []);
+  const reset = useCallback(() => { cancel(); setDraft(undefined); setError(undefined); }, [cancel]);
+  return { draft, setDraft, loading, error, createDraft, cancel, reset };
 }

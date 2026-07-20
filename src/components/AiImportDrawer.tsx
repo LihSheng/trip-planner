@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Alert, Badge, Button, Checkbox, Divider, Drawer, Group, NumberInput, Paper, Radio, Select, Stack, Text, Textarea, TextInput, Title } from '@mantine/core';
+import { Alert, Badge, Button, Checkbox, Divider, Drawer, Group, NumberInput, Paper, Radio, Select, Stack, Text, Textarea, Title } from '@mantine/core';
 import { IconSparkles } from '@tabler/icons-react';
 import type { TripState } from '../types';
 import type { AiImportRequest, AiItineraryDraft, ConfirmedAiDraft } from '../types/aiImport';
 import { useAiImport } from '../hooks/useAiImport';
 
 export function AiImportDrawer({ opened, onClose, state, onApply }: { opened: boolean; onClose: () => void; state: TripState; onApply: (confirmed: ConfirmedAiDraft) => void }) {
-  const { draft, setDraft, loading, error, createDraft, reset } = useAiImport();
+  const { draft, setDraft, loading, error, createDraft, cancel, reset } = useAiImport();
   const [content, setContent] = useState('');
   const [pace, setPace] = useState<'relaxed' | 'balanced' | 'packed'>('balanced');
   const [mergeMode, setMergeMode] = useState<'new-days' | 'unscheduled'>('new-days');
@@ -37,7 +37,11 @@ export function AiImportDrawer({ opened, onClose, state, onApply }: { opened: bo
         <Group mt="xs"><Radio value="new-days" label="As new days" /><Radio value="unscheduled" label="Unscheduled" /></Group>
       </Radio.Group>
       {error ? <Alert color="red">{error}</Alert> : null}
-      <Button leftSection={<IconSparkles size={17} />} loading={loading} disabled={content.trim().length < 30} onClick={() => void createDraft(request)}>Create draft</Button>
+      {loading ? <Alert color="blue">Creating a draft. You can cancel safely; your trip will not change.</Alert> : null}
+      <Group grow>
+        <Button leftSection={<IconSparkles size={17} />} loading={loading} disabled={loading || content.trim().length < 30} onClick={() => void createDraft(request)}>Create draft</Button>
+        {loading ? <Button variant="default" onClick={cancel}>Cancel</Button> : null}
+      </Group>
     </Stack> : <Stack>
       <Title order={4}>Review your draft</Title>
       <Text size="sm">{draft.summary}</Text>
