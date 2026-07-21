@@ -6,6 +6,7 @@ import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
+import './workspace-layout.css';
 import App from './App';
 import { AuthGate, ReadOnlyAuthProvider } from './context/AuthContext';
 import { I18nProvider } from './i18n';
