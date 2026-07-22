@@ -115,18 +115,26 @@ export function updateActivityDetails(
   if (!title) return state;
   if (updates.durationMinutes !== undefined && updates.durationMinutes <= 0) return state;
 
+  const bookingTimingProtected = currentActivity.booking?.isConfirmed === true;
+  const nextDuration = bookingTimingProtected ? currentActivity.durationMinutes : updates.durationMinutes;
+  const nextPreferredStartTime = bookingTimingProtected
+    ? currentActivity.preferredStartTime
+    : updates.preferredStartTime?.trim() || undefined;
+
   const nextActivity: Activity = {
     ...currentActivity,
     title,
     category: updates.category,
-    durationMinutes: updates.durationMinutes,
-    durationSource: updates.durationMinutes === undefined ? undefined : 'user',
-    preferredStartTime: updates.preferredStartTime?.trim() || undefined,
+    durationMinutes: nextDuration,
+    durationSource: bookingTimingProtected
+      ? currentActivity.durationSource
+      : nextDuration === undefined ? undefined : 'user',
+    preferredStartTime: nextPreferredStartTime,
     notes: updates.notes?.trim() || undefined,
     updatedAt: new Date().toISOString(),
   };
 
-  const days = normalized.days.map((day) => {
+  const days = bookingTimingProtected ? normalized.days : normalized.days.map((day) => {
     if (day.id !== nextActivity.dayId || !nextActivity.placeId) return day;
 
     const stopSchedules = { ...day.stopSchedules };
