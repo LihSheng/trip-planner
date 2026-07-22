@@ -34,6 +34,7 @@ import type { Place } from './types';
 import { useAuth } from './context/AuthContext';
 import { useTripPlanner } from './hooks/useTripPlanner';
 import { AppHeader } from './components/AppHeader';
+import { ActivityEditorModal } from './components/ActivityEditorModal';
 import { PlaceDetails } from './components/PlaceDetails';
 import { PlaceFormModal } from './components/PlaceFormModal';
 import { PlaceLibrary } from './components/PlaceLibrary';
@@ -68,6 +69,7 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
   const [mapPanelCollapsed, setMapPanelCollapsed] = useState(false);
   const [mobileView, setMobileView] = useState('today');
   const [editingPlace, setEditingPlace] = useState<Place | undefined>();
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
   const [addPlaceDayId, setAddPlaceDayId] = useState<string | null>(null);
   const [replacePlaceholderId, setReplacePlaceholderId] = useState<string | null>(null);
   const [placeModalOpened, setPlaceModalOpened] = useState(false);
@@ -81,6 +83,9 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
     () => planner.state.places.find((place) => place.id === selectedId),
     [planner.state.places, selectedId],
   );
+
+  const editingActivity = editingActivityId ? planner.activitiesById.get(editingActivityId) : undefined;
+  const editingActivityPlace = editingActivity?.placeId ? planner.placesById.get(editingActivity.placeId) : undefined;
 
   useEffect(() => {
     if (!planner.isReady) return;
@@ -129,6 +134,12 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
     setAddPlaceDayId(null);
     setReplacePlaceholderId(null);
     setPlaceModalOpened(true);
+  }
+
+  function openEditActivity(place: Place) {
+    if (planner.isReadOnly || place.type === 'placeholder') return;
+    setSelectedId(place.id);
+    setEditingActivityId(place.id);
   }
 
   function handlePlaceSubmit(place: Place) {
@@ -278,7 +289,7 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
       onVisitedChange={planner.toggleVisited}
       onDayScheduleChange={planner.updateDaySchedule}
       onStopScheduleChange={planner.updateStopSchedule}
-      onEditPlace={openEditPlace}
+      onEditPlace={openEditActivity}
       onDeletePlace={setDeleteTarget}
       onLegModeChange={planner.updateLegMode}
     />
@@ -315,33 +326,33 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
               <IconChevronRight size={19} />
             </ActionIcon>
           </Tooltip>
-        <Tabs value={mapPanelTab} onChange={setMapPanelTab} keepMounted={false}>
-          <Tabs.List grow>
-            <Tabs.Tab value="details" leftSection={<IconInfoCircle size={15} />}>
-              {t('details')}
-            </Tabs.Tab>
-            <Tabs.Tab value="places" leftSection={<IconList size={15} />}>
-              {t('places')}
-            </Tabs.Tab>
-          </Tabs.List>
-          <Tabs.Panel value="details" p="md">
-            <Stack gap="md">
-              <Group gap="xs" wrap="nowrap">
-                <IconMapPin size={17} />
-                <Text fw={750}>{t('selectedPlace')}</Text>
-              </Group>
-              <PlaceDetails place={selectedPlace} onEdit={openEditPlace} readOnly={planner.isReadOnly} />
-              {!planner.isReadOnly && !selectedPlace ? (
-                <Button variant="light" color="teal" onClick={openAddPlace}>
-                  {t('addFirstPlace')}
-                </Button>
-              ) : null}
-            </Stack>
-          </Tabs.Panel>
-          <Tabs.Panel value="places" p="md">
-            {placesPanel}
-          </Tabs.Panel>
-        </Tabs>
+          <Tabs value={mapPanelTab} onChange={setMapPanelTab} keepMounted={false}>
+            <Tabs.List grow>
+              <Tabs.Tab value="details" leftSection={<IconInfoCircle size={15} />}>
+                {t('details')}
+              </Tabs.Tab>
+              <Tabs.Tab value="places" leftSection={<IconList size={15} />}>
+                {t('places')}
+              </Tabs.Tab>
+            </Tabs.List>
+            <Tabs.Panel value="details" p="md">
+              <Stack gap="md">
+                <Group gap="xs" wrap="nowrap">
+                  <IconMapPin size={17} />
+                  <Text fw={750}>{t('selectedPlace')}</Text>
+                </Group>
+                <PlaceDetails place={selectedPlace} onEdit={openEditPlace} readOnly={planner.isReadOnly} />
+                {!planner.isReadOnly && !selectedPlace ? (
+                  <Button variant="light" color="teal" onClick={openAddPlace}>
+                    {t('addFirstPlace')}
+                  </Button>
+                ) : null}
+              </Stack>
+            </Tabs.Panel>
+            <Tabs.Panel value="places" p="md">
+              {placesPanel}
+            </Tabs.Panel>
+          </Tabs>
         </Paper>
       )}
     </Box>
@@ -489,6 +500,20 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
         </Box>
       ) : null}
 
+      <ActivityEditorModal
+        opened={Boolean(editingActivityId)}
+        activity={editingActivity}
+        place={editingActivityPlace}
+        onClose={() => setEditingActivityId(null)}
+        onSubmit={(activityId, updates) => {
+          planner.updateActivity(activityId, updates);
+          notifications.show({
+            color: 'teal',
+            title: 'Activity updated',
+            message: `${updates.title.trim()} was saved.`,
+          });
+        }}
+      />
       <PlaceFormModal
         opened={placeModalOpened}
         place={editingPlace}
