@@ -55,6 +55,49 @@ export interface Place {
   openingHours?: OpeningHours;
 }
 
+export type ActivityDurationSource =
+  | 'user'
+  | 'imported'
+  | 'category_estimate'
+  | 'generic_estimate';
+
+export interface ActivityBooking {
+  isConfirmed: boolean;
+  startTime: string;
+  endTime?: string;
+  durationMinutes?: number;
+  arrivalBufferMinutes: number;
+  reference?: string;
+  notes?: string;
+}
+
+export interface ActivityLock {
+  lockDay: boolean;
+  lockTime: boolean;
+}
+
+/**
+ * Canonical planning entity. A place describes where something is; an activity
+ * describes what the traveller intends to do and how it is scheduled.
+ */
+export interface Activity {
+  id: string;
+  tripId?: string;
+  title: string;
+  placeId?: string;
+  dayId?: string;
+  sortOrder: number;
+  durationMinutes?: number;
+  durationSource?: ActivityDurationSource;
+  preferredStartTime?: string;
+  notes?: string;
+  category?: PlaceCategory;
+  booking?: ActivityBooking;
+  lock: ActivityLock;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface TripDay {
   id: string;
   label: string;
@@ -107,6 +150,11 @@ export interface TripState {
   tripName: string;
   startDate: string;
   places: Place[];
+  /**
+   * Activity snapshot introduced by the activity-domain foundation. During the
+   * compatibility period, legacy place/day arrays remain the UI persistence source.
+   */
+  activities?: Activity[];
   unscheduledIds: string[];
   visitedPlaceIds: string[];
   days: TripDay[];
