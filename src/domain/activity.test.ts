@@ -95,22 +95,8 @@ describe('activity domain foundation', () => {
 
   it('updates scheduled activity details and mirrors schedule fields', () => {
     const state = ensureActivities(createInitialState());
-    const previous = state.activities!.find((activity) => activity.id === 'taipei-101')!;
-    const protectedActivity: Activity = {
-      ...previous,
-      booking: {
-        isConfirmed: true,
-        startTime: '14:00',
-        arrivalBufferMinutes: 30,
-      },
-      lock: { lockDay: true, lockTime: true },
-    };
-    const withBooking = {
-      ...state,
-      activities: state.activities!.map((activity) => activity.id === protectedActivity.id ? protectedActivity : activity),
-    };
 
-    const next = updateActivityDetails(withBooking, 'taipei-101', {
+    const next = updateActivityDetails(state, 'taipei-101', {
       title: 'Visit Taipei 101 Observatory',
       category: 'Landmark',
       durationMinutes: 120,
@@ -124,12 +110,62 @@ describe('activity domain foundation', () => {
       durationSource: 'user',
       preferredStartTime: '15:30',
       notes: 'Use the pre-booked ticket entrance.',
-      lock: { lockDay: true, lockTime: true },
-      booking: protectedActivity.booking,
     });
     expect(next.days.find((day) => day.id === 'day-1')?.stopSchedules?.['taipei-101']).toMatchObject({
       startTime: '15:30',
       durationMinutes: 120,
+    });
+  });
+
+  it('protects confirmed booking timing during normal activity edits', () => {
+    const state = ensureActivities(createInitialState());
+    const previous = state.activities!.find((activity) => activity.id === 'taipei-101')!;
+    const protectedActivity: Activity = {
+      ...previous,
+      durationMinutes: 75,
+      durationSource: 'user',
+      preferredStartTime: '14:00',
+      booking: {
+        isConfirmed: true,
+        startTime: '14:00',
+        durationMinutes: 75,
+        arrivalBufferMinutes: 30,
+      },
+      lock: { lockDay: true, lockTime: true },
+    };
+    const withBooking = {
+      ...state,
+      activities: state.activities!.map((activity) => activity.id === protectedActivity.id ? protectedActivity : activity),
+      days: state.days.map((day) => day.id === 'day-1'
+        ? {
+            ...day,
+            stopSchedules: {
+              ...day.stopSchedules,
+              'taipei-101': { startTime: '14:00', durationMinutes: 75 },
+            },
+          }
+        : day),
+    };
+
+    const next = updateActivityDetails(withBooking, 'taipei-101', {
+      title: 'Visit Taipei 101 Observatory',
+      category: 'Landmark',
+      durationMinutes: 120,
+      preferredStartTime: '15:30',
+      notes: 'Bring the booking confirmation.',
+    });
+
+    expect(next.activities?.find((activity) => activity.id === 'taipei-101')).toMatchObject({
+      title: 'Visit Taipei 101 Observatory',
+      durationMinutes: 75,
+      preferredStartTime: '14:00',
+      notes: 'Bring the booking confirmation.',
+      lock: { lockDay: true, lockTime: true },
+      booking: protectedActivity.booking,
+    });
+    expect(next.days.find((day) => day.id === 'day-1')?.stopSchedules?.['taipei-101']).toEqual({
+      startTime: '14:00',
+      durationMinutes: 75,
     });
   });
 
