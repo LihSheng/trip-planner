@@ -93,3 +93,66 @@ export function ensureActivities(state: TripState): TripState {
 
   return { ...state, activities };
 }
+
+export type ActivityDetailUpdates = Pick<Activity, 'title' | 'category'> &
+  Partial<Pick<Activity, 'durationMinutes' | 'preferredStartTime' | 'notes'>>;
+
+/**
+ * Applies user-editable activity details while preserving assignment, ordering,
+ * booking, and lock metadata. Scheduled activities mirror time and duration into
+ * the legacy stop schedule until planner surfaces fully migrate to Activity.
+ */
+export function updateActivityDetails(
+  state: TripState,
+  activityId: string,
+  updates: ActivityDetailUpdates,
+): TripState {
+  const normalized = ensureActivities(state);
+  const currentActivity = normalized.activities?.find((activity) => activity.id === activityId);
+  if (!currentActivity) return state;
+
+  const title = updates.title.trim();
+  if (!title) return state;
+  if (updates.durationMinutes !== undefined && updates.durationMinutes <= 0) return state;
+
+  const bookingTimingProtected = currentActivity.booking?.isConfirmed === true;
+  const nextDuration = bookingTimingProtected ? currentActivity.durationMinutes : updates.durationMinutes;
+  const nextPreferredStartTime = bookingTimingProtected
+    ? currentActivity.preferredStartTime
+    : updates.preferredStartTime?.trim() || undefined;
+
+  const nextActivity: Activity = {
+    ...currentActivity,
+    title,
+    category: updates.category,
+    durationMinutes: nextDuration,
+    durationSource: bookingTimingProtected
+      ? currentActivity.durationSource
+      : nextDuration === undefined ? undefined : 'user',
+    preferredStartTime: nextPreferredStartTime,
+    notes: updates.notes?.trim() || undefined,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const days = bookingTimingProtected ? normalized.days : normalized.days.map((day) => {
+    if (day.id !== nextActivity.dayId || !nextActivity.placeId) return day;
+
+    const stopSchedules = { ...day.stopSchedules };
+    const previous = { ...stopSchedules[nextActivity.placeId] };
+    if (nextActivity.preferredStartTime) previous.startTime = nextActivity.preferredStartTime;
+    else delete previous.startTime;
+    if (nextActivity.durationMinutes !== undefined) previous.durationMinutes = nextActivity.durationMinutes;
+    else delete previous.durationMinutes;
+
+    if (Object.keys(previous).length) stopSchedules[nextActivity.placeId] = previous;
+    else delete stopSchedules[nextActivity.placeId];
+
+    return { ...day, stopSchedules };
+  });
+
+  return {
+    ...normalized,
+    activities: normalized.activities!.map((activity) => activity.id === activityId ? nextActivity : activity),
+    days,
+  };
+}

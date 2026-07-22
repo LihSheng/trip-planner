@@ -130,7 +130,7 @@ export function PlaceCard({
                     </Menu.Item>
                   ) : onEdit ? (
                     <Menu.Item leftSection={<IconEdit size={15} />} onClick={() => onEdit(place)}>
-                      {t('editPlace')}
+                      Edit activity
                     </Menu.Item>
                   ) : null}
                   {onEnableSchedule && !schedule ? (

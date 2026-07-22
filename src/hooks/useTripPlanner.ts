@@ -8,6 +8,7 @@ import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../ut
 import { markRouteStale, routeLegKey } from '../utils/routing';
 import { applyAiDraft as applyConfirmedAiDraft } from '../utils/applyAiDraft';
 import type { ConfirmedAiDraft } from '../types/aiImport';
+import { ensureActivities, updateActivityDetails, type ActivityDetailUpdates } from '../domain/activity';
 
 const LEGACY_STORAGE_KEY = 'taiwan-trip-planner:v1';
 const DEMO_STORAGE_KEY = 'taiwan-trip-planner:demo:v1';
@@ -21,14 +22,14 @@ function loadStoredState(key: string): TripState | null {
     if (!stored) return null;
     const parsed = JSON.parse(stored) as unknown;
     return isTripState(parsed)
-      ? {
+      ? ensureActivities({
           ...parsed,
           visitedPlaceIds: parsed.visitedPlaceIds ?? [],
           executionByDay: parsed.executionByDay ?? {},
           expenses: parsed.expenses ?? [],
           displayCurrency: parsed.displayCurrency ?? 'MYR',
-      days: parsed.days.map((day) => ({ ...day, travelMode: day.travelMode ?? 'public', stopSchedules: day.stopSchedules ?? {}, timeManagementEnabled: day.timeManagementEnabled ?? false, legModeOverrides: day.legModeOverrides ?? {} })),
-        }
+          days: parsed.days.map((day) => ({ ...day, travelMode: day.travelMode ?? 'public', stopSchedules: day.stopSchedules ?? {}, timeManagementEnabled: day.timeManagementEnabled ?? false, legModeOverrides: day.legModeOverrides ?? {} })),
+        })
       : null;
   } catch {
     return null;
@@ -49,7 +50,7 @@ function selectedPlanStorageKey(userId: string) {
 
 export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
   const { accessToken, user, isDemo } = useAuth();
-  const [state, setState] = useState<TripState>(createInitialState);
+  const [state, setState] = useState<TripState>(() => ensureActivities(createInitialState()));
   const [isReady, setIsReady] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -74,13 +75,13 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
         if (shareToken) {
           const sharedState = await loadPublicTrip(shareToken);
           if (!sharedState) throw new Error('This share link is invalid or no longer available.');
-          setState(sharedState);
+          setState(ensureActivities(sharedState));
           setSyncStatus('saved');
           return;
         }
 
         if (isDemo) {
-          setState(loadDemoState() ?? createInitialState());
+          setState(loadDemoState() ?? ensureActivities(createInitialState()));
           setPlans([]);
           setSyncStatus('saved');
           return;
@@ -91,7 +92,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
         if (!active) return;
 
         if (!remotePlans.length) {
-          const initialState = loadDemoState() ?? loadLegacyState() ?? createBlankTripState();
+          const initialState = loadDemoState() ?? loadLegacyState() ?? ensureActivities(createBlankTripState());
           const createdPlanId = await createTripPlan(accessToken, user.id, initialState);
           if (!active) return;
           remotePlans = await listTripPlans(accessToken, user.id);
@@ -111,14 +112,14 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
 
         setPlanId(selectedPlan.id);
         setPlans(remotePlans);
-        setState(remoteState);
+        setState(ensureActivities(remoteState));
         window.localStorage.setItem(selectedPlanStorageKey(user.id), selectedPlan.id);
         window.localStorage.removeItem(DEMO_STORAGE_KEY);
         window.localStorage.removeItem(LEGACY_STORAGE_KEY);
         if (active) setSyncStatus('saved');
       } catch (reason) {
         if (!active) return;
-        setState(loadLegacyState() ?? createInitialState());
+        setState(loadLegacyState() ?? ensureActivities(createInitialState()));
         setSyncStatus('error');
         setSyncError(reason instanceof Error ? reason.message : 'Unable to load the saved trip.');
       } finally {
@@ -133,7 +134,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
   }, [accessToken, isDemo, requestedPlanId, shareToken, user.id]);
 
   useEffect(() => {
-    if (!isReady || shareToken || !planId) return;
+    if (!isReady || shareToken || (!isDemo && !planId)) return;
 
     const sequence = ++saveSequence.current;
     setSyncStatus('saving');
@@ -141,12 +142,12 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
 
     const timeout = window.setTimeout(() => {
       if (isDemo) {
-        window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(state));
+        window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(ensureActivities(state)));
         if (saveSequence.current === sequence) setSyncStatus('saved');
         return;
       }
 
-      saveTripState(accessToken, planId, state)
+      saveTripState(accessToken, planId!, state)
         .then(() => {
           if (saveSequence.current === sequence) setSyncStatus('saved');
           setPlans((current) => current.map((plan) => plan.id === planId ? { ...plan, tripName: state.tripName, startDate: state.startDate, updatedAt: new Date().toISOString() } : plan));
@@ -164,6 +165,11 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
   const placesById = useMemo(
     () => new Map(state.places.map((place) => [place.id, place])),
     [state.places],
+  );
+
+  const activitiesById = useMemo(
+    () => new Map((ensureActivities(state).activities ?? []).map((activity) => [activity.id, activity])),
+    [state],
   );
 
   const addPlace = useCallback((place: Place) => {
@@ -233,7 +239,12 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
       days: current.days.map((day) => day.placeIds.includes(place.id) ? markRouteStale(day) : day),
       hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId === place.id ? undefined : current.hotelPlaceId,
     }));
-  }, []);
+  }, [shareToken]);
+
+  const updateActivity = useCallback((activityId: string, updates: ActivityDetailUpdates) => {
+    if (shareToken) return;
+    setState((current) => updateActivityDetails(current, activityId, updates));
+  }, [shareToken]);
 
   const removePlace = useCallback((placeId: string) => {
     if (shareToken) return;
@@ -249,7 +260,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
         lodgingPlaceId: day.lodgingPlaceId === placeId ? undefined : day.lodgingPlaceId,
       })),
     }));
-  }, []);
+  }, [shareToken]);
 
   const addDay = useCallback(() => {
     if (shareToken) return;
@@ -263,7 +274,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
         ],
       };
     });
-  }, []);
+  }, [shareToken]);
 
   const updateDayLabel = useCallback((dayId: string, label: string) => {
     if (shareToken) return;
@@ -271,7 +282,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
       ...current,
       days: current.days.map((day) => (day.id === dayId ? { ...day, label } : day)),
     }));
-  }, []);
+  }, [shareToken]);
 
   const removeDay = useCallback((dayId: string) => {
     if (shareToken) return;
@@ -283,7 +294,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
         days: current.days.filter((item) => item.id !== dayId),
       };
     });
-  }, []);
+  }, [shareToken]);
 
   const reorderDays = useCallback((fromIndex: number, toIndex: number) => {
     if (shareToken) return;
@@ -303,7 +314,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
       days.splice(toIndex, 0, movedDay);
       return { ...current, days };
     });
-  }, []);
+  }, [shareToken]);
 
   const updateDaySchedule = useCallback((dayId: string, updates: { travelMode?: TravelMode; startTime?: string; lodgingPlaceId?: string; timeManagementEnabled?: boolean }) => {
     if (shareToken) return;
@@ -323,7 +334,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
         }),
       };
     });
-  }, []);
+  }, [shareToken]);
 
   const updateStopSchedule = useCallback((dayId: string, placeId: string, updates: StopSchedule) => {
     if (shareToken) return;
@@ -354,7 +365,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
         }),
       };
     });
-  }, []);
+  }, [shareToken]);
 
   const toggleVisited = useCallback((placeId: string) => {
     if (shareToken) return;
@@ -364,7 +375,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
         ? current.visitedPlaceIds.filter((id) => id !== placeId)
         : [...current.visitedPlaceIds, placeId],
     }));
-  }, []);
+  }, [shareToken]);
 
   const updateExecution = useCallback((dayId: string, placeId: string, status: StopExecutionStatus) => {
     if (shareToken) return;
@@ -413,13 +424,13 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
         return { ...moved, days: moved.days.map(markRouteStale) };
       });
     },
-    [],
+    [shareToken],
   );
 
   const updateTrip = useCallback((tripName: string, startDate: string, displayCurrency?: CurrencyCode) => {
     if (shareToken) return;
     setState((current) => ({ ...current, tripName, startDate, displayCurrency: displayCurrency ?? current.displayCurrency ?? 'MYR', days: current.days.map(markRouteStale) }));
-  }, []);
+  }, [shareToken]);
 
   const updateLegMode = useCallback((dayId: string, fromPlaceId: string, toPlaceId: string, mode: TravelMode | 'default') => {
     if (shareToken) return;
@@ -430,14 +441,17 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
         ? markRouteStale({ ...day, legModeOverrides: { ...day.legModeOverrides, [key]: mode } })
         : day),
     }));
-  }, []);
+  }, [shareToken]);
 
   const applyAiDraft = useCallback((draft: ConfirmedAiDraft) => {
     if (shareToken || isDemo) return;
     setState((current) => applyConfirmedAiDraft(current, draft));
   }, [isDemo, shareToken]);
 
-  const reset = useCallback(() => { if (!shareToken) setState(createInitialState()); }, [shareToken]);
+  const reset = useCallback(() => {
+    if (!shareToken) setState(ensureActivities(createInitialState()));
+  }, [shareToken]);
+
   const switchPlan = useCallback(async (nextPlanId: string) => {
     if (isDemo || shareToken || nextPlanId === planId) return;
 
@@ -448,7 +462,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
       const nextState = await loadTripState(accessToken, nextPlanId);
       if (!nextState) throw new Error('The selected trip plan is no longer available.');
       setPlanId(nextPlanId);
-      setState(nextState);
+      setState(ensureActivities(nextState));
       window.localStorage.setItem(selectedPlanStorageKey(user.id), nextPlanId);
       setSyncStatus('saved');
     } catch (reason) {
@@ -462,7 +476,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
   const createPlan = useCallback(async () => {
     if (isDemo || shareToken) return null;
 
-    const nextState = createBlankTripState();
+    const nextState = ensureActivities(createBlankTripState());
     setSyncStatus('saving');
     setSyncError(null);
     try {
@@ -498,8 +512,9 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
       setSyncError(reason instanceof Error ? reason.message : 'Unable to save the trip.');
     }
   }, [accessToken, isDemo, planId, shareToken, state]);
+
   const persistForCloudSignIn = useCallback(() => {
-    if (isDemo) window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(state));
+    if (isDemo) window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(ensureActivities(state)));
   }, [isDemo, state]);
 
   return {
@@ -513,12 +528,14 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
     isOwner: !shareToken && (isDemo || activePlan?.isOwner === true),
     isReadOnly: Boolean(shareToken),
     placesById,
+    activitiesById,
     addPlace,
     addPlaceToDay,
     addPlaceholderToDay,
     replacePlaceholder,
     fillPlaceholder,
     updatePlace,
+    updateActivity,
     removePlace,
     addDay,
     updateDayLabel,
