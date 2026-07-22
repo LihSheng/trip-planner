@@ -49,6 +49,7 @@ export function ActivityEditorModal({
   onSubmit,
 }: ActivityEditorModalProps) {
   const fullScreen = useMediaQuery('(max-width: 47.99em)');
+  const bookingTimingProtected = activity?.booking?.isConfirmed === true;
   const form = useForm<ActivityEditorValues>({
     initialValues: {
       title: '',
@@ -111,6 +112,12 @@ export function ActivityEditorModal({
               </Text>
             ) : null}
 
+            {bookingTimingProtected ? (
+              <Text size="sm" c="orange">
+                This activity has a confirmed booking. Its time and duration are protected here; booking changes will use the dedicated booking editor.
+              </Text>
+            ) : null}
+
             <TextInput
               label="Activity name"
               description="Describe what you plan to do. This can differ from the place name."
@@ -128,20 +135,22 @@ export function ActivityEditorModal({
               />
               <NumberInput
                 label="Duration"
-                description="Optional planned duration"
+                description={bookingTimingProtected ? 'Protected by the confirmed booking' : 'Optional planned duration'}
                 min={5}
                 max={1440}
                 step={15}
                 suffix=" min"
                 placeholder="90"
+                disabled={bookingTimingProtected}
                 {...form.getInputProps('durationMinutes')}
               />
             </SimpleGrid>
 
             <TextInput
               label="Preferred start time"
-              description="A planning preference, not a confirmed booking."
+              description={bookingTimingProtected ? 'Protected by the confirmed booking' : 'A planning preference, not a confirmed booking.'}
               type="time"
+              disabled={bookingTimingProtected}
               {...form.getInputProps('preferredStartTime')}
             />
 
