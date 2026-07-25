@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActionIcon, Badge, Button, Group, Menu, Modal, Paper, Select, Stack, Text, Textarea, Title, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Badge, Button, Group, Menu, Modal, Paper, Select, Stack, Text, Textarea, Title } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
-  IconCalendar, IconCar, IconCheck, IconChevronDown, IconCircle, IconClock, IconDots,
-  IconExternalLink, IconFileText, IconMapPin, IconPlayerSkipForward, IconReceipt, IconRoute,
+  IconCheck, IconChevronDown, IconCircle, IconClock, IconCurrentLocation, IconDots,
+  IconFileText, IconMapPin, IconPlayerSkipForward, IconReceipt, IconRoute,
 } from '@tabler/icons-react';
 import type { DayExecutionState, Place, StopExecutionStatus, TripDay, TripExpense, TripState } from '../types';
 import { addDays } from '../utils/date';
 import { ExpenseSheet } from './ExpenseSheet';
 import { getTwdExchangeRate } from '../lib/exchangeRates';
+import { useCurrentLocation } from '../hooks/useCurrentLocation';
 
 type Props = {
   state: TripState;
@@ -38,8 +39,14 @@ function placeStatus(day: TripDay, execution: DayExecutionState | undefined, pla
   return firstEligible === placeId ? 'current' : 'upcoming';
 }
 
-function mapsUrl(place: Place) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`;
+function mapsUrl(place: Place, origin?: { latitude: number; longitude: number } | null) {
+  const params = new URLSearchParams({
+    api: '1',
+    destination: `${place.latitude},${place.longitude}`,
+    travelmode: 'walking',
+  });
+  if (origin) params.set('origin', `${origin.latitude},${origin.longitude}`);
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
 function timeRange(day: TripDay, placeId: string) {
@@ -58,6 +65,7 @@ export function TodayModePage({ state, placesById, readOnly, onUpdateExecution, 
   const [noteDraft, setNoteDraft] = useState('');
   const [expenseOpened, setExpenseOpened] = useState(false);
   const [displayRate, setDisplayRate] = useState<number | null>(null);
+  const location = useCurrentLocation();
 
   const activeDay = useMemo(() => {
     const selected = state.days.find((day) => day.id === activeDayId);
@@ -105,6 +113,10 @@ export function TodayModePage({ state, placesById, readOnly, onUpdateExecution, 
     notifications.show({ color: status === 'skipped' ? 'orange' : 'teal', title: labels[status], message: 'Today’s stop status was saved.', withCloseButton: true });
   }
 
+  function openNavigation(place: Place) {
+    window.open(mapsUrl(place, location.location), '_blank', 'noopener,noreferrer');
+  }
+
   return (
     <main className="today-mode" aria-label="Today Mode">
       <header className="today-header">
@@ -115,10 +127,38 @@ export function TodayModePage({ state, placesById, readOnly, onUpdateExecution, 
         <Select aria-label="Choose day" value={activeDay.id} onChange={(value) => value && setActiveDayId(value)} data={state.days.map((day, index) => ({ value: day.id, label: `Day ${index + 1} · ${day.label}` }))} className="today-day-select" />
       </header>
 
+      <Paper withBorder radius="xl" p="md">
+        <Group justify="space-between" align="center" wrap="nowrap">
+          <Group gap="sm" wrap="nowrap">
+            <IconCurrentLocation size={22} />
+            <div>
+              <Text fw={750}>Live location</Text>
+              <Text size="sm" c="dimmed">
+                {location.location
+                  ? `Tracking · accurate to about ${Math.round(location.location.accuracy)} m`
+                  : location.permission === 'denied'
+                    ? 'Permission denied in browser settings'
+                    : 'Use your device location for navigation origins'}
+              </Text>
+            </div>
+          </Group>
+          <Button
+            size="xs"
+            variant={location.isTracking ? 'light' : 'filled'}
+            loading={location.isLoading}
+            disabled={location.permission === 'unsupported'}
+            onClick={location.isTracking ? location.stopTracking : location.startTracking}
+          >
+            {location.isTracking ? 'Stop' : 'Locate me'}
+          </Button>
+        </Group>
+        {location.error ? <Alert color="orange" mt="sm" title="Location unavailable">{location.error}</Alert> : null}
+      </Paper>
+
       {complete ? <Paper className="today-complete"><IconCheck size={22} /><div><Text fw={800}>Day complete</Text><Text size="sm" c="dimmed">All stops have been completed or skipped.</Text></div></Paper> : null}
 
-      {current ? <StopCard place={current} day={activeDay} status="current" readOnly={readOnly} onDetail={() => setDetailId(current.id)} onNavigate={() => window.open(mapsUrl(current), '_blank', 'noopener,noreferrer')} onUpdate={update} /> : null}
-      {next ? <StopCard place={next} day={activeDay} status="upcoming" readOnly={readOnly} onDetail={() => setDetailId(next.id)} onNavigate={() => window.open(mapsUrl(next), '_blank', 'noopener,noreferrer')} onUpdate={update} /> : null}
+      {current ? <StopCard place={current} day={activeDay} status="current" readOnly={readOnly} onDetail={() => setDetailId(current.id)} onNavigate={() => openNavigation(current)} onUpdate={update} /> : null}
+      {next ? <StopCard place={next} day={activeDay} status="upcoming" readOnly={readOnly} onDetail={() => setDetailId(next.id)} onNavigate={() => openNavigation(next)} onUpdate={update} /> : null}
 
       <Paper className="today-timeline" radius="xl">
         <Group justify="space-between" mb="xs"><Title order={2}>Day timeline</Title><Text size="sm" c="dimmed">{stops.length} stops</Text></Group>
@@ -130,7 +170,7 @@ export function TodayModePage({ state, placesById, readOnly, onUpdateExecution, 
       {!readOnly ? <><Paper className="today-quick-actions" radius="xl"><Button variant="subtle" leftSection={<IconFileText size={19} />} onClick={() => setDetailId(current?.id ?? next?.id ?? null)} disabled={!current && !next}>Notes</Button><Button variant="subtle" leftSection={<IconReceipt size={19} />} onClick={() => setExpenseOpened(true)}>Expense</Button><Button variant="subtle" leftSection={<IconPlayerSkipForward size={19} />} onClick={() => current && update(current.id, 'skipped')}>Skip</Button></Paper><Paper className="today-expense-summary" radius="xl"><span><IconReceipt size={20} /><Text fw={750}>Today’s spending</Text></span><Text fw={800}>{dayTotal.toLocaleString('en-MY', { style: 'currency', currency: 'TWD', maximumFractionDigits: 2 })}</Text>{displayRate ? <Text size="sm" c="dimmed" className="today-expense-summary__conversion">≈ {(dayTotal * displayRate).toLocaleString('en-MY', { style: 'currency', currency: state.displayCurrency ?? 'MYR', maximumFractionDigits: 2 })} · Daily rate</Text> : null}{dayExpenses.length ? <Text size="sm" c="dimmed">{dayExpenses.length} {dayExpenses.length === 1 ? 'expense' : 'expenses'} recorded</Text> : null}<Text size="xs" c="dimmed" className="today-expense-summary__attribution">Rates by ExchangeRate-API</Text></Paper></> : null}
 
       <Modal opened={Boolean(detail)} onClose={() => setDetailId(null)} title={detail?.name} centered>
-        {detail ? <Stack><Badge color="teal" variant="light">{labels[placeStatus(activeDay, execution, detail.id)]}</Badge>{readOnly ? <Text size="sm">{detail.notes || 'No notes added.'}</Text> : <><Textarea label="Notes" description="Add visit details, tips, or memories for this place." value={noteDraft} onChange={(event) => setNoteDraft(event.currentTarget.value)} minRows={4} autosize /><Button variant="light" color="teal" disabled={noteDraft === detail.notes} onClick={() => { onUpdatePlace({ ...detail, notes: noteDraft.trim() }); notifications.show({ color: 'teal', title: 'Notes saved', message: `Notes for ${detail.name} were updated.` }); }}>Save notes</Button></>}<Text size="sm" c="dimmed">{detail.region} · {timeRange(activeDay, detail.id)}</Text><Button component="a" href={mapsUrl(detail)} target="_blank" leftSection={<IconRoute size={18} />}>Open navigation</Button>{!readOnly ? <Button variant="light" color="teal" onClick={() => update(detail.id, 'current')}>Make current stop</Button> : null}</Stack> : null}
+        {detail ? <Stack><Badge color="teal" variant="light">{labels[placeStatus(activeDay, execution, detail.id)]}</Badge>{readOnly ? <Text size="sm">{detail.notes || 'No notes added.'}</Text> : <><Textarea label="Notes" description="Add visit details, tips, or memories for this place." value={noteDraft} onChange={(event) => setNoteDraft(event.currentTarget.value)} minRows={4} autosize /><Button variant="light" color="teal" disabled={noteDraft === detail.notes} onClick={() => { onUpdatePlace({ ...detail, notes: noteDraft.trim() }); notifications.show({ color: 'teal', title: 'Notes saved', message: `Notes for ${detail.name} were updated.` }); }}>Save notes</Button></>}<Text size="sm" c="dimmed">{detail.region} · {timeRange(activeDay, detail.id)}</Text><Button onClick={() => openNavigation(detail)} leftSection={<IconRoute size={18} />}>Open navigation</Button>{!readOnly ? <Button variant="light" color="teal" onClick={() => update(detail.id, 'current')}>Make current stop</Button> : null}</Stack> : null}
       </Modal>
       {!readOnly ? <ExpenseSheet opened={expenseOpened} onClose={() => setExpenseOpened(false)} dayId={activeDay.id} dayLabel={`Day ${state.days.indexOf(activeDay) + 1}`} currentStop={current} onSave={(expense) => { onAddExpense(expense); notifications.show({ color: 'teal', title: 'Expense added', message: `${expense.currency} ${expense.amount.toLocaleString()} ${expense.category} expense added.` }); }} /> : null}
     </main>
@@ -143,6 +183,6 @@ function StopCard({ place, day, status, readOnly, onDetail, onNavigate, onUpdate
 }
 
 function TimelineRow({ place, day, status, onClick }: { place: Place; day: TripDay; status: StopExecutionStatus; onClick: () => void }) {
-  const icon = status === 'completed' ? <IconCheck size={17} /> : status === 'current' ? <IconCircle size={17} /> : <IconCircle size={17} />;
+  const icon = status === 'completed' ? <IconCheck size={17} /> : <IconCircle size={17} />;
   return <button type="button" className={`today-timeline-row today-timeline-row--${status}`} onClick={onClick}><span className="today-timeline-row__marker">{icon}</span><span className="today-timeline-row__time">{day.stopSchedules?.[place.id]?.startTime ?? 'Later'}</span><span className="today-timeline-row__copy"><strong>{place.name}</strong><small>{status === 'current' ? `Now · ${timeRange(day, place.id)}` : status === 'upcoming' ? timeRange(day, place.id) : labels[status]}</small></span><IconChevronDown size={18} /></button>;
 }
