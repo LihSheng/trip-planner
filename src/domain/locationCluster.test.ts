@@ -23,14 +23,14 @@ describe('location clusters', () => {
     });
     const updated = assignPlaceToCluster(grouped, cafe.id, {
       targetPlaceId: 'taipei-101',
-      relationship: 'nearby',
-      walkMinutes: 4,
+      relationship: 'walkable',
+      travelMinutes: 4,
     });
 
     expect(updated.locationClusters).toHaveLength(1);
     expect(updated.locationClusters?.[0]).toMatchObject({
       anchorPlaceId: 'taipei-101',
-      members: [{ placeId: cafe.id, relationship: 'nearby', walkMinutes: 4 }],
+      members: [{ placeId: cafe.id, relationship: 'walkable', travelMinutes: 4 }],
     });
   });
 
@@ -44,8 +44,25 @@ describe('location clusters', () => {
     };
 
     expect(normalizeLocationClusters(state)).toEqual([
-      expect.objectContaining({ id: 'one', members: [expect.objectContaining({ placeId: 'ximending' })] }),
+      expect.objectContaining({ id: 'one', members: [expect.objectContaining({ placeId: 'ximending', relationship: 'walkable' })] }),
     ]);
+  });
+
+  it('stores transport for a same-area member', () => {
+    const state = { ...createInitialState(), places: [...createInitialState().places, cafe] };
+    const grouped = assignPlaceToCluster(state, cafe.id, {
+      targetPlaceId: 'taipei-101',
+      relationship: 'same-area',
+      travelMode: 'public',
+      travelMinutes: 18,
+    });
+
+    expect(grouped.locationClusters?.[0].members[0]).toEqual({
+      placeId: cafe.id,
+      relationship: 'same-area',
+      travelMode: 'public',
+      travelMinutes: 18,
+    });
   });
 
   it('measures close coordinates for grouping suggestions', () => {
@@ -59,14 +76,14 @@ describe('location clusters', () => {
         id: 'taipei-cluster',
         name: 'Taipei 101 area',
         anchorPlaceId: 'taipei-101',
-        members: [{ placeId: 'ximending', relationship: 'nearby' as const, walkMinutes: 8 }],
+        members: [{ placeId: 'ximending', relationship: 'walkable' as const, travelMinutes: 8 }],
       }],
     };
     const local = {
       ...base,
       locationClusters: [{
         ...base.locationClusters[0],
-        members: [...base.locationClusters[0].members, { placeId: 'jiufen', relationship: 'nearby' as const, walkMinutes: 7 }],
+        members: [...base.locationClusters[0].members, { placeId: 'jiufen', relationship: 'walkable' as const, travelMinutes: 7 }],
       }],
     };
     const remote = {

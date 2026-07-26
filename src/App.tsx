@@ -183,7 +183,7 @@ export default function App() {
       planner.updatePlace(place);
       const editedCluster = planner.state.locationClusters?.find((cluster) => cluster.anchorPlaceId === place.id || cluster.members.some((member) => member.placeId === place.id));
       if (editedCluster?.anchorPlaceId !== place.id) {
-        planner.setPlaceCluster(place.id, clusterAssignment?.targetPlaceId, clusterAssignment?.relationship, clusterAssignment?.walkMinutes);
+        planner.setPlaceCluster(place.id, clusterAssignment?.targetPlaceId, clusterAssignment?.relationship, clusterAssignment?.travelMinutes, clusterAssignment?.travelMode);
       }
       notifications.show({ color: 'teal', title: t('placeUpdated'), message: t('placeSaved', { name: place.name }) });
     } else {
@@ -195,7 +195,7 @@ export default function App() {
         planner.addPlace(place);
       }
       if (clusterAssignment) {
-        planner.setPlaceCluster(place.id, clusterAssignment.targetPlaceId, clusterAssignment.relationship, clusterAssignment.walkMinutes);
+        planner.setPlaceCluster(place.id, clusterAssignment.targetPlaceId, clusterAssignment.relationship, clusterAssignment.travelMinutes, clusterAssignment.travelMode);
       }
       setSelectedId(place.id);
       setActiveMapView(replacePlaceholderId ? 'all' : addPlaceDayId ?? 'unscheduled');

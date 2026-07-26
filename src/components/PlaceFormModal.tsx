@@ -16,7 +16,7 @@ import {
   TextInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import type { ClusterRelationship, LocationCluster, Place, PlaceCategory } from '../types';
+import type { ClusterRelationship, LocationCluster, Place, PlaceCategory, TravelMode } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
 import { PLACE_CATEGORIES, type PlaceDetailsValues, validatePlaceDetails } from '../domain/place';
 import { clusterForPlace, distanceMeters, estimatedWalkMinutes, type ClusterAssignment } from '../domain/locationCluster';
@@ -86,8 +86,9 @@ export function PlaceFormModal({ opened, place, places, clusters, onClose, onSub
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [clusterTargetId, setClusterTargetId] = useState<string | null>(null);
-  const [clusterRelationship, setClusterRelationship] = useState<ClusterRelationship>('nearby');
-  const [walkMinutes, setWalkMinutes] = useState<number | undefined>();
+  const [clusterRelationship, setClusterRelationship] = useState<ClusterRelationship>('walkable');
+  const [travelMinutes, setTravelMinutes] = useState<number | undefined>();
+  const [clusterTravelMode, setClusterTravelMode] = useState<TravelMode>('public');
   const currentCluster = place ? clusterForPlace(clusters, place.id) : undefined;
   const isClusterAnchor = Boolean(place && currentCluster?.anchorPlaceId === place.id);
   const clusterTargets = places
@@ -152,8 +153,9 @@ export function PlaceFormModal({ opened, place, places, clusters, onClose, onSub
     setSearchError(null);
     const member = currentCluster?.members.find((item) => item.placeId === place?.id);
     setClusterTargetId(member ? currentCluster?.anchorPlaceId ?? null : null);
-    setClusterRelationship(member?.relationship ?? 'nearby');
-    setWalkMinutes(member?.walkMinutes);
+    setClusterRelationship(member?.relationship === 'nearby' ? 'walkable' : member?.relationship ?? 'walkable');
+    setTravelMinutes(member?.travelMinutes ?? member?.walkMinutes);
+    setClusterTravelMode(member?.travelMode ?? 'public');
     // Form is intentionally reset only when the modal target changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, place?.id, currentCluster?.id]);
@@ -241,8 +243,8 @@ export function PlaceFormModal({ opened, place, places, clusters, onClose, onSub
     if (nearest) {
       const anchorId = clusterForPlace(clusters, nearest.candidate.id)?.anchorPlaceId ?? nearest.candidate.id;
       setClusterTargetId(anchorId);
-      setClusterRelationship(nearest.distance <= 75 ? 'inside' : 'nearby');
-      setWalkMinutes(estimatedWalkMinutes(nearest.distance));
+      setClusterRelationship(nearest.distance <= 75 ? 'inside' : 'walkable');
+      setTravelMinutes(estimatedWalkMinutes(nearest.distance));
     }
   }
 
@@ -266,7 +268,8 @@ export function PlaceFormModal({ opened, place, places, clusters, onClose, onSub
           onSubmit(savedPlace, clusterTargetId ? {
             targetPlaceId: clusterTargetId,
             relationship: clusterRelationship,
-            walkMinutes: clusterRelationship === 'nearby' ? walkMinutes : undefined,
+            travelMode: clusterRelationship === 'same-area' ? clusterTravelMode : undefined,
+            travelMinutes: clusterRelationship === 'inside' ? undefined : travelMinutes,
           } : undefined);
           onClose();
         })}
@@ -349,19 +352,45 @@ export function PlaceFormModal({ opened, place, places, clusters, onClose, onSub
                         value={clusterRelationship}
                         onChange={(value) => setClusterRelationship(value as ClusterRelationship)}
                         data={[
-                          { value: 'inside', label: 'Inside / same venue' },
-                          { value: 'nearby', label: 'Nearby' },
+                          { value: 'inside', label: 'Inside' },
+                          { value: 'walkable', label: 'Walkable' },
+                          { value: 'same-area', label: 'Same area' },
                         ]}
                       />
-                      {clusterRelationship === 'nearby' ? (
+                      {clusterRelationship === 'walkable' ? (
                         <NumberInput
-                          label="Estimated walking time"
+                          label="Walking time"
                           suffix=" min"
                           min={1}
                           max={10}
-                          value={walkMinutes ?? ''}
-                          onChange={(value) => setWalkMinutes(typeof value === 'number' ? value : undefined)}
+                          value={travelMinutes ?? ''}
+                          onChange={(value) => setTravelMinutes(typeof value === 'number' ? value : undefined)}
                         />
+                      ) : clusterRelationship === 'same-area' ? (
+                        <SimpleGrid cols={2}>
+                          <Select
+                            label="Transport within area"
+                            value={clusterTravelMode}
+                            allowDeselect={false}
+                            data={[
+                              { value: 'public', label: 'Shuttle / bus' },
+                              { value: 'car', label: 'Car' },
+                              { value: 'taxi', label: 'Taxi' },
+                              { value: 'bike', label: 'Bike' },
+                              { value: 'walk', label: 'Walk' },
+                              { value: 'other', label: 'Other' },
+                            ]}
+                            onChange={(value) => setClusterTravelMode((value ?? 'public') as TravelMode)}
+                          />
+                          <NumberInput
+                            label="Travel time"
+                            suffix=" min"
+                            min={1}
+                            max={180}
+                            value={travelMinutes ?? ''}
+                            onChange={(value) => setTravelMinutes(typeof value === 'number' ? value : undefined)}
+                          />
+                        </SimpleGrid>
                       ) : (
                         <Text size="xs" c="teal">No transportation needed. Displayed as an indoor walk.</Text>
                       )}

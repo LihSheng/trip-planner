@@ -71,11 +71,14 @@ export interface Place {
   importedWithAi?: boolean;
 }
 
-export type ClusterRelationship = 'inside' | 'nearby';
+export type ClusterRelationship = 'inside' | 'walkable' | 'same-area' | 'nearby';
 
 export interface LocationClusterMember {
   placeId: string;
   relationship: ClusterRelationship;
+  travelMode?: TravelMode;
+  travelMinutes?: number;
+  /** Legacy field normalized into travelMinutes. */
   walkMinutes?: number;
 }
 

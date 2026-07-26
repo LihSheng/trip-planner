@@ -13,7 +13,7 @@ An ordered set of Places that can be visited at one venue or within a short walk
 _Avoid_: Folder, collection, place group
 
 **Cluster relationship**:
-A member Place is either inside the cluster anchor's venue or nearby within a short walk. The anchor itself has no relationship label.
+A member Place is inside the anchor venue, walkable from it, or part of the same wider area where transport may be required. The anchor itself has no relationship label.
 _Avoid_: Transport mode, category
 
 **ItineraryEntry**:

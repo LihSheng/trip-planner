@@ -293,24 +293,33 @@ export function DayColumn({
                 const nextCluster = clusterForPlace(clusters, nextPlace.id);
                 const sameCluster = cluster && nextCluster?.id === cluster.id;
                 const nextMember = sameCluster ? clusterMember(cluster, nextPlace.id) : undefined;
-                if (sameCluster) {
-                  const inside = nextMember?.relationship === 'inside';
+                const connectionMember = sameCluster ? nextMember ?? clusterMember(cluster, place.id) : undefined;
+                const relationship = connectionMember?.relationship === 'nearby' ? 'walkable' : connectionMember?.relationship;
+                if (sameCluster && relationship !== 'same-area') {
+                  const inside = relationship === 'inside';
                   return (
                     <Group className="route-leg route-leg--cluster" gap={6} justify="center">
                       <IconWalk size={15} />
                       <Text size="xs" fw={650}>
-                        {inside ? 'Inside venue · no transport' : `${nextMember?.walkMinutes ?? 'Short'} min walk nearby`}
+                        {inside ? 'Inside venue · no transport' : `${connectionMember?.travelMinutes ?? connectionMember?.walkMinutes ?? 'Short'} min walk`}
                       </Text>
                     </Group>
                   );
                 }
                 const key = routeLegKey(place.id, nextPlace.id);
                 const mode = day.legModeOverrides?.[key] ?? 'default';
-                const actualMode = mode === 'default' ? day.travelMode ?? 'public' : mode;
+                const actualMode = mode === 'default'
+                  ? relationship === 'same-area'
+                    ? connectionMember?.travelMode ?? day.travelMode ?? 'public'
+                    : day.travelMode ?? 'public'
+                  : mode;
                 const canOpenRoute = !isPlaceholder(place) && !isPlaceholder(nextPlace);
                 return (
-                  <Group className="route-leg" gap="xs" justify="center" wrap="nowrap">
+                  <Group className={`route-leg${relationship === 'same-area' ? ' route-leg--area' : ''}`} gap="xs" justify="center" wrap="nowrap">
                     {canOpenRoute ? <Tooltip label={t('openRoute')}><ActionIcon component="a" href={legGoogleMapsUrl(place, nextPlace, actualMode)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon></Tooltip> : <ActionIcon variant="subtle" color="gray" disabled aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon>}
+                    {relationship === 'same-area' ? (
+                      <Text size="xs" fw={650}>{connectionMember?.travelMinutes ? `${connectionMember.travelMinutes} min within area` : 'Transport within area'}</Text>
+                    ) : null}
                     {!readOnly ? <Menu position="bottom-end" shadow="md" withinPortal>
                       <Menu.Target>
                         <Tooltip label={t('routeMode')}>
@@ -320,7 +329,7 @@ export function DayColumn({
                         </Tooltip>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item leftSection={transportIcon(day.travelMode ?? 'public')} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'default')}>{t('dayDefault')}</Menu.Item>
+                        <Menu.Item leftSection={transportIcon(relationship === 'same-area' ? connectionMember?.travelMode ?? day.travelMode ?? 'public' : day.travelMode ?? 'public')} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'default')}>{relationship === 'same-area' ? 'Area default' : t('dayDefault')}</Menu.Item>
                         <Menu.Item leftSection={<IconBus size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'public')}>{t('publicTransport')}</Menu.Item>
                         <Menu.Item leftSection={<IconWalk size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'walk')}>{t('walk')}</Menu.Item>
                         <Menu.Item leftSection={<IconBike size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'bike')}>{t('bike')}</Menu.Item>

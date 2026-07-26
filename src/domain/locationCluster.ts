@@ -1,9 +1,10 @@
-import type { ClusterRelationship, LocationCluster, Place, TripState } from '../types';
+import type { ClusterRelationship, LocationCluster, Place, TravelMode, TripState } from '../types';
 
 export interface ClusterAssignment {
   targetPlaceId: string;
   relationship: ClusterRelationship;
-  walkMinutes?: number;
+  travelMode?: TravelMode;
+  travelMinutes?: number;
 }
 
 export function clusterPlaceIds(cluster: LocationCluster): string[] {
@@ -26,10 +27,17 @@ export function normalizeLocationClusters(state: TripState): LocationCluster[] {
   for (const cluster of state.locationClusters ?? []) {
     if (!placeIds.has(cluster.anchorPlaceId) || claimed.has(cluster.anchorPlaceId)) continue;
     claimed.add(cluster.anchorPlaceId);
-    const members = cluster.members.filter((member) => {
-      if (!placeIds.has(member.placeId) || member.placeId === cluster.anchorPlaceId || claimed.has(member.placeId)) return false;
+    const members = cluster.members.flatMap((member) => {
+      if (!placeIds.has(member.placeId) || member.placeId === cluster.anchorPlaceId || claimed.has(member.placeId)) return [];
       claimed.add(member.placeId);
-      return member.relationship === 'inside' || member.relationship === 'nearby';
+      const relationship = member.relationship === 'nearby' ? 'walkable' : member.relationship;
+      if (!['inside', 'walkable', 'same-area'].includes(relationship)) return [];
+      return [{
+        placeId: member.placeId,
+        relationship,
+        travelMode: relationship === 'same-area' ? member.travelMode : undefined,
+        travelMinutes: relationship === 'inside' ? undefined : member.travelMinutes ?? member.walkMinutes,
+      }];
     });
     if (members.length) normalized.push({ ...cluster, name: cluster.name.trim() || 'Location cluster', members });
   }
@@ -49,10 +57,12 @@ export function assignPlaceToCluster(state: TripState, placeId: string, assignme
   const targetCluster = clusterForPlace(withoutPlace, assignment.targetPlaceId);
   const targetPlace = state.places.find((place) => place.id === (targetCluster?.anchorPlaceId ?? assignment.targetPlaceId));
   if (!targetPlace || targetPlace.id === placeId) return { ...state, locationClusters: withoutPlace };
+  const relationship = assignment.relationship === 'nearby' ? 'walkable' : assignment.relationship;
   const member = {
     placeId,
-    relationship: assignment.relationship,
-    walkMinutes: assignment.relationship === 'nearby' ? assignment.walkMinutes : undefined,
+    relationship,
+    travelMode: relationship === 'same-area' ? assignment.travelMode : undefined,
+    travelMinutes: relationship === 'inside' ? undefined : assignment.travelMinutes,
   };
 
   if (targetCluster) {

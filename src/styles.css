@@ -685,6 +685,15 @@ select {
   background: var(--mantine-color-teal-0);
 }
 
+.route-leg--area {
+  min-height: 2.25rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px dashed var(--mantine-color-blue-3);
+  border-radius: var(--mantine-radius-md);
+  color: var(--mantine-color-blue-8);
+  background: var(--mantine-color-blue-0);
+}
+
 .add-place-placeholder {
   display: flex;
   min-height: 4.75rem;

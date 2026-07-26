@@ -423,12 +423,12 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     [readOnly],
   );
 
-  const setPlaceCluster = useCallback((placeId: string, targetPlaceId?: string, relationship: ClusterRelationship = 'nearby', walkMinutes?: number) => {
+  const setPlaceCluster = useCallback((placeId: string, targetPlaceId?: string, relationship: ClusterRelationship = 'walkable', travelMinutes?: number, travelMode?: TravelMode) => {
     if (readOnly) return;
     setState((current) => assignPlaceToCluster(
       current,
       placeId,
-      targetPlaceId ? { targetPlaceId, relationship, walkMinutes } : undefined,
+      targetPlaceId ? { targetPlaceId, relationship, travelMinutes, travelMode } : undefined,
     ));
   }, [readOnly]);
 

@@ -187,7 +187,9 @@ export function PlaceCard({
                 ? clusterLabel
                 : clusterRelationship === 'inside'
                   ? `Inside ${clusterLabel}`
-                  : `Near ${clusterLabel}`}
+                  : clusterRelationship === 'same-area'
+                    ? `In ${clusterLabel}`
+                    : `Walkable from ${clusterLabel}`}
             </Badge>
           ) : null}
           {!placeholder ? <Group gap={5} wrap="nowrap" mt={1}>
