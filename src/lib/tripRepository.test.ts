@@ -78,6 +78,24 @@ describe('trip repository', () => {
     await expect(loadTripState('token', 'plan-1')).rejects.toThrow('Denied');
   });
 
+  it('serializes camelCase activity events to the database snake_case contract', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ revision: 1 }), { status: 200 }));
+
+    await saveTripState('token', 'plan-1', createInitialState(), 0, [{
+      type: 'place_added',
+      targetName: 'Imported place',
+      detail: 'Imported with AI',
+    }]);
+
+    const payload = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(payload.p_events).toEqual([{
+      type: 'place_added',
+      target_name: 'Imported place',
+      detail: 'Imported with AI',
+    }]);
+    expect(payload.p_events[0]).not.toHaveProperty('targetName');
+  });
+
   it('gets or creates read-only share tokens for one selected plan', async () => {
     fetchMock
       .mockResolvedValueOnce(new Response(JSON.stringify([{ share_token: 'existing-token' }]), { status: 200 }))

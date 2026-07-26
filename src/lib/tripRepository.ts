@@ -197,7 +197,11 @@ export async function saveTripState(
       p_trip_plan_id: planId,
       p_expected_revision: expectedRevision,
       p_state: normalizeTripState(state),
-      p_events: events,
+      p_events: events.map(({ type, targetName, detail }) => ({
+        type,
+        target_name: targetName,
+        detail,
+      })),
     }),
   });
 
