@@ -17,10 +17,12 @@ import {
 import { createBlankTripState, createInitialState } from '../data/seed';
 import { ensureActivities } from '../domain/activity';
 import { ensureItineraryEntries } from '../domain/itinerary';
+import { mergeTripStates } from '../domain/mergeTripState';
 
 const LEGACY_STORAGE_KEY = 'taiwan-trip-planner:v1';
 const DEMO_STORAGE_KEY = 'taiwan-trip-planner:demo:v1';
 const SAVE_DEBOUNCE_MS = 700;
+const REMOTE_REFRESH_MS = 4_000;
 
 export type SyncStatus = 'loading' | 'saving' | 'saved' | 'error';
 
@@ -65,7 +67,9 @@ export function useTripPersistence({
   const saveSequence = useRef(0);
   const revision = useRef(0);
   const savedState = useRef<TripState | null>(null);
+  const stateRef = useRef(state);
   const [activityEvents, setActivityEvents] = useState<TripActivityEvent[]>([]);
+  stateRef.current = state;
 
   const refreshActivity = useCallback(async () => {
     if (isDemo || shareToken || !planId) {
@@ -78,6 +82,41 @@ export function useTripPersistence({
   useEffect(() => {
     void refreshActivity();
   }, [refreshActivity]);
+
+  // Pull collaborator changes while this client has no unsaved edits.
+  useEffect(() => {
+    if (!isReady || isDemo || shareToken || !planId) return;
+    let active = true;
+    let refreshing = false;
+
+    async function refreshState() {
+      if (refreshing || stateRef.current !== savedState.current) return;
+      refreshing = true;
+      try {
+        const latest = await loadTripStateWithRevision(accessToken, planId!);
+        if (!active || !latest || latest.revision <= revision.current) return;
+        const normalized = ensureActivities(latest.state);
+        revision.current = latest.revision;
+        savedState.current = normalized;
+        setState(normalized);
+        setSyncStatus('saved');
+        setSyncError(null);
+      } catch {
+        // A background refresh failure must not hide or disturb the current plan.
+      } finally {
+        refreshing = false;
+      }
+    }
+
+    const interval = window.setInterval(() => void refreshState(), REMOTE_REFRESH_MS);
+    const onFocus = () => void refreshState();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [accessToken, isDemo, isReady, planId, setState, shareToken]);
 
   // Hydration effect
   useEffect(() => {
@@ -186,14 +225,17 @@ export function useTripPersistence({
           if (reason instanceof Error && reason.message.includes('TRIP_CONFLICT')) {
             void loadTripStateWithRevision(accessToken, planId!).then((latest) => {
               if (!latest) throw new Error('The selected trip plan is no longer available.');
+              const base = savedState.current ?? state;
+              const remote = ensureActivities(latest.state);
+              const merged = mergeTripStates(base, state, remote);
               revision.current = latest.revision;
-              savedState.current = ensureActivities(latest.state);
-              setState(savedState.current);
-              setSyncStatus('error');
-              setSyncError('Another collaborator updated this trip. Latest changes were loaded.');
+              savedState.current = remote;
+              setState(merged);
+              setSyncStatus(merged === remote ? 'saved' : 'saving');
+              setSyncError(null);
             }).catch(() => {
               setSyncStatus('error');
-              setSyncError('Another collaborator updated this trip. Reload the page to get the latest changes.');
+              setSyncError('Another collaborator updated this trip. Your changes are still here; reload before trying again.');
             });
             return;
           }

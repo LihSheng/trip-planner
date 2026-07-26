@@ -49,6 +49,7 @@ describe('useTripPlanner', () => {
   afterEach(() => {
     localStorage.clear();
     vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   async function planner() {
@@ -164,6 +165,83 @@ describe('useTripPlanner', () => {
     vi.mocked(saveTripState).mockRejectedValueOnce(new Error('Network unavailable'));
     await act(async () => hook.result.current.syncNow());
     expect(hook.result.current).toMatchObject({ syncStatus: 'error', syncError: 'Network unavailable' });
+  });
+
+  it('keeps both collaborators new places when a stale save conflicts', async () => {
+    authState.accessToken = 'token';
+    authState.user = { id: 'cloud-user', email: 'cloud@example.com' };
+    authState.isDemo = false;
+    vi.mocked(listTripPlans).mockResolvedValue(cloudPlans);
+
+    const collaboratorAPlace = { ...hotel, id: 'place-a', name: 'Place from A' };
+    const collaboratorBPlace = { ...hotel, id: 'place-b', name: 'Place from B' };
+    const initial = createInitialState();
+    const latest = {
+      ...initial,
+      places: [...initial.places, collaboratorAPlace],
+      unscheduledIds: [...initial.unscheduledIds, collaboratorAPlace.id],
+    };
+    vi.mocked(loadTripStateWithRevision)
+      .mockResolvedValueOnce({ state: initial, revision: 0 })
+      .mockResolvedValueOnce({ state: latest, revision: 1 });
+    vi.mocked(saveTripState)
+      .mockRejectedValueOnce(new Error('TRIP_CONFLICT'))
+      .mockResolvedValueOnce(2);
+
+    const hook = await planner();
+    vi.useFakeTimers();
+    act(() => hook.result.current.addPlace(collaboratorBPlace));
+    await act(async () => vi.advanceTimersByTimeAsync(700));
+    await act(async () => vi.advanceTimersByTimeAsync(700));
+
+    expect(hook.result.current.state.places).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: collaboratorAPlace.id }),
+      expect.objectContaining({ id: collaboratorBPlace.id }),
+    ]));
+    expect(hook.result.current.state.unscheduledIds).toEqual(expect.arrayContaining([
+      collaboratorAPlace.id,
+      collaboratorBPlace.id,
+    ]));
+    expect(saveTripState).toHaveBeenLastCalledWith(
+      'token',
+      'plan-1',
+      expect.objectContaining({ places: expect.arrayContaining([
+        expect.objectContaining({ id: collaboratorAPlace.id }),
+        expect.objectContaining({ id: collaboratorBPlace.id }),
+      ]) }),
+      1,
+      expect.any(Array),
+    );
+    expect(hook.result.current.syncStatus).toBe('saved');
+  });
+
+  it('refreshes a clean plan when another collaborator saves', async () => {
+    authState.accessToken = 'token';
+    authState.user = { id: 'cloud-user', email: 'cloud@example.com' };
+    authState.isDemo = false;
+    vi.mocked(listTripPlans).mockResolvedValue(cloudPlans);
+
+    const collaboratorPlace = { ...hotel, id: 'place-a', name: 'Place from A' };
+    const initial = createInitialState();
+    vi.mocked(loadTripStateWithRevision)
+      .mockResolvedValueOnce({ state: initial, revision: 0 })
+      .mockResolvedValueOnce({
+        state: {
+          ...initial,
+          places: [...initial.places, collaboratorPlace],
+          unscheduledIds: [...initial.unscheduledIds, collaboratorPlace.id],
+        },
+        revision: 1,
+      });
+
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const hook = await planner();
+    await act(async () => vi.advanceTimersByTimeAsync(4_000));
+
+    expect(hook.result.current.placesById.get(collaboratorPlace.id)).toMatchObject({
+      name: 'Place from A',
+    });
+    expect(hook.result.current.syncStatus).toBe('saved');
   });
 
   it('opens the requested plan id before stored or most-recent plans', async () => {
