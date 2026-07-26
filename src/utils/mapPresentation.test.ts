@@ -24,7 +24,7 @@ const place = (overrides: Partial<Place> = {}): Place => ({
 
 describe('markerColors', () => {
   it('has a colour for every category', () => {
-    expect(Object.keys(markerColors)).toHaveLength(7);
+    expect(Object.keys(markerColors)).toHaveLength(10);
     expect(markerColors.Landmark).toBe('#f08c46');
     expect(markerColors.Accommodation).toBe('#5f3dc4');
   });

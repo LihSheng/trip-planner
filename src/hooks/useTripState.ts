@@ -9,6 +9,7 @@ import { ensureActivities, updateActivityDetails, type ActivityDetailUpdates } f
 import { createInitialState } from '../data/seed';
 import { isAccommodation } from '../utils/stay';
 import { ensureItineraryEntries } from '../domain/itinerary';
+import { isPlaceholder } from '../domain/place';
 
 interface TripActor {
   id: string;
@@ -71,7 +72,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
       ...current,
       places: [...current.places, attributePlace(place)],
       unscheduledIds: [...current.unscheduledIds, place.id],
-      hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId,
+      hotelPlaceId: isAccommodation(place) ? place.id : current.hotelPlaceId,
     }));
   }, [readOnly]);
 
@@ -81,13 +82,13 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
       ...current,
       places: [...current.places, attributePlace(place)],
       days: current.days.map((day) => (day.id === dayId ? markRouteStale({ ...day, placeIds: [...day.placeIds, place.id] }) : day)),
-      hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId,
+      hotelPlaceId: isAccommodation(place) ? place.id : current.hotelPlaceId,
     }));
   }, [readOnly]);
 
   const addPlaceholderToDay = useCallback((dayId: string, kind: PlaceholderKind) => {
     if (readOnly) return;
-    const placeholder: Place = { id: `placeholder-${crypto.randomUUID()}`, name: kind, region: '', category: 'Relaxation', latitude: 0, longitude: 0, notes: '', type: 'placeholder', placeholderKind: kind };
+    const placeholder: Place = { id: `placeholder-${crypto.randomUUID()}`, name: kind, region: '', category: 'Relaxation', latitude: 0, longitude: 0, notes: '', placeholderKind: kind };
     setState((current) => ({
       ...current,
       places: [...current.places, attributePlace(placeholder)],
@@ -111,7 +112,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     setState((current) => {
       const placeholder = current.places.find((place) => place.id === placeholderId);
       const place = current.places.find((item) => item.id === placeId);
-      if (placeholder?.type !== 'placeholder' || !place || place.type === 'placeholder') return current;
+      if (!placeholder || !isPlaceholder(placeholder) || !place || isPlaceholder(place)) return current;
       return {
         ...current,
         places: current.places.filter((item) => item.id !== placeholderId),
@@ -130,7 +131,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
       ...current,
       places: current.places.map((item) => (item.id === place.id ? touchPlace(place) : item)),
       days: current.days.map((day) => day.placeIds.includes(place.id) ? markRouteStale(day) : day),
-      hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId === place.id ? undefined : current.hotelPlaceId,
+      hotelPlaceId: isAccommodation(place) ? place.id : current.hotelPlaceId === place.id ? undefined : current.hotelPlaceId,
     }));
   }, [readOnly, touchPlace]);
 
@@ -174,7 +175,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
       const day = current.days.find((item) => item.id === dayId);
       if (!place || !day?.placeIds.includes(placeId)) return current;
 
-      const removesPlaceRecord = Boolean(place.assignmentOf) || place.type === 'placeholder';
+      const removesPlaceRecord = Boolean(place.assignmentOf) || isPlaceholder(place);
       return {
         ...current,
         places: removesPlaceRecord ? current.places.filter((item) => item.id !== placeId) : current.places,
@@ -346,7 +347,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
       if (readOnly) return;
       setState((current) => {
         const place = current.places.find((item) => item.id === placeId);
-        if (destinationId === 'unscheduled' && place?.type === 'placeholder') return current;
+        if (destinationId === 'unscheduled' && place && isPlaceholder(place)) return current;
         if (place && isAccommodation(place)) {
           if (destinationId === 'unscheduled') return current;
           const targetDay = current.days.find((day) => day.id === destinationId);

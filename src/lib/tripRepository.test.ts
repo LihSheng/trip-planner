@@ -10,6 +10,7 @@ import {
   loadSharedTripPlanId,
   loadTripCollaborators,
   loadTripState,
+  normalizeTripState,
   removeTripCollaborator,
   saveTripState,
 } from './tripRepository';
@@ -44,6 +45,16 @@ describe('trip repository', () => {
     expect(loaded?.visitedPlaceIds).toEqual([]);
     expect(loaded?.days[0]).toMatchObject({ travelMode: 'public', stopSchedules: {}, timeManagementEnabled: false });
     expect(fetchMock.mock.calls[0][0]).toContain('id=eq.plan-1');
+  });
+
+  it('normalizes legacy place types into the canonical category-only schema', () => {
+    const state = createInitialState();
+    state.places[0] = { ...state.places[0], category: 'Landmark', type: 'hotel' } as typeof state.places[0] & { type: 'hotel' };
+
+    const normalized = normalizeTripState(state);
+
+    expect(normalized.places[0].category).toBe('Accommodation');
+    expect(normalized.places[0]).not.toHaveProperty('type');
   });
 
   it('creates, lists, saves trips, and translates repository failure responses', async () => {

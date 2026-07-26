@@ -47,6 +47,7 @@ import { AiImportDrawer } from './components/AiImportDrawer';
 import { formatTripPlainText } from './utils/exportTrip';
 import { useCurrentLocation } from './hooks/useCurrentLocation';
 import { useI18n } from './i18n';
+import { isPlaceholder } from './domain/place';
 
 const TaiwanMap = lazy(() =>
   import('./components/TaiwanMap').then((module) => ({ default: module.TaiwanMap })),
@@ -155,7 +156,7 @@ export default function App() {
   }
 
   function openEditActivity(place: Place) {
-    if (planner.isReadOnly || place.type === 'placeholder') return;
+    if (planner.isReadOnly || isPlaceholder(place)) return;
     setSelectedId(place.id);
     setEditingActivityId(place.id);
   }
@@ -246,7 +247,7 @@ export default function App() {
   const map = (
     <Suspense fallback={<Skeleton height="calc(100vh - 176px)" mih={560} radius="lg" />}>
       <TaiwanMap
-        places={planner.state.places.filter((place) => place.type !== 'placeholder' && !place.assignmentOf)}
+        places={planner.state.places.filter((place) => !isPlaceholder(place) && !place.assignmentOf)}
         days={planner.state.days}
         unscheduledIds={planner.state.unscheduledIds}
         startDate={planner.state.startDate}
@@ -266,7 +267,7 @@ export default function App() {
   const placesPanel = (
     <Box className="library-panel">
       <PlaceLibrary
-        places={planner.state.places.filter((place) => place.type !== 'placeholder' && !place.assignmentOf)}
+        places={planner.state.places.filter((place) => !isPlaceholder(place) && !place.assignmentOf)}
         selectedId={selectedId}
         onSelect={(placeId) => {
           setSelectedId(placeId);

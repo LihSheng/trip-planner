@@ -15,16 +15,7 @@ import { useForm } from '@mantine/form';
 import { useMediaQuery } from '@mantine/hooks';
 import type { Activity, Place, PlaceCategory } from '../types';
 import type { ActivityDetailUpdates } from '../domain/activity';
-
-const categoryOptions: PlaceCategory[] = [
-  'Landmark',
-  'Food',
-  'Nature',
-  'Culture',
-  'Shopping',
-  'Relaxation',
-  'Accommodation',
-];
+import { PLACE_CATEGORIES } from '../domain/place';
 
 interface ActivityEditorValues {
   title: string;
@@ -130,7 +121,7 @@ export function ActivityEditorModal({
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <Select
                 label="Category"
-                data={categoryOptions}
+                data={[...PLACE_CATEGORIES]}
                 allowDeselect={false}
                 {...form.getInputProps('category')}
               />

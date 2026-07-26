@@ -18,6 +18,7 @@ import { IconAlertTriangle, IconClock, IconCoffee, IconDotsVertical, IconEdit, I
 import type { Place, PlaceCategory, StopSchedule } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
 import { isStayExpired } from '../utils/stay';
+import { isPlaceholder } from '../domain/place';
 
 const categoryColors: Record<PlaceCategory, string> = {
   Landmark: 'orange',
@@ -27,6 +28,9 @@ const categoryColors: Record<PlaceCategory, string> = {
   Shopping: 'blue',
   Relaxation: 'cyan',
   Accommodation: 'indigo',
+  Airport: 'gray',
+  Station: 'lime',
+  Transit: 'yellow',
 };
 
 interface PlaceCardProps {
@@ -69,7 +73,7 @@ export function PlaceCard({
     id: place.id,
     disabled: dragDisabled,
   });
-  const isPlaceholder = place.type === 'placeholder';
+  const placeholder = isPlaceholder(place);
   const stayExpired = isStayExpired(place);
   const presetPlaceholderLabel = place.placeholderKind === 'meal' ? t('lunchDinner') : place.placeholderKind === 'coffee' ? t('coffeeBreak') : place.placeholderKind === 'free-time' ? t('freeTime') : t('customStop');
   const placeholderLabel = place.name === place.placeholderKind ? presetPlaceholderLabel : place.name;
@@ -81,7 +85,7 @@ export function PlaceCard({
       withBorder
       radius="md"
       p="sm"
-      className={`place-card${dragDisabled ? '' : ' place-card--draggable'}${isPlaceholder ? ' place-card--placeholder' : ''}`}
+      className={`place-card${dragDisabled ? '' : ' place-card--draggable'}${placeholder ? ' place-card--placeholder' : ''}`}
       data-selected={selected || undefined}
       data-dragging={isDragging || undefined}
       data-visited={visited || undefined}
@@ -96,7 +100,7 @@ export function PlaceCard({
       onClick={() => onSelect?.(place.id)}
     >
       <Group align="flex-start" gap="xs" wrap="nowrap">
-        {onVisitedChange && !isPlaceholder ? (
+        {onVisitedChange && !placeholder ? (
           <Checkbox
             checked={visited}
             onChange={() => onVisitedChange(place.id)}
@@ -106,12 +110,12 @@ export function PlaceCard({
             onClick={(event) => event.stopPropagation()}
           />
         ) : null}
-        {isPlaceholder ? <PlaceholderIcon size={18} color="var(--mantine-color-orange-6)" /> : <Box className={`place-card__accent place-card__accent--${place.category.toLowerCase()}`} />}
+        {placeholder ? <PlaceholderIcon size={18} color="var(--mantine-color-orange-6)" /> : <Box className={`place-card__accent place-card__accent--${place.category.toLowerCase()}`} />}
 
         <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
           <Group justify="space-between" align="flex-start" gap="xs" wrap="nowrap">
             <Text fw={650} size="sm" lineClamp={1} className={visited ? 'place-card__name--visited' : undefined}>
-              {isPlaceholder ? placeholderLabel : place.name}
+              {placeholder ? placeholderLabel : place.name}
             </Text>
             {(onEdit || onDelete || onEnableSchedule || onReplace || onRename) && (
               <Menu position="bottom-end" withinPortal shadow="md">
@@ -156,16 +160,16 @@ export function PlaceCard({
               </Menu>
             )}
           </Group>
-          {!isPlaceholder ? <Group gap={5} wrap="nowrap">
+          {!placeholder ? <Group gap={5} wrap="nowrap">
             <IconMapPin size={13} color="var(--mantine-color-dimmed)" />
             <Text size="xs" c="dimmed" lineClamp={1}>
               {place.region}
             </Text>
           </Group> : null}
-          {!isPlaceholder ? <Badge color={categoryColors[place.category]} variant="light" size="xs">
+          {!placeholder ? <Badge color={categoryColors[place.category]} variant="light" size="xs">
             {categoryLabel(t, place.category)}
           </Badge> : null}
-          {!isPlaceholder ? <Group gap={5} wrap="nowrap" mt={1}>
+          {!placeholder ? <Group gap={5} wrap="nowrap" mt={1}>
             <Tooltip label={authorDetails(place)}>
               <Group gap={3} wrap="nowrap">
                 <IconUser size={12} color="var(--mantine-color-dimmed)" />

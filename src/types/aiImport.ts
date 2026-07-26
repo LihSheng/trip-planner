@@ -1,4 +1,4 @@
-import type { PlaceCategory, PlaceType, TravelMode, TripState } from '../types';
+import type { OpeningHours, PlaceCategory, StayDates, TravelMode, TripState } from '../types';
 
 export type AiImportSource = { type: 'text'; content: string } | { type: 'url'; url: string };
 export type AiPlaceResolution = 'resolved' | 'ambiguous' | 'not-found' | 'existing-place';
@@ -16,10 +16,11 @@ export interface AiResolvedPlace {
   name: string;
   region: string;
   category: PlaceCategory;
-  type: Exclude<PlaceType, 'placeholder'>;
   latitude?: number;
   longitude?: number;
   notes: string;
+  openingHours?: OpeningHours;
+  stay?: StayDates;
   suggestedStartTime?: string;
   durationMinutes?: number;
   confidence: number;

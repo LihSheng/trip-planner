@@ -14,3 +14,32 @@ const storage: Storage = {
 };
 Object.defineProperty(window, 'localStorage', { value: storage, configurable: true });
 Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable: true });
+
+Object.defineProperty(window, 'matchMedia', {
+  configurable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
+  }),
+});
+
+Object.defineProperty(document, 'fonts', {
+  configurable: true,
+  value: {
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  },
+});
+
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+Object.defineProperty(globalThis, 'ResizeObserver', { configurable: true, value: ResizeObserverStub });

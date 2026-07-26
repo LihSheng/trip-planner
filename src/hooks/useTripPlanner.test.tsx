@@ -24,7 +24,7 @@ vi.mock('../lib/tripRepository', async () => {
 import { useTripPlanner } from './useTripPlanner';
 
 const hotel: Place = {
-  id: 'hotel', name: 'Hotel', region: 'Taipei', category: 'Relaxation', latitude: 25.04, longitude: 121.56, notes: '', type: 'hotel',
+  id: 'hotel', name: 'Hotel', region: 'Taipei', category: 'Accommodation', latitude: 25.04, longitude: 121.56, notes: '',
 };
 
 const planOneState = { ...createInitialState(), tripName: 'Taiwan Adventure' };
@@ -63,7 +63,7 @@ describe('useTripPlanner', () => {
     expect(hook.result.current.state.hotelPlaceId).toBe('hotel');
     expect(hook.result.current.state.unscheduledIds).toContain('hotel');
 
-    await act(async () => hook.result.current.updatePlace({ ...hotel, type: 'place', name: 'Renamed' }));
+    await act(async () => hook.result.current.updatePlace({ ...hotel, category: 'Landmark', name: 'Renamed' }));
     expect(hook.result.current.state.hotelPlaceId).toBeUndefined();
     expect(hook.result.current.placesById.get('hotel')?.name).toBe('Renamed');
 
@@ -112,7 +112,7 @@ describe('useTripPlanner', () => {
     const hook = await planner();
     const dayId = hook.result.current.state.days[0].id;
     await act(async () => hook.result.current.addPlaceholderToDay(dayId, 'meal'));
-    const placeholder = hook.result.current.state.places.find((place) => place.type === 'placeholder');
+    const placeholder = hook.result.current.state.places.find((place) => place.placeholderKind);
     expect(placeholder?.placeholderKind).toBe('meal');
     expect(hook.result.current.state.days[0].placeIds).toContain(placeholder?.id);
 
@@ -125,7 +125,7 @@ describe('useTripPlanner', () => {
     const hook = await planner();
     const dayId = hook.result.current.state.days[0].id;
     await act(async () => hook.result.current.addPlaceholderToDay(dayId, 'coffee'));
-    const placeholderId = hook.result.current.state.places.find((place) => place.type === 'placeholder')!.id;
+    const placeholderId = hook.result.current.state.places.find((place) => place.placeholderKind)!.id;
 
     await act(async () => hook.result.current.fillPlaceholder(placeholderId, 'alishan'));
     const day = hook.result.current.state.days[0];

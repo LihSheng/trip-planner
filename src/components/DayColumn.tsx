@@ -28,6 +28,7 @@ import { dayWarnings, estimateTravelMinutes, scheduleFor } from '../utils/schedu
 import { routeLegKey } from '../utils/routing';
 import { legGoogleMapsUrl } from '../utils/mapPresentation';
 import { transportIcon } from './transportIcons';
+import { isPlaceholder } from '../domain/place';
 
 interface DayColumnProps {
   readOnly?: boolean;
@@ -264,11 +265,11 @@ export function DayColumn({
                 onSelect={onSelect}
                 onEdit={readOnly ? undefined : onEditPlace}
                 onDelete={readOnly ? undefined : onDeletePlace}
-                onReplace={!readOnly && place.type === 'placeholder' ? onReplacePlaceholder : undefined}
-                onRename={!readOnly && place.type === 'placeholder' ? (target) => { setRenameTarget(target); setRenameLabel(target.name === target.placeholderKind ? '' : target.name); } : undefined}
+                onReplace={!readOnly && isPlaceholder(place) ? onReplacePlaceholder : undefined}
+                onRename={!readOnly && isPlaceholder(place) ? (target) => { setRenameTarget(target); setRenameLabel(target.name === target.placeholderKind ? '' : target.name); } : undefined}
                 onVisitedChange={readOnly ? undefined : onVisitedChange}
                 schedule={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] ? scheduleFor(day, place) : undefined}
-                travelMinutes={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 && place.type !== 'placeholder' && places[placeIndex - 1].type !== 'placeholder' ? estimateTravelMinutes(places[placeIndex - 1], place, day.travelMode) : undefined}
+                travelMinutes={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 && !isPlaceholder(place) && !isPlaceholder(places[placeIndex - 1]) ? estimateTravelMinutes(places[placeIndex - 1], place, day.travelMode) : undefined}
                 warnings={readOnly ? undefined : warningsByPlace.get(place.id)}
                 onScheduleChange={!readOnly && day.timeManagementEnabled ? (updates) => onStopScheduleChange(day.id, place.id, updates) : undefined}
                 onEnableSchedule={!readOnly && day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
@@ -278,7 +279,7 @@ export function DayColumn({
                 const key = routeLegKey(place.id, nextPlace.id);
                 const mode = day.legModeOverrides?.[key] ?? 'default';
                 const actualMode = mode === 'default' ? day.travelMode ?? 'public' : mode;
-                const canOpenRoute = place.type !== 'placeholder' && nextPlace.type !== 'placeholder';
+                const canOpenRoute = !isPlaceholder(place) && !isPlaceholder(nextPlace);
                 return (
                   <Group className="route-leg" gap="xs" justify="center" wrap="nowrap">
                     {canOpenRoute ? <Tooltip label={t('openRoute')}><ActionIcon component="a" href={legGoogleMapsUrl(place, nextPlace, actualMode)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon></Tooltip> : <ActionIcon variant="subtle" color="gray" disabled aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon>}

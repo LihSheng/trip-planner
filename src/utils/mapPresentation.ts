@@ -9,6 +9,9 @@ export const markerColors: Record<PlaceCategory, string> = {
   Shopping: '#339af0',
   Relaxation: '#15aabf',
   Accommodation: '#5f3dc4',
+  Airport: '#495057',
+  Station: '#74b816',
+  Transit: '#f59f00',
 };
 
 /**

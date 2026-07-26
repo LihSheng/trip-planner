@@ -10,6 +10,7 @@ import {
   loadPublicTrip,
   loadTripActivity,
   loadTripStateWithRevision,
+  normalizeTripState,
   saveTripState,
   type TripPlanSummary,
 } from '../lib/tripRepository';
@@ -28,16 +29,7 @@ function loadStoredState(key: string): TripState | null {
     const stored = window.localStorage.getItem(key);
     if (!stored) return null;
     const parsed = JSON.parse(stored) as unknown;
-    return isTripState(parsed)
-      ? ensureActivities(ensureItineraryEntries({
-          ...parsed,
-          visitedPlaceIds: parsed.visitedPlaceIds ?? [],
-          executionByDay: parsed.executionByDay ?? {},
-          expenses: parsed.expenses ?? [],
-          displayCurrency: parsed.displayCurrency ?? 'MYR',
-          days: parsed.days.map((day) => ({ ...day, travelMode: day.travelMode ?? 'public', stopSchedules: day.stopSchedules ?? {}, timeManagementEnabled: day.timeManagementEnabled ?? false, legModeOverrides: day.legModeOverrides ?? {} })),
-        }))
-      : null;
+    return isTripState(parsed) ? normalizeTripState(parsed) : null;
   } catch {
     return null;
   }
@@ -175,7 +167,7 @@ export function useTripPersistence({
 
     const timeout = window.setTimeout(() => {
       if (isDemo) {
-        window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(ensureActivities(ensureItineraryEntries(state))));
+        window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(normalizeTripState(state)));
         if (saveSequence.current === sequence) setSyncStatus('saved');
         return;
       }
@@ -232,7 +224,7 @@ export function useTripPersistence({
   }, [accessToken, isDemo, planId, refreshActivity, setPlans, shareToken, state]);
 
   const persistForCloudSignIn = useCallback(() => {
-    if (isDemo) window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(ensureActivities(ensureItineraryEntries(state))));
+    if (isDemo) window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(normalizeTripState(state)));
   }, [isDemo, state]);
 
   const switchPlan = useCallback(async (nextPlanId: string) => {

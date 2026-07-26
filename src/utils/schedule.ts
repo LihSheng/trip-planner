@@ -1,4 +1,5 @@
 import type { Place, PlaceCategory, StopSchedule, TravelMode, TripDay } from '../types';
+import { isPlaceholder } from '../domain/place';
 
 const DEFAULT_DURATIONS: Record<PlaceCategory, number> = {
   Landmark: 90,
@@ -8,6 +9,9 @@ const DEFAULT_DURATIONS: Record<PlaceCategory, number> = {
   Shopping: 90,
   Relaxation: 120,
   Accommodation: 30,
+  Airport: 90,
+  Station: 30,
+  Transit: 30,
 };
 
 const TRAVEL_SPEEDS_KMH: Record<TravelMode, number> = {
@@ -45,7 +49,7 @@ function distanceKm(from: Place, to: Place) {
 }
 
 export function estimateTravelMinutes(from: Place, to: Place, mode: TravelMode = 'public') {
-  if (from.type === 'placeholder' || to.type === 'placeholder') return 0;
+  if (isPlaceholder(from) || isPlaceholder(to)) return 0;
   const roadFactor = mode === 'walk' ? 1.15 : 1.3;
   return Math.max(5, Math.round((distanceKm(from, to) * roadFactor / TRAVEL_SPEEDS_KMH[mode]) * 60));
 }

@@ -30,6 +30,7 @@ import {
   IconSettings,
   IconUsers,
 } from '@tabler/icons-react';
+import { isPlaceholder } from '../domain/place';
 import { useAuth } from '../context/AuthContext';
 import { useTrip } from '../context/TripContext';
 import type { CurrentLocationState } from '../hooks/useCurrentLocation';
@@ -80,7 +81,7 @@ export function AppHeader({
   const accountEmail = user.email;
   const tripName = state.tripName;
   const startDate = state.startDate;
-  const placeCount = state.places.filter((place) => place.type !== 'placeholder').length;
+  const placeCount = state.places.filter((place) => !isPlaceholder(place)).length;
   const dayCount = state.days.length;
   const canShare = isOwner;
   const liveLocationActive = location.isTracking && location.permission !== 'unsupported';

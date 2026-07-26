@@ -3,16 +3,19 @@ import type { AiResolvedPlace, ConfirmedAiDraft } from '../types/aiImport';
 import { markRouteStale } from './routing';
 
 function importedPlace(candidate: AiResolvedPlace): Place | null {
-  if (candidate.resolution !== 'resolved' || candidate.latitude === undefined || candidate.longitude === undefined) return null;
+  if (candidate.latitude === undefined || candidate.longitude === undefined) return null;
   return {
     id: `place-${crypto.randomUUID()}`,
     name: candidate.name,
     region: candidate.region,
     category: candidate.category,
-    type: candidate.type,
     latitude: candidate.latitude,
     longitude: candidate.longitude,
     notes: candidate.notes,
+    openingHours: candidate.category !== 'Accommodation' && candidate.openingHours?.opensAt && candidate.openingHours.closesAt
+      ? candidate.openingHours
+      : undefined,
+    stay: candidate.category === 'Accommodation' && candidate.stay?.checkInDate && candidate.stay.checkOutDate ? candidate.stay : undefined,
   };
 }
 

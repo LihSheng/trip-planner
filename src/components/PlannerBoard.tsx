@@ -24,6 +24,7 @@ import { isAccommodation, stayAssignmentStatus, type StayAssignmentStatus } from
 
 import { useTrip } from '../context/TripContext';
 import { TripActivityDrawer } from './TripActivityDrawer';
+import { isPlaceholder } from '../domain/place';
 
 interface PlannerBoardProps {
   selectedId: string | null;
@@ -124,10 +125,12 @@ export function PlannerBoard({
     }
 
     const overId = String(event.over.id);
+    const overPlace = placesById.get(overId);
+    const activePlace = placesById.get(activeId);
     if (
-      placesById.get(overId)?.type === 'placeholder'
-      && placesById.get(activeId)?.type !== 'placeholder'
-      && !isAccommodation(placesById.get(activeId)!)
+      overPlace && isPlaceholder(overPlace)
+      && activePlace && !isPlaceholder(activePlace)
+      && !isAccommodation(activePlace)
     ) {
       onFillPlaceholder(overId, activeId);
       return;

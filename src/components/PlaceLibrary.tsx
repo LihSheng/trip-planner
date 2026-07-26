@@ -3,7 +3,7 @@ import {
   ActionIcon,
   Group,
   ScrollArea,
-  SegmentedControl,
+  Select,
   Stack,
   Text,
   TextInput,
@@ -13,7 +13,8 @@ import { IconPlus, IconSearch } from '@tabler/icons-react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { Place, PlaceCategory } from '../types';
 import { PlaceCard } from './PlaceCard';
-import { useI18n } from '../i18n';
+import { categoryLabel, useI18n } from '../i18n';
+import { isPlaceholder, PLACE_CATEGORIES } from '../domain/place';
 
 interface PlaceLibraryProps {
   places: Place[];
@@ -38,15 +39,15 @@ export function PlaceLibrary({
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
   const filterOptions = [
-    { label: t('all'), value: 'All' }, { label: t('nature'), value: 'Nature' },
-    { label: t('culture'), value: 'Culture' }, { label: t('food'), value: 'Food' },
+    { label: t('all'), value: 'All' },
+    ...PLACE_CATEGORIES.map((value) => ({ value, label: categoryLabel(t, value) })),
   ];
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
 
   const filtered = useMemo(
     () =>
       places.filter((place) => {
-        if (place.type === 'placeholder' || place.assignmentOf) return false;
+        if (isPlaceholder(place) || place.assignmentOf) return false;
         const matchesQuery =
           !deferredQuery ||
           place.name.toLowerCase().includes(deferredQuery) ||
@@ -63,7 +64,7 @@ export function PlaceLibrary({
         <div>
           <Text fw={750}>{t('placesOfInterest')}</Text>
           <Text size="xs" c="dimmed">
-            {t('placesCount', { shown: filtered.length, total: places.filter((place) => !place.assignmentOf && place.type !== 'placeholder').length })}
+            {t('placesCount', { shown: filtered.length, total: places.filter((place) => !place.assignmentOf && !isPlaceholder(place)).length })}
           </Text>
         </div>
         {!readOnly ? <Tooltip label={t('addPlace')}>
@@ -81,12 +82,13 @@ export function PlaceLibrary({
         aria-label={t('searchPlaces')}
       />
 
-      <SegmentedControl
+      <Select
+        aria-label={t('category')}
         value={category}
-        onChange={setCategory}
+        onChange={(value) => setCategory(value ?? 'All')}
         data={filterOptions}
         size="xs"
-        fullWidth
+        allowDeselect={false}
       />
 
       <ScrollArea.Autosize mah={380} type="auto" offsetScrollbars className="place-library__list">

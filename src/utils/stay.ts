@@ -3,7 +3,7 @@ import type { Place } from '../types';
 export type StayAssignmentStatus = 'valid' | 'missing-dates' | 'before-check-in' | 'checked-out';
 
 export function isAccommodation(place: Place) {
-  return place.category === 'Accommodation' || place.type === 'hotel';
+  return place.category === 'Accommodation';
 }
 
 export function localDateString(date = new Date()) {

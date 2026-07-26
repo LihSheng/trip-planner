@@ -14,32 +14,11 @@ import {
   TextInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import type { Place, PlaceCategory, PlaceType } from '../types';
+import type { Place, PlaceCategory } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
+import { PLACE_CATEGORIES, type PlaceDetailsValues, validatePlaceDetails } from '../domain/place';
 
-const categoryOptions: PlaceCategory[] = [
-  'Landmark',
-  'Food',
-  'Nature',
-  'Culture',
-  'Shopping',
-  'Relaxation',
-  'Accommodation',
-];
-
-interface PlaceFormValues {
-  name: string;
-  region: string;
-  category: PlaceCategory;
-  latitude: number | string;
-  longitude: number | string;
-  notes: string;
-  type: PlaceType;
-  opensAt: string;
-  closesAt: string;
-  checkInDate: string;
-  checkOutDate: string;
-}
+type PlaceFormValues = PlaceDetailsValues;
 
 interface PlaceFormModalProps {
   opened: boolean;
@@ -72,6 +51,9 @@ interface GeoapifyProperties {
 const geoapifyApiKey = import.meta.env.VITE_GEOAPIFY_API_KEY as string | undefined;
 
 function categoryFromGeoapifyTypes(types: string[] = []): PlaceCategory {
+  if (types.some((type) => type.includes('airport') || type.includes('aviation'))) return 'Airport';
+  if (types.some((type) => type.includes('railway') || type.includes('train_station') || type.includes('bus_station'))) return 'Station';
+  if (types.some((type) => type.includes('public_transport') || type.includes('transit'))) return 'Transit';
   if (types.some((type) => type.startsWith('accommodation.') || type.includes('hotel') || type.includes('hostel') || type.includes('dormitory'))) {
     return 'Accommodation';
   }
@@ -106,20 +88,12 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
       latitude: 25.033,
       longitude: 121.5654,
       notes: '',
-      type: 'place',
       opensAt: '',
       closesAt: '',
       checkInDate: '',
       checkOutDate: '',
     },
-    validate: {
-      name: (value) => (value.trim().length < 2 ? t('enterPlaceName') : null),
-      region: (value) => (value.trim().length < 2 ? t('enterRegion') : null),
-      latitude: (value) =>
-        typeof value !== 'number' || value < -90 || value > 90 ? t('validLatitude') : null,
-      longitude: (value) =>
-        typeof value !== 'number' || value < -180 || value > 180 ? t('validLongitude') : null,
-    },
+    validate: validatePlaceDetails,
   });
 
   useEffect(() => {
@@ -133,7 +107,6 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
             latitude: place.latitude,
             longitude: place.longitude,
             notes: place.notes,
-            type: place.type ?? 'place',
             opensAt: place.openingHours?.opensAt ?? '',
             closesAt: place.openingHours?.closesAt ?? '',
             checkInDate: place.stay?.checkInDate ?? '',
@@ -146,7 +119,6 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
             latitude: 25.033,
             longitude: 121.5654,
             notes: '',
-            type: 'place',
             opensAt: '',
             closesAt: '',
             checkInDate: '',
@@ -250,7 +222,6 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
             latitude: Number(values.latitude),
             longitude: Number(values.longitude),
             notes: values.notes.trim(),
-            type: values.type,
             openingHours: values.category === 'Accommodation' ? undefined : values.opensAt && values.closesAt ? { opensAt: values.opensAt, closesAt: values.closesAt } : undefined,
             stay: values.category === 'Accommodation' && values.checkInDate && values.checkOutDate
               ? { checkInDate: values.checkInDate, checkOutDate: values.checkOutDate }
@@ -283,24 +254,12 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
           ) : null}
           <Select
             label={t('category')}
-            data={categoryOptions.map((category) => ({ value: category, label: categoryLabel(t, category) }))}
+            data={PLACE_CATEGORIES.map((category) => ({ value: category, label: categoryLabel(t, category) }))}
             allowDeselect={false}
             {...form.getInputProps('category')}
           />
           <TextInput label={t('placeName')} placeholder={t('searchExample')} required {...form.getInputProps('name')} />
           <TextInput label={t('regionCity')} placeholder={t('cityPlaceholder')} required {...form.getInputProps('region')} />
-          <Select
-            label={t('placeType')}
-            data={[
-              { value: 'place', label: t('typePlace') },
-              { value: 'hotel', label: t('typeHotel') },
-              { value: 'airport', label: t('typeAirport') },
-              { value: 'station', label: t('typeStation') },
-              { value: 'transit', label: t('typeTransit') },
-            ]}
-            allowDeselect={false}
-            {...form.getInputProps('type')}
-          />
           <SimpleGrid cols={2}>
             <NumberInput label={t('latitude')} decimalScale={6} {...form.getInputProps('latitude')} />
             <NumberInput label={t('longitude')} decimalScale={6} {...form.getInputProps('longitude')} />

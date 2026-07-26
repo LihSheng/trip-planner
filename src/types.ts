@@ -5,9 +5,10 @@ export type PlaceCategory =
   | 'Culture'
   | 'Shopping'
   | 'Relaxation'
-  | 'Accommodation';
-
-export type PlaceType = 'place' | 'hotel' | 'airport' | 'station' | 'transit' | 'placeholder';
+  | 'Accommodation'
+  | 'Airport'
+  | 'Station'
+  | 'Transit';
 export type PlaceholderKind = 'meal' | 'coffee' | 'free-time' | 'custom';
 export type TravelMode = 'public' | 'walk' | 'bike' | 'car' | 'taxi' | 'other';
 
@@ -56,7 +57,6 @@ export interface Place {
   latitude: number;
   longitude: number;
   notes: string;
-  type?: PlaceType;
   assignmentOf?: string;
   placeholderKind?: PlaceholderKind;
   openingHours?: OpeningHours;

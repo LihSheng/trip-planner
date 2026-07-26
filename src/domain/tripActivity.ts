@@ -1,4 +1,5 @@
 import type { Place, TripActivityType, TripState } from '../types';
+import { isPlaceholder } from './place';
 
 export interface PendingTripActivity {
   type: TripActivityType;
@@ -7,7 +8,7 @@ export interface PendingTripActivity {
 }
 
 function sourcePlaces(state: TripState) {
-  return state.places.filter((place) => !place.assignmentOf && place.type !== 'placeholder');
+  return state.places.filter((place) => !place.assignmentOf && !isPlaceholder(place));
 }
 
 function dayName(state: TripState, dayId: string): string {
