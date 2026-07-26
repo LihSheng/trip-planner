@@ -39,6 +39,7 @@ interface PlaceCardProps {
   dragDisabled?: boolean;
   onSelect?: (placeId: string) => void;
   onEdit?: (place: Place) => void;
+  editLabel?: string;
   onDelete?: (place: Place) => void;
   visited?: boolean;
   onVisitedChange?: (placeId: string) => void;
@@ -57,6 +58,7 @@ export function PlaceCard({
   dragDisabled = false,
   onSelect,
   onEdit,
+  editLabel = 'Edit place details',
   onDelete,
   visited = false,
   onVisitedChange,
@@ -139,7 +141,7 @@ export function PlaceCard({
                     </Menu.Item>
                   ) : onEdit ? (
                     <Menu.Item leftSection={<IconEdit size={15} />} onClick={() => onEdit(place)}>
-                      Edit activity
+                      {editLabel}
                     </Menu.Item>
                   ) : null}
                   {onEnableSchedule && !schedule ? (

@@ -31,6 +31,7 @@ interface ActivityEditorModalProps {
   place?: Place;
   onClose: () => void;
   onSubmit: (activityId: string, updates: ActivityDetailUpdates) => void;
+  onEditPlace?: (place: Place) => void;
 }
 
 export function ActivityEditorModal({
@@ -39,6 +40,7 @@ export function ActivityEditorModal({
   place,
   onClose,
   onSubmit,
+  onEditPlace,
 }: ActivityEditorModalProps) {
   const fullScreen = useMediaQuery('(max-width: 47.99em)');
   const bookingTimingProtected = activity?.booking?.isConfirmed === true;
@@ -71,13 +73,13 @@ export function ActivityEditorModal({
     form.resetDirty();
     // Reset only when the selected activity changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activity?.id, opened]);
+  }, [activity?.id, opened, place?.category]);
 
   return (
     <Modal
       opened={opened}
       onClose={onClose}
-      title="Edit activity"
+      title="Edit plan & schedule"
       centered={!fullScreen}
       fullScreen={fullScreen}
       size="lg"
@@ -89,7 +91,7 @@ export function ActivityEditorModal({
           onSubmit={form.onSubmit((values) => {
             onSubmit(activity.id, {
               title: values.title,
-              category: values.category,
+              category: place?.category ?? values.category,
               durationMinutes: typeof values.durationMinutes === 'number' ? values.durationMinutes : undefined,
               preferredStartTime: values.preferredStartTime || undefined,
               notes: values.notes || undefined,
@@ -99,9 +101,27 @@ export function ActivityEditorModal({
         >
           <Stack gap="md">
             {place ? (
-              <Text size="sm" c="dimmed">
-                Place: {place.name}{place.region ? ` · ${place.region}` : ''}
-              </Text>
+              <Group justify="space-between" align="flex-start" gap="xs">
+                <Stack gap={2}>
+                  <Text size="sm" fw={600}>
+                    {place.name}{place.region ? ` · ${place.region}` : ''}
+                  </Text>
+                  <Text size="xs" c="dimmed">Place category: {place.category}</Text>
+                </Stack>
+                {onEditPlace ? (
+                  <Button
+                    type="button"
+                    variant="subtle"
+                    size="compact-sm"
+                    onClick={() => {
+                      onClose();
+                      onEditPlace(place);
+                    }}
+                  >
+                    Edit place details
+                  </Button>
+                ) : null}
+              </Group>
             ) : null}
 
             {bookingTimingProtected ? (
@@ -118,13 +138,15 @@ export function ActivityEditorModal({
               {...form.getInputProps('title')}
             />
 
-            <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              <Select
-                label="Category"
-                data={[...PLACE_CATEGORIES]}
-                allowDeselect={false}
-                {...form.getInputProps('category')}
-              />
+            <SimpleGrid cols={{ base: 1, sm: place ? 1 : 2 }}>
+              {!place ? (
+                <Select
+                  label="Category"
+                  data={[...PLACE_CATEGORIES]}
+                  allowDeselect={false}
+                  {...form.getInputProps('category')}
+                />
+              ) : null}
               <NumberInput
                 label="Duration"
                 description={bookingTimingProtected ? 'Protected by the confirmed booking' : 'Optional planned duration'}
@@ -156,7 +178,7 @@ export function ActivityEditorModal({
 
             <Group justify="flex-end">
               <Button variant="default" onClick={onClose}>Cancel</Button>
-              <Button type="submit" color="teal">Save activity</Button>
+              <Button type="submit" color="teal">Save plan</Button>
             </Group>
           </Stack>
         </form>

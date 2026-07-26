@@ -45,7 +45,7 @@ interface DayColumnProps {
   onRenamePlaceholder: (place: Place, label: string) => void;
   onLabelChange: (dayId: string, label: string) => void;
   onRemove: (dayId: string) => void;
-  onEditPlace: (place: Place) => void;
+  onEditActivity: (place: Place) => void;
   onDeletePlace: (place: Place) => void;
   onVisitedChange: (placeId: string) => void;
   onDayScheduleChange: (dayId: string, updates: { travelMode?: TravelMode; startTime?: string; lodgingPlaceId?: string; timeManagementEnabled?: boolean }) => void;
@@ -70,7 +70,7 @@ export function DayColumn({
   onRenamePlaceholder,
   onLabelChange,
   onRemove,
-  onEditPlace,
+  onEditActivity,
   onDeletePlace,
   onVisitedChange,
   onDayScheduleChange,
@@ -263,7 +263,8 @@ export function DayColumn({
                 dragDisabled={readOnly}
                 visited={visitedPlaceIds.includes(place.id)}
                 onSelect={onSelect}
-                onEdit={readOnly ? undefined : onEditPlace}
+                onEdit={readOnly ? undefined : onEditActivity}
+                editLabel="Edit plan & schedule"
                 onDelete={readOnly ? undefined : onDeletePlace}
                 onReplace={!readOnly && isPlaceholder(place) ? onReplacePlaceholder : undefined}
                 onRename={!readOnly && isPlaceholder(place) ? (target) => { setRenameTarget(target); setRenameLabel(target.name === target.placeholderKind ? '' : target.name); } : undefined}

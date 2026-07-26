@@ -294,7 +294,7 @@ export default function App() {
         setReplacePlaceholderId(placeholderId);
         setPlaceModalOpened(true);
       }}
-      onEditPlace={openEditActivity}
+      onEditActivity={openEditActivity}
       onDeletePlace={setDeleteTarget}
     />
   );
@@ -490,6 +490,7 @@ export default function App() {
         activity={editingActivity}
         place={editingActivityPlace}
         onClose={() => setEditingActivityId(null)}
+        onEditPlace={openEditPlace}
         onSubmit={(activityId, updates) => {
           planner.updateActivity(activityId, updates);
           notifications.show({

@@ -13,7 +13,7 @@ interface UnscheduledColumnProps {
   places: Place[];
   selectedId: string | null;
   onSelect: (placeId: string) => void;
-  onEditPlace: (place: Place) => void;
+  onEditActivity: (place: Place) => void;
   onDeletePlace: (place: Place) => void;
   readOnly?: boolean;
 }
@@ -22,7 +22,7 @@ export function UnscheduledColumn({
   places,
   selectedId,
   onSelect,
-  onEditPlace,
+  onEditActivity,
   onDeletePlace,
   readOnly = false,
 }: UnscheduledColumnProps) {
@@ -96,7 +96,8 @@ export function UnscheduledColumn({
                 selected={selectedId === place.id}
                 dragDisabled={readOnly}
                 onSelect={onSelect}
-                onEdit={readOnly ? undefined : onEditPlace}
+                onEdit={readOnly ? undefined : onEditActivity}
+                editLabel="Edit plan & schedule"
                 onDelete={readOnly ? undefined : onDeletePlace}
               />
             ))}
@@ -111,7 +112,8 @@ export function UnscheduledColumn({
                   selected={selectedId === place.id}
                   dragDisabled={readOnly}
                   onSelect={onSelect}
-                  onEdit={readOnly ? undefined : onEditPlace}
+                  onEdit={readOnly ? undefined : onEditActivity}
+                  editLabel="Edit plan & schedule"
                   onDelete={readOnly ? undefined : onDeletePlace}
                 />
               ))}

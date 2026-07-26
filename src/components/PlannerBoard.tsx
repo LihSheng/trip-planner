@@ -29,7 +29,7 @@ import { isPlaceholder } from '../domain/place';
 interface PlannerBoardProps {
   selectedId: string | null;
   onSelect: (placeId: string) => void;
-  onEditPlace: (place: Place) => void;
+  onEditActivity: (place: Place) => void;
   onDeletePlace: (place: Place) => void;
   onAddPlaceToDay: (dayId: string) => void;
   onReplacePlaceholder: (placeholderId: string) => void;
@@ -38,7 +38,7 @@ interface PlannerBoardProps {
 export function PlannerBoard({
   selectedId,
   onSelect,
-  onEditPlace,
+  onEditActivity,
   onDeletePlace,
   onAddPlaceToDay,
   onReplacePlaceholder,
@@ -187,7 +187,7 @@ export function PlannerBoard({
               places={unscheduled}
               selectedId={selectedId}
               onSelect={onSelect}
-              onEditPlace={onEditPlace}
+              onEditActivity={onEditActivity}
               onDeletePlace={onDeletePlace}
               readOnly={readOnly}
             />
@@ -211,7 +211,7 @@ export function PlannerBoard({
                   onRenamePlaceholder={onRenamePlaceholder}
                   onLabelChange={onLabelChange}
                   onRemove={onRemoveDay}
-                  onEditPlace={onEditPlace}
+                  onEditActivity={onEditActivity}
                   onDeletePlace={(place) => removePlannerVisit(place.id, day.id)}
                   onVisitedChange={onVisitedChange}
                   onDayScheduleChange={onDayScheduleChange}
