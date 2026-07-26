@@ -12,7 +12,7 @@ export function AiImportDrawer({ opened, onClose, onApply }: { opened: boolean; 
   const [sourceType, setSourceType] = useState<'text' | 'url'>('text');
   const [content, setContent] = useState('');
   const [pace, setPace] = useState<'relaxed' | 'balanced' | 'packed'>('balanced');
-  const [mergeMode, setMergeMode] = useState<'new-days' | 'unscheduled'>('new-days');
+  const [mergeMode, setMergeMode] = useState<'new-days' | 'unscheduled'>('unscheduled');
   const [requestedDays, setRequestedDays] = useState<number | undefined>();
   const request = useMemo<AiImportRequest>(() => ({
     planId: planId ?? '',

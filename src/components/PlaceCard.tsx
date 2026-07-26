@@ -12,8 +12,9 @@ import {
   Stack,
   Text,
   TextInput,
+  Tooltip,
 } from '@mantine/core';
-import { IconAlertTriangle, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconPencil, IconRoute, IconSun, IconToolsKitchen, IconTrash } from '@tabler/icons-react';
+import { IconAlertTriangle, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconPencil, IconRobot, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconUser } from '@tabler/icons-react';
 import type { Place, PlaceCategory, StopSchedule } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
 import { isStayExpired } from '../utils/stay';
@@ -164,6 +165,15 @@ export function PlaceCard({
           {!isPlaceholder ? <Badge color={categoryColors[place.category]} variant="light" size="xs">
             {categoryLabel(t, place.category)}
           </Badge> : null}
+          {!isPlaceholder ? <Group gap={5} wrap="nowrap" mt={1}>
+            <Tooltip label={authorDetails(place)}>
+              <Group gap={3} wrap="nowrap">
+                <IconUser size={12} color="var(--mantine-color-dimmed)" />
+                <Text size="xs" c="dimmed" lineClamp={1}>{shortAuthor(place.createdByEmail)}</Text>
+              </Group>
+            </Tooltip>
+            {place.importedWithAi ? <Tooltip label="Imported with AI"><IconRobot size={13} color="var(--mantine-color-violet-6)" /></Tooltip> : null}
+          </Group> : null}
           {schedule && onScheduleChange ? (
             <Box
               mt={2}
@@ -209,6 +219,19 @@ export function PlaceCard({
       </Group>
     </Paper>
   );
+}
+
+function shortAuthor(email?: string): string {
+  if (!email) return 'Unknown';
+  const [local, domain] = email.split('@');
+  return domain ? `${local.slice(0, 12)}@…` : email.slice(0, 14);
+}
+
+function authorDetails(place: Place): string {
+  const author = place.createdByEmail ?? 'Author unavailable';
+  if (!place.updatedByEmail || place.updatedByEmail === place.createdByEmail) return `Added by ${author}`;
+  const when = place.updatedAt ? ` · ${new Date(place.updatedAt).toLocaleString()}` : '';
+  return `Added by ${author}\nLast updated by ${place.updatedByEmail}${when}`;
 }
 
 export function PlaceCardPreview({ place }: { place: Place }) {

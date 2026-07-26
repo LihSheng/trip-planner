@@ -12,7 +12,8 @@ type ModelResult = { content: string; provider: 'opencode-go' | 'nvidia-nim'; mo
 
 function corsHeaders(request?: Request) {
   const origin = request?.headers.get('Origin') ?? '';
-  const isLocalViteOrigin = /^http:\/\/(localhost|127\.0\.0\.1):5173$/.test(origin);
+  // Vite chooses the next free port, so local development is not always 5173.
+  const isLocalViteOrigin = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
   const allowOrigin = allowedOrigins.includes('*') ? '*' : allowedOrigins.includes(origin) || isLocalViteOrigin ? origin : allowedOrigins[0] ?? 'null';
   return { 'Access-Control-Allow-Origin': allowOrigin, 'Access-Control-Allow-Headers': 'authorization, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS', Vary: 'Origin' };
 }

@@ -37,6 +37,20 @@ describe('useTripState', () => {
     expect(result.current.placesById.get('test-place')).toEqual(samplePlace);
   });
 
+  it('keeps the creator while recording the latest place editor', () => {
+    const { result } = renderHook(() => useTripState(false, { id: 'author-id', email: 'author@example.com' }));
+    act(() => result.current.addPlace(samplePlace));
+    const saved = result.current.placesById.get('test-place')!;
+    expect(saved).toMatchObject({ createdById: 'author-id', createdByEmail: 'author@example.com' });
+
+    act(() => result.current.updatePlace({ ...saved, name: 'Updated place' }));
+    expect(result.current.placesById.get('test-place')).toMatchObject({
+      createdByEmail: 'author@example.com',
+      updatedByEmail: 'author@example.com',
+      name: 'Updated place',
+    });
+  });
+
   it('does not mutate state when readOnly is true', () => {
     const { result } = renderHook(() => useTripState(true));
     const initialPlaceCount = result.current.state.places.length;

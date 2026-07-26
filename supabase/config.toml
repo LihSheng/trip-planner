@@ -1,2 +1,5 @@
 [functions.ai-itinerary-import]
 verify_jwt = true
+
+[functions.send-collaborator-invite]
+verify_jwt = true

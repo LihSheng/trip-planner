@@ -1,4 +1,5 @@
-import type { TripState } from '../types';
+import type { TripActivityEvent, TripState } from '../types';
+import type { PendingTripActivity } from '../domain/tripActivity';
 import { ensureActivities } from '../domain/activity';
 import { ensureItineraryEntries } from '../domain/itinerary';
 import { supabasePublishableKey, supabaseUrl } from './supabaseConfig';
@@ -8,6 +9,7 @@ interface TripRow {
   owner_id: string;
   state: unknown;
   updated_at?: string;
+  revision?: number;
 }
 
 interface SharedTripRow {
@@ -17,6 +19,12 @@ interface SharedTripRow {
 export interface TripCollaborator {
   inviteEmail: string;
   accepted: boolean;
+}
+
+export interface InviteTripCollaboratorResult {
+  emailSent: boolean;
+  alreadyAccepted?: boolean;
+  message: string;
 }
 
 export interface TripPlanSummary {
@@ -89,6 +97,11 @@ export function normalizeTripState(state: TripState): TripState {
   }));
 }
 
+export interface LoadedTripState {
+  state: TripState;
+  revision: number;
+}
+
 export async function listTripPlans(accessToken: string, userId: string): Promise<TripPlanSummary[]> {
   const query = new URLSearchParams({
     select: 'id,owner_id,state,updated_at',
@@ -121,6 +134,16 @@ export async function loadTripState(accessToken: string, planId: string): Promis
   if (!rows[0]) return null;
   if (!isTripState(rows[0].state)) throw new Error('The saved trip has an unsupported data format.');
   return normalizeTripState(rows[0].state);
+}
+
+export async function loadTripStateWithRevision(accessToken: string, planId: string): Promise<LoadedTripState | null> {
+  const query = new URLSearchParams({ select: 'id,owner_id,state,updated_at,revision', id: `eq.${planId}`, limit: '1' });
+  const response = await fetch(`${supabaseUrl}/rest/v1/trip_plans?${query.toString()}`, { headers: dataHeaders(accessToken) });
+  if (!response.ok) throw new Error(await parseError(response));
+  const rows = (await response.json()) as TripRow[];
+  if (!rows[0]) return null;
+  if (!isTripState(rows[0].state)) throw new Error('The saved trip has an unsupported data format.');
+  return { state: normalizeTripState(rows[0].state), revision: rows[0].revision ?? 0 };
 }
 
 export async function loadPublicTrip(shareToken: string): Promise<TripState | null> {
@@ -160,21 +183,40 @@ export async function saveTripState(
   accessToken: string,
   planId: string,
   state: TripState,
-): Promise<void> {
-  const query = new URLSearchParams({ id: `eq.${planId}` });
-  const response = await fetch(`${supabaseUrl}/rest/v1/trip_plans?${query.toString()}`, {
-    method: 'PATCH',
+  expectedRevision: number,
+  events: PendingTripActivity[],
+): Promise<number> {
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/save_trip_plan_with_activity`, {
+    method: 'POST',
     headers: dataHeaders(accessToken, {
       'Content-Type': 'application/json',
-      Prefer: 'return=minimal',
     }),
     body: JSON.stringify({
-      state: ensureActivities(ensureItineraryEntries(state)),
-      updated_at: new Date().toISOString(),
+      p_trip_plan_id: planId,
+      p_expected_revision: expectedRevision,
+      p_state: ensureActivities(ensureItineraryEntries(state)),
+      p_events: events,
     }),
   });
 
   if (!response.ok) throw new Error(await parseError(response));
+  const payload = await response.json() as { revision?: number } | Array<{ revision?: number }>;
+  const row = Array.isArray(payload) ? payload[0] : payload;
+  if (typeof row?.revision !== 'number') throw new Error('The trip save did not return a revision.');
+  return row.revision;
+}
+
+export async function loadTripActivity(accessToken: string, planId: string): Promise<TripActivityEvent[]> {
+  const query = new URLSearchParams({
+    select: 'id,trip_plan_id,type,target_name,detail,actor_email,created_at',
+    trip_plan_id: `eq.${planId}`,
+    order: 'created_at.desc',
+    limit: '100',
+  });
+  const response = await fetch(`${supabaseUrl}/rest/v1/trip_activity_events?${query.toString()}`, { headers: dataHeaders(accessToken) });
+  if (!response.ok) throw new Error(await parseError(response));
+  const rows = await response.json() as Array<{ id: string; trip_plan_id: string; type: TripActivityEvent['type']; target_name: string; detail: string | null; actor_email: string; created_at: string }>;
+  return rows.map((row) => ({ id: row.id, tripPlanId: row.trip_plan_id, type: row.type, targetName: row.target_name, detail: row.detail ?? undefined, actorEmail: row.actor_email, createdAt: row.created_at }));
 }
 
 export async function createTripPlan(accessToken: string, userId: string, state: TripState): Promise<string> {
@@ -221,13 +263,17 @@ export async function loadTripCollaborators(accessToken: string, planId: string)
   return rows.map((row) => ({ inviteEmail: row.invite_email, accepted: Boolean(row.member_id) }));
 }
 
-export async function inviteTripCollaborator(accessToken: string, planId: string, email: string): Promise<void> {
-  const response = await fetch(`${supabaseUrl}/rest/v1/trip_collaborators?on_conflict=trip_plan_id,invite_email`, {
+export async function inviteTripCollaborator(accessToken: string, planId: string, email: string): Promise<InviteTripCollaboratorResult> {
+  const currentUrl = new URL(window.location.href);
+  currentUrl.search = '';
+  currentUrl.hash = '';
+  const response = await fetch(`${supabaseUrl}/functions/v1/send-collaborator-invite`, {
     method: 'POST',
-    headers: dataHeaders(accessToken, { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }),
-    body: JSON.stringify({ trip_plan_id: planId, invite_email: email.trim().toLowerCase() }),
+    headers: dataHeaders(accessToken, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ planId, email: email.trim().toLowerCase(), inviteUrl: currentUrl.toString() }),
   });
   if (!response.ok) throw new Error(await parseError(response));
+  return response.json() as Promise<InviteTripCollaboratorResult>;
 }
 
 export async function removeTripCollaborator(accessToken: string, planId: string, email: string): Promise<void> {

@@ -15,6 +15,7 @@ export function ShareTripModal({ opened, onClose }: ShareTripModalProps) {
   const [shareUrl, setShareUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inviteNotice, setInviteNotice] = useState<{ sent: boolean; message: string } | null>(null);
 
   async function refresh() {
     if (isDemo || !planId) return;
@@ -42,8 +43,13 @@ export function ShareTripModal({ opened, onClose }: ShareTripModalProps) {
     const normalized = email.trim().toLowerCase();
     if (!normalized || !normalized.includes('@')) { setError('Enter a valid email address.'); return; }
     if (!planId) { setError('No trip plan is selected.'); return; }
-    setLoading(true); setError(null);
-    try { await inviteTripCollaborator(accessToken, planId, normalized); setEmail(''); await refresh(); }
+    setLoading(true); setError(null); setInviteNotice(null);
+    try {
+      const result = await inviteTripCollaborator(accessToken, planId, normalized);
+      setInviteNotice({ sent: result.emailSent, message: result.message });
+      setEmail('');
+      await refresh();
+    }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not add collaborator.'); }
     finally { setLoading(false); }
   }
@@ -77,6 +83,7 @@ export function ShareTripModal({ opened, onClose }: ShareTripModalProps) {
         <Divider />
         <Text size="sm" c="dimmed">Invite people by email. They sign in with a magic link using that exact email, then can edit this trip.</Text>
         {error ? <Alert color="red">{error}</Alert> : null}
+        {inviteNotice ? <Alert color={inviteNotice.sent ? 'teal' : 'orange'}>{inviteNotice.message}</Alert> : null}
         <Group align="end" wrap="nowrap"><TextInput label="Collaborator email" placeholder="friend@example.com" type="email" value={email} onChange={(event) => setEmail(event.currentTarget.value)} leftSection={<IconMail size={16} />} style={{ flex: 1 }} /><Button onClick={() => void invite()} loading={loading}>Invite</Button></Group>
         <Alert color="teal" variant="light" icon={<IconMail size={17} />}>Share the app link too. They do not need your password or account.</Alert>
         <Divider label="People with access" labelPosition="left" />

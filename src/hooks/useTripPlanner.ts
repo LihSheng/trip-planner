@@ -10,7 +10,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
   const { accessToken, user, isDemo } = useAuth();
   const isReadOnly = Boolean(shareToken);
 
-  const tripState = useTripState(isReadOnly);
+  const tripState = useTripState(isReadOnly, user);
   const [planId, setPlanId] = useState<string | null>(null);
   const [plans, setPlans] = useState<TripPlanSummary[]>([]);
   const activePlan = useMemo(
@@ -66,5 +66,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
     createPlan: persistence.createPlan,
     syncNow: persistence.syncNow,
     persistForCloudSignIn: persistence.persistForCloudSignIn,
+    activityEvents: persistence.activityEvents,
+    refreshActivity: persistence.refreshActivity,
   };
 }

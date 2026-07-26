@@ -405,6 +405,14 @@ select {
   margin: 0 -4px;
 }
 
+/* Tablet keeps the planner horizontal, so the scroll content must include all columns. */
+@media (min-width: 48em) and (max-width: 74.99em) {
+  .board-scroll .mantine-ScrollArea-content > .mantine-Group-root {
+    width: max-content;
+    min-width: 100%;
+  }
+}
+
 .map-pin--accommodation svg {
   display: block;
   width: 1rem;

@@ -43,6 +43,21 @@ describe('Supabase auth client', () => {
     expect(fetchMock.mock.calls[2][0]).toContain('/logout');
   });
 
+  it('shares a redirect restore across concurrent Strict Mode effects', async () => {
+    history.replaceState({}, '', '/#access_token=redirect&refresh_token=refresh&expires_at=4000000000');
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ id: 'redirect-user' }), { status: 200 }));
+
+    const firstRestore = restoreSession();
+    const secondRestore = restoreSession();
+
+    await expect(Promise.all([firstRestore, secondRestore])).resolves.toEqual([
+      expect.objectContaining({ accessToken: 'redirect' }),
+      expect.objectContaining({ accessToken: 'redirect' }),
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(window.location.hash).toBe('');
+  });
+
   it('persists a refreshed session', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ access_token: 'new', refresh_token: 'refresh', expires_in: 3600, user: { id: 'u' } }), { status: 200 }));
     await refreshAuthSession('refresh');

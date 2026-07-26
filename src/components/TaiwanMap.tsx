@@ -28,7 +28,7 @@ import type { Place, PlaceCategory, TripDay } from '../types';
 import type { CurrentLocation } from '../hooks/useCurrentLocation';
 import { formatTripDate } from '../utils/date';
 import { categoryLabel, useI18n } from '../i18n';
-import { googleMapsRouteUrl, googleSearchUrl, markerColors } from '../utils/mapPresentation';
+import { googleDirectionsUrl, googleMapsRouteUrl, googleSearchUrl, markerColors } from '../utils/mapPresentation';
 
 
 const geoapifyMapsApiKey = import.meta.env.VITE_GEOAPIFY_API_KEY as string | undefined;
@@ -277,6 +277,20 @@ function MapSurface({
                     </Text>
                   ) : null}
                   <Group justify="flex-end" gap={2} mt={2}>
+                    <Tooltip label="Get directions">
+                      <ActionIcon
+                        component="a"
+                        href={googleDirectionsUrl(place, currentLocation)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="subtle"
+                        color="teal"
+                        size="sm"
+                        aria-label="Get directions"
+                      >
+                        <IconRoute size={15} />
+                      </ActionIcon>
+                    </Tooltip>
                     <Tooltip label="Google search">
                       <ActionIcon
                         component="a"

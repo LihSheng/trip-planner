@@ -43,6 +43,19 @@ export function googleSearchUrl(place: Place): string {
   return `https://www.google.com/search?${new URLSearchParams({ q: `${place.name} ${place.region}` }).toString()}`;
 }
 
+/** Google Maps directions for one destination, optionally from live GPS coordinates. */
+export function googleDirectionsUrl(
+  place: Place,
+  origin?: { latitude: number; longitude: number } | null,
+): string {
+  const params = new URLSearchParams({
+    api: '1',
+    destination: `${place.latitude},${place.longitude}`,
+  });
+  if (origin) params.set('origin', `${origin.latitude},${origin.longitude}`);
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
 /** Google Maps directions URL for a single leg between two places. */
 export function legGoogleMapsUrl(from: Place, to: Place, mode: TravelMode): string {
   const travelmode =

@@ -94,6 +94,19 @@ The same dialog also creates a **read-only share link**. Anyone with that URL ca
 
 Owners can remove a collaborator at any time. Access is enforced by Supabase Row Level Security, not only hidden in the UI.
 
+### Collaborator invitation email
+
+The `send-collaborator-invite` Edge Function saves the invitation using the signed-in owner's RLS permissions, then sends a transactional email through Resend. Configure these Edge Function secrets:
+
+```text
+RESEND_API_KEY=re_...
+INVITE_FROM_EMAIL=Trip Planner <invites@your-verified-domain.example>
+INVITE_APP_URL=https://<github-username>.github.io/trip-planner/
+INVITE_ALLOWED_ORIGIN=https://<github-username>.github.io
+```
+
+`INVITE_APP_URL` is recommended for production. Without valid email secrets, collaborator access is still saved and the owner is told to share the app link manually. Never expose these values through `VITE_*` variables.
+
 ## Local development
 
 ```bash

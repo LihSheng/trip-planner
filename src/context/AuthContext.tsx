@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
   Alert,
   Button,
@@ -12,6 +12,7 @@ import {
   ThemeIcon,
   Title,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { IconCloud, IconInfoCircle, IconMail } from '@tabler/icons-react';
 import { hasSupabaseConfig } from '../lib/supabaseConfig';
 import { LanguageToggle, useI18n } from '../i18n';
@@ -53,6 +54,9 @@ export function ReadOnlyAuthProvider({ children }: { children: ReactNode }) {
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { t } = useI18n();
+  const signedInFromRedirect = useRef(
+    new URLSearchParams(window.location.hash.slice(1)).has('access_token'),
+  ).current;
   const [session, setSession] = useState<AuthSession | null>(null);
   const [checking, setChecking] = useState(true);
   const [email, setEmail] = useState('');
@@ -65,7 +69,16 @@ export function AuthGate({ children }: { children: ReactNode }) {
     let active = true;
     restoreSession()
       .then((restored) => {
-        if (active) setSession(restored);
+        if (!active) return;
+        setSession(restored);
+        if (restored && signedInFromRedirect) {
+          notifications.show({
+            id: 'auth-sign-in-success',
+            color: 'teal',
+            title: t('signInSuccess'),
+            message: t('signInSuccessHint'),
+          });
+        }
       })
       .catch((reason: unknown) => {
         if (active) setError(reason instanceof Error ? reason.message : 'Unable to restore your session.');

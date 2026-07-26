@@ -53,15 +53,15 @@ describe('trip repository', () => {
         { id: 'plan-1', owner_id: 'owner', state: createInitialState(), updated_at: '2026-01-01T00:00:00Z' },
         { id: 'plan-2', owner_id: 'friend', state: { version: 2 }, updated_at: '2026-01-02T00:00:00Z' },
       ]), { status: 200 }))
-      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify({ revision: 1 }), { status: 200 }));
 
     await expect(createTripPlan('token', 'owner', createInitialState())).resolves.toBe('created-plan');
     await expect(listTripPlans('token', 'owner')).resolves.toEqual([expect.objectContaining({ id: 'plan-1', isOwner: true })]);
-    await saveTripState('token', 'plan-1', createInitialState());
+    await saveTripState('token', 'plan-1', createInitialState(), 0, []);
     const [, request] = fetchMock.mock.calls[0];
     expect(request.method).toBe('POST');
     expect(JSON.parse(request.body).owner_id).toBe('owner');
-    expect(fetchMock.mock.calls[2][1].method).toBe('PATCH');
+    expect(fetchMock.mock.calls[2][1].method).toBe('POST');
 
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Denied' }), { status: 403 }));
     await expect(loadTripState('token', 'plan-1')).rejects.toThrow('Denied');
@@ -89,7 +89,7 @@ describe('trip repository', () => {
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify([{ trip_plan_id: 'shared-plan' }]), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify([{ invite_email: 'one@example.com', member_id: null }, { invite_email: 'two@example.com', member_id: 'id' }]), { status: 200 }))
-      .mockResolvedValueOnce(new Response(null, { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ emailSent: true, message: 'Invitation emailed.' }), { status: 200 }))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
 
     await acceptTripInvitations('token');
@@ -98,10 +98,14 @@ describe('trip repository', () => {
       { inviteEmail: 'one@example.com', accepted: false },
       { inviteEmail: 'two@example.com', accepted: true },
     ]);
-    await inviteTripCollaborator('token', 'plan-1', '  Friend@Example.com ');
+    await expect(inviteTripCollaborator('token', 'plan-1', '  Friend@Example.com ')).resolves.toEqual({
+      emailSent: true,
+      message: 'Invitation emailed.',
+    });
     await removeTripCollaborator('token', 'plan-1', 'friend@example.com');
 
-    expect(JSON.parse(fetchMock.mock.calls[3][1].body).invite_email).toBe('friend@example.com');
+    expect(fetchMock.mock.calls[3][0]).toContain('/functions/v1/send-collaborator-invite');
+    expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toMatchObject({ planId: 'plan-1', email: 'friend@example.com' });
     expect(fetchMock.mock.calls[4][1].method).toBe('DELETE');
   });
 });

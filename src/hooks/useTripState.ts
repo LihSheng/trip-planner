@@ -10,7 +10,12 @@ import { createInitialState } from '../data/seed';
 import { isAccommodation } from '../utils/stay';
 import { ensureItineraryEntries } from '../domain/itinerary';
 
-export function useTripState(readOnly: boolean) {
+interface TripActor {
+  id: string;
+  email?: string;
+}
+
+export function useTripState(readOnly: boolean, actor?: TripActor) {
   const [state, setState] = useState<TripState>(() => ensureActivities(ensureItineraryEntries(createInitialState())));
 
   const placesById = useMemo(
@@ -22,6 +27,22 @@ export function useTripState(readOnly: boolean) {
     () => new Map((ensureActivities(state).activities ?? []).map((activity) => [activity.id, activity])),
     [state],
   );
+
+  const attributePlace = useCallback((place: Place, importedWithAi = false): Place => {
+    if (!actor) return place;
+    return {
+      ...place,
+      createdById: place.createdById ?? actor.id,
+      createdByEmail: place.createdByEmail ?? actor.email,
+      createdAt: place.createdAt ?? new Date().toISOString(),
+      importedWithAi: place.importedWithAi ?? importedWithAi,
+    };
+  }, [actor]);
+
+  const touchPlace = useCallback((place: Place): Place => {
+    if (!actor) return place;
+    return { ...place, updatedById: actor.id, updatedByEmail: actor.email, updatedAt: new Date().toISOString() };
+  }, [actor]);
 
   // Older saved trips may share a hotel ID between Unscheduled and a day.
   // Give each day assignment its own ID so dnd-kit can distinguish the cards.
@@ -48,7 +69,7 @@ export function useTripState(readOnly: boolean) {
     if (readOnly) return;
     setState((current) => ({
       ...current,
-      places: [...current.places, place],
+      places: [...current.places, attributePlace(place)],
       unscheduledIds: [...current.unscheduledIds, place.id],
       hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId,
     }));
@@ -58,7 +79,7 @@ export function useTripState(readOnly: boolean) {
     if (readOnly) return;
     setState((current) => ({
       ...current,
-      places: [...current.places, place],
+      places: [...current.places, attributePlace(place)],
       days: current.days.map((day) => (day.id === dayId ? markRouteStale({ ...day, placeIds: [...day.placeIds, place.id] }) : day)),
       hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId,
     }));
@@ -69,7 +90,7 @@ export function useTripState(readOnly: boolean) {
     const placeholder: Place = { id: `placeholder-${crypto.randomUUID()}`, name: kind, region: '', category: 'Relaxation', latitude: 0, longitude: 0, notes: '', type: 'placeholder', placeholderKind: kind };
     setState((current) => ({
       ...current,
-      places: [...current.places, placeholder],
+      places: [...current.places, attributePlace(placeholder)],
       days: current.days.map((day) => day.id === dayId ? markRouteStale({ ...day, placeIds: [...day.placeIds, placeholder.id] }) : day),
     }));
   }, [readOnly]);
@@ -78,7 +99,7 @@ export function useTripState(readOnly: boolean) {
     if (readOnly) return;
     setState((current) => ({
       ...current,
-      places: [...current.places.filter((item) => item.id !== placeholderId), place],
+      places: [...current.places.filter((item) => item.id !== placeholderId), attributePlace(place)],
       days: current.days.map((day) => day.placeIds.includes(placeholderId)
         ? markRouteStale({ ...day, placeIds: day.placeIds.map((id) => id === placeholderId ? place.id : id) })
         : day),
@@ -107,16 +128,21 @@ export function useTripState(readOnly: boolean) {
     if (readOnly) return;
     setState((current) => ({
       ...current,
-      places: current.places.map((item) => (item.id === place.id ? place : item)),
+      places: current.places.map((item) => (item.id === place.id ? touchPlace(place) : item)),
       days: current.days.map((day) => day.placeIds.includes(place.id) ? markRouteStale(day) : day),
       hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId === place.id ? undefined : current.hotelPlaceId,
     }));
-  }, [readOnly]);
+  }, [readOnly, touchPlace]);
 
   const updateActivity = useCallback((activityId: string, updates: ActivityDetailUpdates) => {
     if (readOnly) return;
-    setState((current) => updateActivityDetails(current, activityId, updates));
-  }, [readOnly]);
+    setState((current) => {
+      const activity = current.activities?.find((item) => item.id === activityId);
+      const next = updateActivityDetails(current, activityId, updates);
+      if (!activity?.placeId) return next;
+      return { ...next, places: next.places.map((place) => place.id === activity.placeId ? touchPlace(place) : place) };
+    });
+  }, [readOnly, touchPlace]);
 
   const removePlace = useCallback((placeId: string) => {
     if (readOnly) return;
@@ -241,6 +267,7 @@ export function useTripState(readOnly: boolean) {
       const placesById = new Map(current.places.map((place) => [place.id, place]));
       return {
         ...current,
+        places: current.places.map((place) => place.id === placeId ? touchPlace(place) : place),
         days: current.days.map((day) => {
           if (day.id !== dayId) return day;
           const stopSchedules = { ...day.stopSchedules, [placeId]: { ...day.stopSchedules?.[placeId], ...updates } };
@@ -264,7 +291,7 @@ export function useTripState(readOnly: boolean) {
         }),
       };
     });
-  }, [readOnly]);
+  }, [readOnly, touchPlace]);
 
   const toggleVisited = useCallback((placeId: string) => {
     if (readOnly) return;
@@ -395,8 +422,12 @@ export function useTripState(readOnly: boolean) {
 
   const applyAiDraft = useCallback((draft: ConfirmedAiDraft) => {
     if (readOnly) return;
-    setState((current) => applyConfirmedAiDraft(current, draft));
-  }, [readOnly]);
+    setState((current) => {
+      const next = applyConfirmedAiDraft(current, draft);
+      const existingIds = new Set(current.places.map((place) => place.id));
+      return { ...next, places: next.places.map((place) => existingIds.has(place.id) ? place : attributePlace(place, true)) };
+    });
+  }, [attributePlace, readOnly]);
 
   const reset = useCallback(() => {
     if (!readOnly) setState(ensureActivities(ensureItineraryEntries(createInitialState())));

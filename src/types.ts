@@ -61,6 +61,14 @@ export interface Place {
   placeholderKind?: PlaceholderKind;
   openingHours?: OpeningHours;
   stay?: StayDates;
+  /** Immutable attribution for the saved place source. */
+  createdById?: string;
+  createdByEmail?: string;
+  createdAt?: string;
+  updatedById?: string;
+  updatedByEmail?: string;
+  updatedAt?: string;
+  importedWithAi?: boolean;
 }
 
 /** One scheduled or unscheduled visit to a saved Place. */
@@ -180,6 +188,25 @@ export interface TripState {
   executionByDay?: Record<string, DayExecutionState>;
   expenses?: TripExpense[];
   displayCurrency?: CurrencyCode;
+}
+
+export type TripActivityType =
+  | 'place_added'
+  | 'place_updated'
+  | 'place_removed'
+  | 'place_moved'
+  | 'day_added'
+  | 'day_updated'
+  | 'day_removed';
+
+export interface TripActivityEvent {
+  id: string;
+  tripPlanId: string;
+  type: TripActivityType;
+  targetName: string;
+  detail?: string;
+  actorEmail: string;
+  createdAt: string;
 }
 
 export type CurrencyCode = 'MYR' | 'SGD' | 'USD' | 'EUR' | 'JPY' | 'CNY' | 'AUD' | 'GBP';

@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Place } from '../types';
 import { createInitialState } from '../data/seed';
-import { createTripPlan, listTripPlans, loadPublicTrip, loadTripState, saveTripState } from '../lib/tripRepository';
+import { createTripPlan, listTripPlans, loadPublicTrip, loadTripStateWithRevision, saveTripState } from '../lib/tripRepository';
 
 const authState = { accessToken: '', user: { id: 'demo', email: 'Demo mode' }, isDemo: true };
 
@@ -15,7 +15,8 @@ vi.mock('../lib/tripRepository', async () => {
     createTripPlan: vi.fn(),
     listTripPlans: vi.fn(),
     loadPublicTrip: vi.fn(),
-    loadTripState: vi.fn(),
+    loadTripStateWithRevision: vi.fn(),
+    loadTripActivity: vi.fn().mockResolvedValue([]),
     saveTripState: vi.fn(),
   };
 });
@@ -41,7 +42,7 @@ describe('useTripPlanner', () => {
     vi.mocked(loadPublicTrip).mockReset();
     vi.mocked(createTripPlan).mockReset();
     vi.mocked(listTripPlans).mockReset();
-    vi.mocked(loadTripState).mockReset();
+    vi.mocked(loadTripStateWithRevision).mockReset();
     vi.mocked(saveTripState).mockReset();
   });
 
@@ -151,14 +152,14 @@ describe('useTripPlanner', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ id: 'plan-1', ownerId: 'cloud-user', tripName: 'Untitled trip', startDate: '2026-01-01', updatedAt: '2026-01-01T00:00:00Z', isOwner: true }]);
     vi.mocked(createTripPlan).mockResolvedValue('plan-1');
-    vi.mocked(loadTripState).mockResolvedValue(createInitialState());
-    vi.mocked(saveTripState).mockResolvedValue(undefined);
+    vi.mocked(loadTripStateWithRevision).mockResolvedValue({ state: createInitialState(), revision: 0 });
+    vi.mocked(saveTripState).mockResolvedValue(1);
 
     const hook = await planner();
     expect(createTripPlan).toHaveBeenCalledWith('token', 'cloud-user', expect.objectContaining({ version: 1 }));
-    expect(loadTripState).toHaveBeenCalledWith('token', 'plan-1');
+    expect(loadTripStateWithRevision).toHaveBeenCalledWith('token', 'plan-1');
     expect(hook.result.current.planId).toBe('plan-1');
-    expect(hook.result.current.syncStatus).toBe('saving');
+    expect(hook.result.current.syncStatus).toBe('saved');
 
     vi.mocked(saveTripState).mockRejectedValueOnce(new Error('Network unavailable'));
     await act(async () => hook.result.current.syncNow());
@@ -171,13 +172,13 @@ describe('useTripPlanner', () => {
     authState.isDemo = false;
     localStorage.setItem('trip-planner:selected-plan:cloud-user', 'plan-1');
     vi.mocked(listTripPlans).mockResolvedValue(cloudPlans);
-    vi.mocked(loadTripState).mockResolvedValue(planTwoState);
-    vi.mocked(saveTripState).mockResolvedValue(undefined);
+    vi.mocked(loadTripStateWithRevision).mockResolvedValue({ state: planTwoState, revision: 0 });
+    vi.mocked(saveTripState).mockResolvedValue(1);
 
     const hook = renderHook(() => useTripPlanner(undefined, 'plan-2'));
     await waitFor(() => expect(hook.result.current.isReady).toBe(true));
 
-    expect(loadTripState).toHaveBeenCalledWith('token', 'plan-2');
+    expect(loadTripStateWithRevision).toHaveBeenCalledWith('token', 'plan-2');
     expect(hook.result.current.planId).toBe('plan-2');
     expect(hook.result.current.state.tripName).toBe('Japan Spring');
     expect(hook.result.current.activePlan).toMatchObject({ id: 'plan-2', isOwner: false });
@@ -192,17 +193,17 @@ describe('useTripPlanner', () => {
     vi.mocked(listTripPlans)
       .mockResolvedValueOnce(cloudPlans)
       .mockResolvedValueOnce(cloudPlans);
-    vi.mocked(loadTripState)
-      .mockResolvedValueOnce(planOneState)
-      .mockResolvedValueOnce(planTwoState);
+    vi.mocked(loadTripStateWithRevision)
+      .mockResolvedValueOnce({ state: planOneState, revision: 0 })
+      .mockResolvedValueOnce({ state: planTwoState, revision: 0 });
     vi.mocked(createTripPlan).mockResolvedValue('plan-3');
-    vi.mocked(saveTripState).mockResolvedValue(undefined);
+    vi.mocked(saveTripState).mockResolvedValue(1);
 
     const hook = await planner();
     expect(hook.result.current.planId).toBe('plan-1');
 
     await act(async () => hook.result.current.switchPlan('plan-2'));
-    expect(loadTripState).toHaveBeenLastCalledWith('token', 'plan-2');
+    expect(loadTripStateWithRevision).toHaveBeenLastCalledWith('token', 'plan-2');
     expect(hook.result.current).toMatchObject({ planId: 'plan-2', isOwner: false });
 
     await act(async () => {

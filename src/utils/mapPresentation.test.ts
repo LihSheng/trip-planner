@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { DayExecutionState, Place, TripDay } from '../types';
 import {
   googleMapsRouteUrl,
+  googleDirectionsUrl,
   googleSearchUrl,
   legGoogleMapsUrl,
   markerColors,
@@ -59,6 +60,20 @@ describe('googleSearchUrl', () => {
     const url = googleSearchUrl(place());
     expect(url).toContain('Taipei+101');
     expect(url).toContain('Xinyi');
+  });
+});
+
+describe('googleDirectionsUrl', () => {
+  it('sets only a destination when live location is unavailable', () => {
+    const url = googleDirectionsUrl(place());
+    expect(url).toContain('maps/dir');
+    expect(url).toContain('destination=25.033%2C121.565');
+    expect(url).not.toContain('origin=');
+  });
+
+  it('includes live coordinates as the origin', () => {
+    const url = googleDirectionsUrl(place(), { latitude: 10, longitude: 20 });
+    expect(url).toContain('origin=10%2C20');
   });
 });
 

@@ -7,3 +7,4 @@ coverage
 .playwright-cli
 output/
 docs/hackathon-screenshots/
+supabase/.temp/

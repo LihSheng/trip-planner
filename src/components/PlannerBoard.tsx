@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/core';
 import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Button, Group, Modal, ScrollArea, Stack, Text } from '@mantine/core';
-import { IconPlus } from '@tabler/icons-react';
+import { IconHistory, IconPlus } from '@tabler/icons-react';
 import type { ContainerId, PlaceholderKind, Place, StopSchedule, TravelMode, TripState } from '../types';
 import { findContainer, getContainerItems } from '../utils/itinerary';
 import { DayColumn } from './DayColumn';
@@ -23,6 +23,7 @@ import { addDays } from '../utils/date';
 import { isAccommodation, stayAssignmentStatus, type StayAssignmentStatus } from '../utils/stay';
 
 import { useTrip } from '../context/TripContext';
+import { TripActivityDrawer } from './TripActivityDrawer';
 
 interface PlannerBoardProps {
   selectedId: string | null;
@@ -58,11 +59,13 @@ export function PlannerBoard({
     updateDaySchedule: onDayScheduleChange,
     updateStopSchedule: onStopScheduleChange,
     updateLegMode: onLegModeChange,
+    activityEvents,
   } = useTrip();
   const { t } = useI18n();
   const visitedPlaceIds = state.visitedPlaceIds;
   const onRenamePlaceholder = (place: Place, label: string) => updatePlace({ ...place, name: label });
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [activityOpened, setActivityOpened] = useState(false);
   const [pendingAccommodationAssignment, setPendingAccommodationAssignment] = useState<{
     place: Place;
     destination: { containerId: ContainerId; index: number };
@@ -169,9 +172,10 @@ export function PlannerBoard({
               {t('itineraryHint')}
             </Text>
           </div>
-          {!readOnly ? <Button variant="light" color="teal" leftSection={<IconPlus size={17} />} onClick={onAddDay}>
-            {t('addDay')}
-          </Button> : null}
+          {!readOnly ? <Group gap="xs">
+            <Button variant="default" leftSection={<IconHistory size={17} />} onClick={() => setActivityOpened(true)}>Activity</Button>
+            <Button variant="light" color="teal" leftSection={<IconPlus size={17} />} onClick={onAddDay}>{t('addDay')}</Button>
+          </Group> : null}
         </Group>
 
         <ScrollArea type="auto" offsetScrollbars className="board-scroll">
@@ -221,6 +225,7 @@ export function PlannerBoard({
       </Stack>
 
       <DragOverlay>{activePlace ? <PlaceCardPreview place={activePlace} /> : null}</DragOverlay>
+      <TripActivityDrawer opened={activityOpened} onClose={() => setActivityOpened(false)} events={activityEvents} />
       <Modal
         opened={Boolean(pendingAccommodationAssignment)}
         onClose={() => setPendingAccommodationAssignment(null)}

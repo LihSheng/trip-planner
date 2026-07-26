@@ -2,6 +2,7 @@ import { supabasePublishableKey, supabaseUrl } from './supabaseConfig';
 
 const SESSION_STORAGE_KEY = 'taiwan-trip-planner:supabase-session';
 const SESSION_EXPIRY_BUFFER_SECONDS = 60;
+let pendingSessionRestore: Promise<AuthSession | null> | null = null;
 
 export interface AuthUser {
   id: string;
@@ -129,7 +130,7 @@ function readSessionFromRedirect(): StoredSession | null {
   };
 }
 
-export async function restoreSession(): Promise<AuthSession | null> {
+async function performSessionRestore(): Promise<AuthSession | null> {
   const redirectSession = readSessionFromRedirect();
   const stored = redirectSession ?? readStoredSession();
   if (!stored) return null;
@@ -153,6 +154,15 @@ export async function restoreSession(): Promise<AuthSession | null> {
       return null;
     }
   }
+}
+
+export function restoreSession(): Promise<AuthSession | null> {
+  if (!pendingSessionRestore) {
+    pendingSessionRestore = performSessionRestore().finally(() => {
+      pendingSessionRestore = null;
+    });
+  }
+  return pendingSessionRestore;
 }
 
 export async function sendMagicLink(email: string): Promise<void> {
