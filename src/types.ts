@@ -71,6 +71,22 @@ export interface Place {
   importedWithAi?: boolean;
 }
 
+export type ClusterRelationship = 'inside' | 'nearby';
+
+export interface LocationClusterMember {
+  placeId: string;
+  relationship: ClusterRelationship;
+  walkMinutes?: number;
+}
+
+/** Places that can be visited at one venue or within a short walk. */
+export interface LocationCluster {
+  id: string;
+  name: string;
+  anchorPlaceId: string;
+  members: LocationClusterMember[];
+}
+
 /** One scheduled or unscheduled visit to a saved Place. */
 export interface ItineraryEntry {
   id: string;
@@ -174,6 +190,7 @@ export interface TripState {
   tripName: string;
   startDate: string;
   places: Place[];
+  locationClusters?: LocationCluster[];
   /** Canonical visit records. Legacy day/place arrays remain during UI migration. */
   itineraryEntries?: ItineraryEntry[];
   /**

@@ -189,6 +189,7 @@ export function PlannerBoard({
               onSelect={onSelect}
               onEditActivity={onEditActivity}
               onDeletePlace={onDeletePlace}
+              clusters={state.locationClusters}
               readOnly={readOnly}
             />
             <SortableContext items={state.days.map((day) => `day:${day.id}`)} strategy={horizontalListSortingStrategy}>
@@ -219,6 +220,7 @@ export function PlannerBoard({
                   hotelPlaces={hotelPlaces}
                   tripHotelId={state.hotelPlaceId}
                   onLegModeChange={onLegModeChange}
+                  clusters={state.locationClusters}
                   readOnly={readOnly}
                 />
               ))}

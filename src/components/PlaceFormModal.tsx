@@ -6,6 +6,8 @@ import {
   Loader,
   Modal,
   NumberInput,
+  Paper,
+  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
@@ -14,17 +16,20 @@ import {
   TextInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import type { Place, PlaceCategory } from '../types';
+import type { ClusterRelationship, LocationCluster, Place, PlaceCategory } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
 import { PLACE_CATEGORIES, type PlaceDetailsValues, validatePlaceDetails } from '../domain/place';
+import { clusterForPlace, distanceMeters, estimatedWalkMinutes, type ClusterAssignment } from '../domain/locationCluster';
 
 type PlaceFormValues = PlaceDetailsValues;
 
 interface PlaceFormModalProps {
   opened: boolean;
   place?: Place;
+  places: Place[];
+  clusters?: LocationCluster[];
   onClose: () => void;
-  onSubmit: (place: Place) => void;
+  onSubmit: (place: Place, clusterAssignment?: ClusterAssignment) => void;
 }
 
 interface PlacePrediction {
@@ -74,12 +79,28 @@ async function geoapifyApiError(response: Response, fallback: string) {
   return payload?.message ?? payload?.error ?? `${fallback} (HTTP ${response.status})`;
 }
 
-export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormModalProps) {
+export function PlaceFormModal({ opened, place, places, clusters, onClose, onSubmit }: PlaceFormModalProps) {
   const { t } = useI18n();
   const [placeSearch, setPlaceSearch] = useState('');
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [clusterTargetId, setClusterTargetId] = useState<string | null>(null);
+  const [clusterRelationship, setClusterRelationship] = useState<ClusterRelationship>('nearby');
+  const [walkMinutes, setWalkMinutes] = useState<number | undefined>();
+  const currentCluster = place ? clusterForPlace(clusters, place.id) : undefined;
+  const isClusterAnchor = Boolean(place && currentCluster?.anchorPlaceId === place.id);
+  const clusterTargets = places
+    .filter((candidate) => candidate.id !== place?.id && !candidate.assignmentOf && !candidate.placeholderKind)
+    .filter((candidate, index, candidates) => {
+      const anchorId = clusterForPlace(clusters, candidate.id)?.anchorPlaceId ?? candidate.id;
+      return candidates.findIndex((item) => (clusterForPlace(clusters, item.id)?.anchorPlaceId ?? item.id) === anchorId) === index;
+    })
+    .map((candidate) => {
+      const anchorId = clusterForPlace(clusters, candidate.id)?.anchorPlaceId ?? candidate.id;
+      const anchor = places.find((item) => item.id === anchorId) ?? candidate;
+      return { value: anchor.id, label: clusterForPlace(clusters, anchor.id)?.name ?? `${anchor.name} area` };
+    });
   const form = useForm<PlaceFormValues>({
     initialValues: {
       name: '',
@@ -129,9 +150,13 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
     setPlaceSearch('');
     setPredictions([]);
     setSearchError(null);
+    const member = currentCluster?.members.find((item) => item.placeId === place?.id);
+    setClusterTargetId(member ? currentCluster?.anchorPlaceId ?? null : null);
+    setClusterRelationship(member?.relationship ?? 'nearby');
+    setWalkMinutes(member?.walkMinutes);
     // Form is intentionally reset only when the modal target changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, place?.id]);
+  }, [opened, place?.id, currentCluster?.id]);
 
   useEffect(() => {
     if (!opened || place || !geoapifyApiKey || placeSearch.trim().length < 3) {
@@ -208,13 +233,24 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
     });
     setPlaceSearch(prediction.label);
     setPredictions([]);
+    const nearest = places
+      .filter((candidate) => !candidate.assignmentOf && !candidate.placeholderKind)
+      .map((candidate) => ({ candidate, distance: distanceMeters(prediction, candidate) }))
+      .filter((item) => item.distance <= 800)
+      .sort((left, right) => left.distance - right.distance)[0];
+    if (nearest) {
+      const anchorId = clusterForPlace(clusters, nearest.candidate.id)?.anchorPlaceId ?? nearest.candidate.id;
+      setClusterTargetId(anchorId);
+      setClusterRelationship(nearest.distance <= 75 ? 'inside' : 'nearby');
+      setWalkMinutes(estimatedWalkMinutes(nearest.distance));
+    }
   }
 
   return (
     <Modal opened={opened} onClose={onClose} title={place ? t('editPlace') : t('addPlace')} centered>
       <form
         onSubmit={form.onSubmit((values) => {
-          onSubmit({
+          const savedPlace = {
             id: place?.id ?? `place-${crypto.randomUUID()}`,
             name: values.name.trim(),
             region: values.region.trim(),
@@ -226,7 +262,12 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
             stay: values.category === 'Accommodation' && values.checkInDate && values.checkOutDate
               ? { checkInDate: values.checkInDate, checkOutDate: values.checkOutDate }
               : undefined,
-          });
+          };
+          onSubmit(savedPlace, clusterTargetId ? {
+            targetPlaceId: clusterTargetId,
+            relationship: clusterRelationship,
+            walkMinutes: clusterRelationship === 'nearby' ? walkMinutes : undefined,
+          } : undefined);
           onClose();
         })}
       >
@@ -282,6 +323,54 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
             minRows={3}
             {...form.getInputProps('notes')}
           />
+          <Paper withBorder radius="md" p="sm">
+            <Stack gap="xs">
+              <div>
+                <Text size="sm" fw={700}>Location cluster</Text>
+                <Text size="xs" c="dimmed">Group activities that happen inside one venue or within a short walk.</Text>
+              </div>
+              {isClusterAnchor ? (
+                <Text size="sm">Anchor for <strong>{currentCluster?.name}</strong>. Choose a replacement before deleting this place.</Text>
+              ) : (
+                <>
+                  <Select
+                    label="Group with"
+                    placeholder="Independent place"
+                    clearable
+                    searchable
+                    value={clusterTargetId}
+                    data={clusterTargets}
+                    onChange={(value) => setClusterTargetId(value)}
+                  />
+                  {clusterTargetId ? (
+                    <>
+                      <SegmentedControl
+                        fullWidth
+                        value={clusterRelationship}
+                        onChange={(value) => setClusterRelationship(value as ClusterRelationship)}
+                        data={[
+                          { value: 'inside', label: 'Inside / same venue' },
+                          { value: 'nearby', label: 'Nearby' },
+                        ]}
+                      />
+                      {clusterRelationship === 'nearby' ? (
+                        <NumberInput
+                          label="Estimated walking time"
+                          suffix=" min"
+                          min={1}
+                          max={10}
+                          value={walkMinutes ?? ''}
+                          onChange={(value) => setWalkMinutes(typeof value === 'number' ? value : undefined)}
+                        />
+                      ) : (
+                        <Text size="xs" c="teal">No transportation needed. Displayed as an indoor walk.</Text>
+                      )}
+                    </>
+                  ) : null}
+                </>
+              )}
+            </Stack>
+          </Paper>
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>
               {t('cancel')}

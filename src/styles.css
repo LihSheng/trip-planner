@@ -629,6 +629,62 @@ select {
   opacity: 0.35;
 }
 
+.location-cluster {
+  background: linear-gradient(145deg, rgba(230, 252, 245, 0.72), #fff);
+  border-color: var(--mantine-color-teal-2);
+}
+
+.location-cluster__toggle {
+  min-width: 0;
+  flex: 1;
+  padding: 0.25rem;
+  border-radius: var(--mantine-radius-sm);
+}
+
+.location-cluster__toggle:hover {
+  background: rgba(43, 200, 166, 0.08);
+}
+
+.location-cluster__places {
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--mantine-color-teal-3);
+}
+
+.place-card__cluster-badge {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.planner-place[data-cluster-member] {
+  position: relative;
+  margin-left: 0.7rem;
+}
+
+.planner-place[data-cluster-member]::before {
+  position: absolute;
+  z-index: 1;
+  top: -0.55rem;
+  bottom: -0.55rem;
+  left: -0.7rem;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--mantine-color-teal-3);
+  content: '';
+}
+
+.planner-place[data-cluster-anchor] .place-card {
+  border-color: var(--mantine-color-teal-3);
+}
+
+.route-leg--cluster {
+  min-height: 2rem;
+  margin-left: 0.7rem;
+  padding: 0.25rem;
+  border-radius: var(--mantine-radius-md);
+  color: var(--mantine-color-teal-8);
+  background: var(--mantine-color-teal-0);
+}
+
 .add-place-placeholder {
   display: flex;
   min-height: 4.75rem;

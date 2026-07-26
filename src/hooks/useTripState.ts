@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import type { ContainerId, CurrencyCode, DayExecutionState, PlaceholderKind, Place, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
+import type { ClusterRelationship, ContainerId, CurrencyCode, DayExecutionState, PlaceholderKind, Place, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
 import { movePlace } from '../utils/itinerary';
 import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
 import { markRouteStale, routeLegKey } from '../utils/routing';
@@ -10,6 +10,7 @@ import { createInitialState } from '../data/seed';
 import { isAccommodation } from '../utils/stay';
 import { ensureItineraryEntries } from '../domain/itinerary';
 import { isPlaceholder } from '../domain/place';
+import { assignPlaceToCluster, clusterForPlace, clusterPlaceIds, removePlacesFromClusters } from '../domain/locationCluster';
 
 interface TripActor {
   id: string;
@@ -156,6 +157,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
       return {
         ...current,
         places: current.places.filter((place) => !removedIds.has(place.id)),
+        locationClusters: removePlacesFromClusters(current, removedIds),
         unscheduledIds: current.unscheduledIds.filter((id) => !removedIds.has(id)),
         visitedPlaceIds: current.visitedPlaceIds.filter((id) => !removedIds.has(id)),
         hotelPlaceId: current.hotelPlaceId === placeId ? undefined : current.hotelPlaceId,
@@ -398,12 +400,69 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
             }),
           };
         }
+        const cluster = clusterForPlace(current.locationClusters, placeId);
+        if (cluster?.anchorPlaceId === placeId) {
+          const sourceId = current.unscheduledIds.includes(placeId)
+            ? 'unscheduled'
+            : current.days.find((day) => day.placeIds.includes(placeId))?.id;
+          const movingIds = clusterPlaceIds(cluster).filter((id) => sourceId && (
+            sourceId === 'unscheduled'
+              ? current.unscheduledIds.includes(id)
+              : current.days.find((day) => day.id === sourceId)?.placeIds.includes(id)
+          ));
+          let clustered = current;
+          movingIds.forEach((id, index) => {
+            clustered = movePlace(clustered, id, destinationId, destinationIndex + index);
+          });
+          return { ...clustered, days: clustered.days.map(markRouteStale) };
+        }
         const moved = movePlace(current, placeId, destinationId, destinationIndex);
         return { ...moved, days: moved.days.map(markRouteStale) };
       });
     },
     [readOnly],
   );
+
+  const setPlaceCluster = useCallback((placeId: string, targetPlaceId?: string, relationship: ClusterRelationship = 'nearby', walkMinutes?: number) => {
+    if (readOnly) return;
+    setState((current) => assignPlaceToCluster(
+      current,
+      placeId,
+      targetPlaceId ? { targetPlaceId, relationship, walkMinutes } : undefined,
+    ));
+  }, [readOnly]);
+
+  const renameLocationCluster = useCallback((clusterId: string, name: string) => {
+    if (readOnly || !name.trim()) return;
+    setState((current) => ({
+      ...current,
+      locationClusters: (current.locationClusters ?? []).map((cluster) => cluster.id === clusterId ? { ...cluster, name: name.trim() } : cluster),
+    }));
+  }, [readOnly]);
+
+  const ungroupLocationCluster = useCallback((clusterId: string) => {
+    if (readOnly) return;
+    setState((current) => ({ ...current, locationClusters: (current.locationClusters ?? []).filter((cluster) => cluster.id !== clusterId) }));
+  }, [readOnly]);
+
+  const replaceLocationClusterAnchor = useCallback((clusterId: string, anchorPlaceId: string) => {
+    if (readOnly) return;
+    setState((current) => ({
+      ...current,
+      locationClusters: (current.locationClusters ?? []).map((cluster) => {
+        if (cluster.id !== clusterId || !cluster.members.some((member) => member.placeId === anchorPlaceId)) return cluster;
+        return {
+          ...cluster,
+          anchorPlaceId,
+          name: cluster.name,
+          members: [
+            { placeId: cluster.anchorPlaceId, relationship: 'inside' as const },
+            ...cluster.members.filter((member) => member.placeId !== anchorPlaceId),
+          ],
+        };
+      }),
+    }));
+  }, [readOnly]);
 
   const updateTrip = useCallback((tripName: string, startDate: string, displayCurrency?: CurrencyCode) => {
     if (readOnly) return;
@@ -458,6 +517,10 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     updateExecution,
     addExpense,
     move,
+    setPlaceCluster,
+    renameLocationCluster,
+    ungroupLocationCluster,
+    replaceLocationClusterAnchor,
     updateTrip,
     updateLegMode,
     applyAiDraft,

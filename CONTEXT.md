@@ -8,6 +8,14 @@ This context models saved trip locations and the visits arranged across each tri
 A saved physical location in a trip, reusable across an itinerary. A Place is not a scheduled visit.
 _Avoid_: Stop copy, hotel card
 
+**LocationCluster**:
+An ordered set of Places that can be visited at one venue or within a short walk, identified by one anchor Place.
+_Avoid_: Folder, collection, place group
+
+**Cluster relationship**:
+A member Place is either inside the cluster anchor's venue or nearby within a short walk. The anchor itself has no relationship label.
+_Avoid_: Transport mode, category
+
 **ItineraryEntry**:
 One scheduled visit to a Place in a trip day. Multiple entries may reference the same Place, including repeated accommodation visits.
 _Avoid_: Place assignment, duplicated place

@@ -8,8 +8,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function isIdRecord(value: unknown): value is Record<string, unknown> & { id: string } {
-  return isRecord(value) && typeof value.id === 'string';
+function recordKey(value: unknown): string | undefined {
+  if (!isRecord(value)) return undefined;
+  if (typeof value.id === 'string') return value.id;
+  if (typeof value.placeId === 'string') return value.placeId;
+  return undefined;
 }
 
 function mergeStringArray(base: string[], local: string[], remote: string[]) {
@@ -31,29 +34,31 @@ function mergeStringArray(base: string[], local: string[], remote: string[]) {
   return result;
 }
 
-function mergeIdArray(
-  base: Array<Record<string, unknown> & { id: string }>,
-  local: Array<Record<string, unknown> & { id: string }>,
-  remote: Array<Record<string, unknown> & { id: string }>,
+function mergeKeyedArray(
+  base: Array<Record<string, unknown>>,
+  local: Array<Record<string, unknown>>,
+  remote: Array<Record<string, unknown>>,
 ) {
-  const baseById = new Map(base.map((item) => [item.id, item]));
-  const localById = new Map(local.map((item) => [item.id, item]));
-  const remoteById = new Map(remote.map((item) => [item.id, item]));
-  const locallyRemoved = new Set(base.filter((item) => !localById.has(item.id)).map((item) => item.id));
-  const result: Array<Record<string, unknown> & { id: string }> = [];
+  const baseById = new Map(base.map((item) => [recordKey(item)!, item]));
+  const localById = new Map(local.map((item) => [recordKey(item)!, item]));
+  const remoteById = new Map(remote.map((item) => [recordKey(item)!, item]));
+  const locallyRemoved = new Set(base.filter((item) => !localById.has(recordKey(item)!)).map((item) => recordKey(item)!));
+  const result: Array<Record<string, unknown>> = [];
 
   for (const remoteItem of remote) {
-    if (locallyRemoved.has(remoteItem.id)) continue;
-    const localItem = localById.get(remoteItem.id);
-    const baseItem = baseById.get(remoteItem.id);
+    const key = recordKey(remoteItem)!;
+    if (locallyRemoved.has(key)) continue;
+    const localItem = localById.get(key);
+    const baseItem = baseById.get(key);
     result.push(localItem && baseItem
-      ? mergeValue(baseItem, localItem, remoteItem) as Record<string, unknown> & { id: string }
+      ? mergeValue(baseItem, localItem, remoteItem) as Record<string, unknown>
       : remoteItem);
   }
 
   for (const localItem of local) {
-    if (remoteById.has(localItem.id)) continue;
-    const baseItem = baseById.get(localItem.id);
+    const key = recordKey(localItem)!;
+    if (remoteById.has(key)) continue;
+    const baseItem = baseById.get(key);
     if (!baseItem || !equal(localItem, baseItem)) result.push(localItem);
   }
   return result;
@@ -68,8 +73,8 @@ function mergeValue(base: unknown, local: unknown, remote: unknown): unknown {
     if ([...base, ...local, ...remote].every((value) => typeof value === 'string')) {
       return mergeStringArray(base as string[], local as string[], remote as string[]);
     }
-    if ([...base, ...local, ...remote].every(isIdRecord)) {
-      return mergeIdArray(base, local, remote);
+    if ([...base, ...local, ...remote].every((value) => recordKey(value) !== undefined)) {
+      return mergeKeyedArray(base, local, remote);
     }
     return local;
   }

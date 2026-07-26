@@ -4,10 +4,11 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { ActionIcon, Badge, Box, Divider, Group, Paper, Stack, Text, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconChevronDown, IconChevronUp, IconInbox } from '@tabler/icons-react';
-import type { Place } from '../types';
+import type { LocationCluster, Place } from '../types';
 import { PlaceCard } from './PlaceCard';
 import { categoryLabel, useI18n } from '../i18n';
 import { isAccommodation } from '../utils/stay';
+import { clusterForPlace, clusterMember } from '../domain/locationCluster';
 
 interface UnscheduledColumnProps {
   places: Place[];
@@ -16,6 +17,7 @@ interface UnscheduledColumnProps {
   onEditActivity: (place: Place) => void;
   onDeletePlace: (place: Place) => void;
   readOnly?: boolean;
+  clusters?: LocationCluster[];
 }
 
 export function UnscheduledColumn({
@@ -25,6 +27,7 @@ export function UnscheduledColumn({
   onEditActivity,
   onDeletePlace,
   readOnly = false,
+  clusters = [],
 }: UnscheduledColumnProps) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
@@ -99,6 +102,12 @@ export function UnscheduledColumn({
                 onEdit={readOnly ? undefined : onEditActivity}
                 editLabel="Edit plan & schedule"
                 onDelete={readOnly ? undefined : onDeletePlace}
+                clusterLabel={clusterForPlace(clusters, place.id)?.name}
+                clusterRelationship={(() => {
+                  const cluster = clusterForPlace(clusters, place.id);
+                  if (!cluster) return undefined;
+                  return clusterMember(cluster, place.id)?.relationship ?? 'anchor';
+                })()}
               />
             ))}
           </SortableContext>
@@ -115,6 +124,12 @@ export function UnscheduledColumn({
                   onEdit={readOnly ? undefined : onEditActivity}
                   editLabel="Edit plan & schedule"
                   onDelete={readOnly ? undefined : onDeletePlace}
+                  clusterLabel={clusterForPlace(clusters, place.id)?.name}
+                  clusterRelationship={(() => {
+                    const cluster = clusterForPlace(clusters, place.id);
+                    if (!cluster) return undefined;
+                    return clusterMember(cluster, place.id)?.relationship ?? 'anchor';
+                  })()}
                 />
               ))}
             </SortableContext>

@@ -20,7 +20,7 @@ import {
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconCoffee, IconDots, IconPlus, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconWalk } from '@tabler/icons-react';
-import type { PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
+import type { LocationCluster, PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
 import { useI18n } from '../i18n';
@@ -29,6 +29,7 @@ import { routeLegKey } from '../utils/routing';
 import { legGoogleMapsUrl } from '../utils/mapPresentation';
 import { transportIcon } from './transportIcons';
 import { isPlaceholder } from '../domain/place';
+import { clusterForPlace, clusterMember } from '../domain/locationCluster';
 
 interface DayColumnProps {
   readOnly?: boolean;
@@ -53,6 +54,7 @@ interface DayColumnProps {
   hotelPlaces: Place[];
   tripHotelId?: string;
   onLegModeChange: (dayId: string, fromPlaceId: string, toPlaceId: string, mode: TravelMode | 'default') => void;
+  clusters?: LocationCluster[];
 }
 
 export function DayColumn({
@@ -78,6 +80,7 @@ export function DayColumn({
   hotelPlaces,
   tripHotelId,
   onLegModeChange,
+  clusters = [],
 }: DayColumnProps) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
@@ -254,8 +257,16 @@ export function DayColumn({
       {!collapsed ? (
         <SortableContext items={day.placeIds} strategy={verticalListSortingStrategy}>
           <Stack gap="xs" p="sm" className="day-column__body">
-            {places.map((place, placeIndex) => (
-              <Box key={place.id}>
+            {places.map((place, placeIndex) => {
+              const cluster = clusterForPlace(clusters, place.id);
+              const member = cluster ? clusterMember(cluster, place.id) : undefined;
+              return (
+              <Box
+                key={place.id}
+                className="planner-place"
+                data-cluster-member={member ? member.relationship : undefined}
+                data-cluster-anchor={cluster?.anchorPlaceId === place.id || undefined}
+              >
               <PlaceCard
                 key={place.id}
                 place={place}
@@ -274,9 +285,25 @@ export function DayColumn({
                 warnings={readOnly ? undefined : warningsByPlace.get(place.id)}
                 onScheduleChange={!readOnly && day.timeManagementEnabled ? (updates) => onStopScheduleChange(day.id, place.id, updates) : undefined}
                 onEnableSchedule={!readOnly && day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
+                clusterLabel={cluster?.name}
+                clusterRelationship={cluster ? member?.relationship ?? 'anchor' : undefined}
               />
               {places[placeIndex + 1] ? (() => {
                 const nextPlace = places[placeIndex + 1];
+                const nextCluster = clusterForPlace(clusters, nextPlace.id);
+                const sameCluster = cluster && nextCluster?.id === cluster.id;
+                const nextMember = sameCluster ? clusterMember(cluster, nextPlace.id) : undefined;
+                if (sameCluster) {
+                  const inside = nextMember?.relationship === 'inside';
+                  return (
+                    <Group className="route-leg route-leg--cluster" gap={6} justify="center">
+                      <IconWalk size={15} />
+                      <Text size="xs" fw={650}>
+                        {inside ? 'Inside venue · no transport' : `${nextMember?.walkMinutes ?? 'Short'} min walk nearby`}
+                      </Text>
+                    </Group>
+                  );
+                }
                 const key = routeLegKey(place.id, nextPlace.id);
                 const mode = day.legModeOverrides?.[key] ?? 'default';
                 const actualMode = mode === 'default' ? day.travelMode ?? 'public' : mode;
@@ -306,7 +333,7 @@ export function DayColumn({
                 );
               })() : null}
               </Box>
-            ))}
+            )})}
             {!readOnly ? <><UnstyledButton className="add-place-placeholder" onClick={onAddPlace}>
               <IconPlus size={17} />
               <Text size="xs" fw={650}>

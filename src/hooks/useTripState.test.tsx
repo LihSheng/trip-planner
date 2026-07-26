@@ -37,6 +37,23 @@ describe('useTripState', () => {
     expect(result.current.placesById.get('test-place')).toEqual(samplePlace);
   });
 
+  it('moves an unscheduled location cluster together by its anchor', () => {
+    const { result } = renderHook(() => useTripState(false));
+    const anchor = { ...samplePlace, id: 'cluster-anchor', name: 'Cluster anchor' };
+    const child = { ...samplePlace, id: 'cluster-child', name: 'Cluster child', category: 'Food' as const };
+    act(() => {
+      result.current.addPlace(anchor);
+      result.current.addPlace(child);
+      result.current.setPlaceCluster(child.id, anchor.id, 'inside');
+    });
+
+    const dayId = result.current.state.days[0].id;
+    act(() => result.current.move(anchor.id, dayId, 0));
+
+    expect(result.current.state.days[0].placeIds.slice(0, 2)).toEqual([anchor.id, child.id]);
+    expect(result.current.state.unscheduledIds).not.toEqual(expect.arrayContaining([anchor.id, child.id]));
+  });
+
   it('keeps the creator while recording the latest place editor', () => {
     const { result } = renderHook(() => useTripState(false, { id: 'author-id', email: 'author@example.com' }));
     act(() => result.current.addPlace(samplePlace));

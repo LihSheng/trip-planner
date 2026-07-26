@@ -14,8 +14,8 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core';
-import { IconAlertTriangle, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconPencil, IconRobot, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconUser } from '@tabler/icons-react';
-import type { Place, PlaceCategory, StopSchedule } from '../types';
+import { IconAlertTriangle, IconBuildingCommunity, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconPencil, IconRobot, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconUser } from '@tabler/icons-react';
+import type { ClusterRelationship, Place, PlaceCategory, StopSchedule } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
 import { isStayExpired } from '../utils/stay';
 import { isPlaceholder } from '../domain/place';
@@ -50,6 +50,8 @@ interface PlaceCardProps {
   onEnableSchedule?: () => void;
   onReplace?: (placeId: string) => void;
   onRename?: (place: Place) => void;
+  clusterLabel?: string;
+  clusterRelationship?: ClusterRelationship | 'anchor';
 }
 
 export function PlaceCard({
@@ -69,6 +71,8 @@ export function PlaceCard({
   onEnableSchedule,
   onReplace,
   onRename,
+  clusterLabel,
+  clusterRelationship,
 }: PlaceCardProps) {
   const { t } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -171,6 +175,21 @@ export function PlaceCard({
           {!placeholder ? <Badge color={categoryColors[place.category]} variant="light" size="xs">
             {categoryLabel(t, place.category)}
           </Badge> : null}
+          {!placeholder && clusterLabel ? (
+            <Badge
+              color="teal"
+              variant="outline"
+              size="xs"
+              leftSection={<IconBuildingCommunity size={11} />}
+              className="place-card__cluster-badge"
+            >
+              {clusterRelationship === 'anchor'
+                ? clusterLabel
+                : clusterRelationship === 'inside'
+                  ? `Inside ${clusterLabel}`
+                  : `Near ${clusterLabel}`}
+            </Badge>
+          ) : null}
           {!placeholder ? <Group gap={5} wrap="nowrap" mt={1}>
             <Tooltip label={authorDetails(place)}>
               <Group gap={3} wrap="nowrap">

@@ -11,7 +11,9 @@ import {
   List,
   Modal,
   Paper,
+  Radio,
   SegmentedControl,
+  Select,
   Skeleton,
   Stack,
   Tabs,
@@ -48,6 +50,7 @@ import { formatTripPlainText } from './utils/exportTrip';
 import { useCurrentLocation } from './hooks/useCurrentLocation';
 import { useI18n } from './i18n';
 import { isPlaceholder } from './domain/place';
+import type { ClusterAssignment } from './domain/locationCluster';
 
 const TaiwanMap = lazy(() =>
   import('./components/TaiwanMap').then((module) => ({ default: module.TaiwanMap })),
@@ -82,6 +85,8 @@ export default function App() {
   const [deleteTarget, setDeleteTarget] = useState<Place | undefined>();
   const [dayDeleteTarget, setDayDeleteTarget] = useState<string | null>(null);
   const [aiImportOpened, setAiImportOpened] = useState(false);
+  const [clusterDeleteMode, setClusterDeleteMode] = useState<'replace' | 'ungroup' | 'all'>('replace');
+  const [replacementAnchorId, setReplacementAnchorId] = useState<string | null>(null);
 
   const selectedPlace = useMemo(
     () => planner.state.places.find((place) => place.id === selectedId),
@@ -119,6 +124,17 @@ export default function App() {
       })),
     );
   }, [deleteTarget, planner.placesById, planner.state.days, planner.state.places, t]);
+  const deleteCluster = useMemo(
+    () => deleteTarget
+      ? planner.state.locationClusters?.find((cluster) => cluster.anchorPlaceId === deleteTarget.id)
+      : undefined,
+    [deleteTarget, planner.state.locationClusters],
+  );
+
+  useEffect(() => {
+    setClusterDeleteMode('replace');
+    setReplacementAnchorId(deleteCluster?.members[0]?.placeId ?? null);
+  }, [deleteCluster?.id]);
 
   if (!planner.isReady) {
     return (
@@ -161,10 +177,14 @@ export default function App() {
     setEditingActivityId(place.id);
   }
 
-  function handlePlaceSubmit(place: Place) {
+  function handlePlaceSubmit(place: Place, clusterAssignment?: ClusterAssignment) {
     if (planner.isReadOnly) return;
     if (editingPlace) {
       planner.updatePlace(place);
+      const editedCluster = planner.state.locationClusters?.find((cluster) => cluster.anchorPlaceId === place.id || cluster.members.some((member) => member.placeId === place.id));
+      if (editedCluster?.anchorPlaceId !== place.id) {
+        planner.setPlaceCluster(place.id, clusterAssignment?.targetPlaceId, clusterAssignment?.relationship, clusterAssignment?.walkMinutes);
+      }
       notifications.show({ color: 'teal', title: t('placeUpdated'), message: t('placeSaved', { name: place.name }) });
     } else {
       if (replacePlaceholderId) {
@@ -173,6 +193,9 @@ export default function App() {
         planner.addPlaceToDay(place, addPlaceDayId);
       } else {
         planner.addPlace(place);
+      }
+      if (clusterAssignment) {
+        planner.setPlaceCluster(place.id, clusterAssignment.targetPlaceId, clusterAssignment.relationship, clusterAssignment.walkMinutes);
       }
       setSelectedId(place.id);
       setActiveMapView(replacePlaceholderId ? 'all' : addPlaceDayId ?? 'unscheduled');
@@ -183,7 +206,22 @@ export default function App() {
   function handleDeletePlace() {
     if (planner.isReadOnly) return;
     if (!deleteTarget) return;
-    planner.removePlace(deleteTarget.id);
+    if (deleteCluster) {
+      if (clusterDeleteMode === 'replace') {
+        if (!replacementAnchorId) return;
+        planner.replaceLocationClusterAnchor(deleteCluster.id, replacementAnchorId);
+        planner.removePlace(deleteTarget.id);
+      } else if (clusterDeleteMode === 'ungroup') {
+        planner.ungroupLocationCluster(deleteCluster.id);
+        planner.removePlace(deleteTarget.id);
+      } else {
+        const clusterIds = [deleteCluster.anchorPlaceId, ...deleteCluster.members.map((member) => member.placeId)];
+        clusterIds.forEach(planner.removePlace);
+        if (selectedId && clusterIds.includes(selectedId)) setSelectedId(null);
+      }
+    } else {
+      planner.removePlace(deleteTarget.id);
+    }
     if (selectedId === deleteTarget.id) setSelectedId(null);
     notifications.show({ color: 'red', title: t('placeRemoved'), message: t('placeDeleted', { name: deleteTarget.name }) });
     setDeleteTarget(undefined);
@@ -268,6 +306,7 @@ export default function App() {
     <Box className="library-panel">
       <PlaceLibrary
         places={planner.state.places.filter((place) => !isPlaceholder(place) && !place.assignmentOf)}
+        clusters={planner.state.locationClusters}
         selectedId={selectedId}
         onSelect={(placeId) => {
           setSelectedId(placeId);
@@ -278,6 +317,8 @@ export default function App() {
         onAdd={openAddPlace}
         onEdit={openEditPlace}
         onDelete={setDeleteTarget}
+        onUngroupCluster={planner.ungroupLocationCluster}
+        onRenameCluster={planner.renameLocationCluster}
         readOnly={planner.isReadOnly}
       />
     </Box>
@@ -503,6 +544,8 @@ export default function App() {
       <PlaceFormModal
         opened={placeModalOpened}
         place={editingPlace}
+        places={planner.state.places}
+        clusters={planner.state.locationClusters}
         onClose={() => setPlaceModalOpened(false)}
         onSubmit={handlePlaceSubmit}
       />
@@ -534,12 +577,40 @@ export default function App() {
           ) : (
             <Text size="sm" c="dimmed">{t('noPlannerVisits')}</Text>
           )}
+          {deleteCluster ? (
+            <Paper withBorder radius="md" p="sm">
+              <Stack gap="xs">
+                <Text size="sm" fw={700}>{deleteTarget?.name} anchors {deleteCluster.name}</Text>
+                <Radio.Group value={clusterDeleteMode} onChange={(value) => setClusterDeleteMode(value as typeof clusterDeleteMode)}>
+                  <Stack gap="xs">
+                    <Radio value="replace" label="Choose another anchor" />
+                    <Radio value="ungroup" label="Ungroup remaining places" />
+                    <Radio value="all" label="Delete every place in this cluster" color="red" />
+                  </Stack>
+                </Radio.Group>
+                {clusterDeleteMode === 'replace' ? (
+                  <Select
+                    label="New anchor"
+                    value={replacementAnchorId}
+                    data={deleteCluster.members.map((member) => ({
+                      value: member.placeId,
+                      label: planner.placesById.get(member.placeId)?.name ?? member.placeId,
+                    }))}
+                    onChange={setReplacementAnchorId}
+                    allowDeselect={false}
+                  />
+                ) : null}
+              </Stack>
+            </Paper>
+          ) : null}
           <Box className="modal-actions">
             <Button variant="default" onClick={() => setDeleteTarget(undefined)}>
               Cancel
             </Button>
-            <Button color="red" onClick={handleDeletePlace}>
-              {deleteAssignments.length
+            <Button color="red" onClick={handleDeletePlace} disabled={Boolean(deleteCluster && clusterDeleteMode === 'replace' && !replacementAnchorId)}>
+              {deleteCluster && clusterDeleteMode === 'all'
+                ? `Delete ${deleteCluster.members.length + 1} places`
+                : deleteAssignments.length
                 ? t('removePlaceAndVisits', { count: deleteAssignments.length })
                 : t('deletePlace')}
             </Button>
