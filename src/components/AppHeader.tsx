@@ -31,64 +31,59 @@ import {
   IconUsers,
 } from '@tabler/icons-react';
 import { useAuth } from '../context/AuthContext';
-import { loadTripState, type TripPlanSummary } from '../lib/tripRepository';
+import { useTrip } from '../context/TripContext';
+import type { CurrentLocationState } from '../hooks/useCurrentLocation';
+import { loadTripState } from '../lib/tripRepository';
 import { exportTripExcel, exportTripMarkdown } from '../utils/exportTrip';
-import { LanguageToggle, useI18n } from '../i18n';
+import { useI18n } from '../i18n';
 
 interface AppHeaderProps {
-  tripName: string;
-  activePlanId: string | null;
-  plans: TripPlanSummary[];
-  startDate: string;
-  placeCount: number;
-  dayCount: number;
-  syncStatus: 'loading' | 'saving' | 'saved' | 'error';
-  syncError: string | null;
-  onSyncNow: () => Promise<void>;
-  accountEmail?: string;
-  readOnly?: boolean;
   onAddPlace: () => void;
-  onSwitchPlan: (planId: string) => void;
-  onCreatePlan: () => void;
   onOpenAiImport: () => void;
   onOpenSettings: () => void;
-  canShare: boolean;
   onOpenShare: () => void;
   onExport: () => void;
   onCopyPlainText: () => Promise<void>;
   onReset: () => void;
   onSignOut: () => void;
+  location: CurrentLocationState;
 }
 
 export function AppHeader({
-  tripName,
-  activePlanId,
-  plans,
-  startDate,
-  placeCount,
-  dayCount,
-  syncStatus,
-  syncError,
-  onSyncNow,
-  accountEmail,
-  readOnly = false,
   onAddPlace,
-  onSwitchPlan,
-  onCreatePlan,
   onOpenAiImport,
   onOpenSettings,
-  canShare,
   onOpenShare,
   onExport,
   onCopyPlainText,
   onReset,
   onSignOut,
+  location,
 }: AppHeaderProps) {
+  const {
+    state,
+    planId: activePlanId,
+    plans,
+    syncStatus,
+    syncError,
+    syncNow: onSyncNow,
+    isReadOnly: readOnly,
+    isOwner,
+    switchPlan: onSwitchPlan,
+    createPlan: onCreatePlan,
+  } = useTrip();
   const { accessToken, user, isDemo } = useAuth();
   const { t } = useI18n();
   const [exporting, setExporting] = useState<'excel' | 'markdown' | null>(null);
   const syncFailed = syncStatus === 'error';
   const cloudExportReady = !isDemo && Boolean(activePlanId) && syncStatus === 'saved' && !exporting;
+  const accountEmail = user.email;
+  const tripName = state.tripName;
+  const startDate = state.startDate;
+  const placeCount = state.places.filter((place) => place.type !== 'placeholder').length;
+  const dayCount = state.days.length;
+  const canShare = isOwner;
+  const liveLocationActive = location.isTracking && location.permission !== 'unsupported';
 
   async function exportCloudTrip(format: 'excel' | 'markdown') {
     if (!activePlanId) return;
@@ -140,21 +135,21 @@ export function AppHeader({
             <Menu.Dropdown>
               <Menu.Label>My plans</Menu.Label>
               {ownedPlans.map((plan) => (
-                <Menu.Item key={plan.id} disabled={plan.id === activePlanId} onClick={() => onSwitchPlan(plan.id)}>
+                <Menu.Item key={plan.id} disabled={plan.id === activePlanId} onClick={() => void onSwitchPlan(plan.id)}>
                   <Text size="sm" fw={plan.id === activePlanId ? 750 : 600} lineClamp={1}>{plan.tripName}</Text>
                   <Text size="xs" c="dimmed" lineClamp={1}>Starts {plan.startDate}</Text>
                 </Menu.Item>
               ))}
               {!ownedPlans.length ? <Menu.Item disabled>No owned plans</Menu.Item> : null}
               <Menu.Divider />
-              <Menu.Item leftSection={<IconPlus size={16} />} onClick={onCreatePlan}>
+              <Menu.Item leftSection={<IconPlus size={16} />} onClick={() => void onCreatePlan()}>
                 New blank plan
               </Menu.Item>
               {sharedPlans.length ? <>
                 <Menu.Divider />
                 <Menu.Label>Shared with me</Menu.Label>
                 {sharedPlans.map((plan) => (
-                  <Menu.Item key={plan.id} disabled={plan.id === activePlanId} onClick={() => onSwitchPlan(plan.id)}>
+                  <Menu.Item key={plan.id} disabled={plan.id === activePlanId} onClick={() => void onSwitchPlan(plan.id)}>
                     <Text size="sm" fw={plan.id === activePlanId ? 750 : 600} lineClamp={1}>{plan.tripName}</Text>
                     <Text size="xs" c="dimmed" lineClamp={1}>Starts {plan.startDate}</Text>
                   </Menu.Item>
@@ -165,6 +160,13 @@ export function AppHeader({
         </Group>
 
         <Group gap="xs" wrap="nowrap">
+          {liveLocationActive ? (
+            <Tooltip label="Using your live location for navigation origins" withArrow>
+              <span className="app-header__live-location" aria-label="Live location active">
+                <span className="app-header__live-location-dot" />
+              </span>
+            </Tooltip>
+          ) : null}
           <Tooltip label={syncError ?? t('syncDescription')}>
             <Badge
               visibleFrom="lg"
@@ -255,7 +257,6 @@ export function AppHeader({
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
-          <LanguageToggle />
         </Group>
       </Group>
     </Box>

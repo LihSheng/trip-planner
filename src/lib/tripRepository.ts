@@ -1,5 +1,6 @@
 import type { TripState } from '../types';
 import { ensureActivities } from '../domain/activity';
+import { ensureItineraryEntries } from '../domain/itinerary';
 import { supabasePublishableKey, supabaseUrl } from './supabaseConfig';
 
 interface TripRow {
@@ -70,7 +71,7 @@ function tripSummary(row: TripRow, userId: string): TripPlanSummary | null {
 }
 
 export function normalizeTripState(state: TripState): TripState {
-  return ensureActivities({
+  return ensureActivities(ensureItineraryEntries({
     ...state,
     visitedPlaceIds: Array.isArray(state.visitedPlaceIds)
       ? state.visitedPlaceIds.filter((placeId): placeId is string => typeof placeId === 'string')
@@ -85,7 +86,7 @@ export function normalizeTripState(state: TripState): TripState {
     executionByDay: state.executionByDay ?? {},
     expenses: Array.isArray(state.expenses) ? state.expenses : [],
     displayCurrency: state.displayCurrency ?? 'MYR',
-  });
+  }));
 }
 
 export async function listTripPlans(accessToken: string, userId: string): Promise<TripPlanSummary[]> {
@@ -168,7 +169,7 @@ export async function saveTripState(
       Prefer: 'return=minimal',
     }),
     body: JSON.stringify({
-      state: ensureActivities(state),
+      state: ensureActivities(ensureItineraryEntries(state)),
       updated_at: new Date().toISOString(),
     }),
   });
@@ -185,7 +186,7 @@ export async function createTripPlan(accessToken: string, userId: string, state:
     }),
     body: JSON.stringify({
       owner_id: userId,
-      state: ensureActivities(state),
+      state: ensureActivities(ensureItineraryEntries(state)),
       updated_at: new Date().toISOString(),
     }),
   });

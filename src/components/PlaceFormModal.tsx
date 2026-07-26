@@ -24,6 +24,7 @@ const categoryOptions: PlaceCategory[] = [
   'Culture',
   'Shopping',
   'Relaxation',
+  'Accommodation',
 ];
 
 interface PlaceFormValues {
@@ -36,6 +37,8 @@ interface PlaceFormValues {
   type: PlaceType;
   opensAt: string;
   closesAt: string;
+  checkInDate: string;
+  checkOutDate: string;
 }
 
 interface PlaceFormModalProps {
@@ -69,6 +72,9 @@ interface GeoapifyProperties {
 const geoapifyApiKey = import.meta.env.VITE_GEOAPIFY_API_KEY as string | undefined;
 
 function categoryFromGeoapifyTypes(types: string[] = []): PlaceCategory {
+  if (types.some((type) => type.startsWith('accommodation.') || type.includes('hotel') || type.includes('hostel') || type.includes('dormitory'))) {
+    return 'Accommodation';
+  }
   if (types.some((type) => type.startsWith('catering.'))) return 'Food';
   if (types.some((type) => type.startsWith('natural.') || type.includes('park') || type.includes('beach'))) return 'Nature';
   if (types.some((type) => type.startsWith('entertainment.') || type.includes('museum') || type.includes('culture'))) {
@@ -103,6 +109,8 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
       type: 'place',
       opensAt: '',
       closesAt: '',
+      checkInDate: '',
+      checkOutDate: '',
     },
     validate: {
       name: (value) => (value.trim().length < 2 ? t('enterPlaceName') : null),
@@ -128,6 +136,8 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
             type: place.type ?? 'place',
             opensAt: place.openingHours?.opensAt ?? '',
             closesAt: place.openingHours?.closesAt ?? '',
+            checkInDate: place.stay?.checkInDate ?? '',
+            checkOutDate: place.stay?.checkOutDate ?? '',
           }
         : {
             name: '',
@@ -139,6 +149,8 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
             type: 'place',
             opensAt: '',
             closesAt: '',
+            checkInDate: '',
+            checkOutDate: '',
           },
     );
     form.resetDirty();
@@ -239,7 +251,10 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
             longitude: Number(values.longitude),
             notes: values.notes.trim(),
             type: values.type,
-            openingHours: values.opensAt && values.closesAt ? { opensAt: values.opensAt, closesAt: values.closesAt } : undefined,
+            openingHours: values.category === 'Accommodation' ? undefined : values.opensAt && values.closesAt ? { opensAt: values.opensAt, closesAt: values.closesAt } : undefined,
+            stay: values.category === 'Accommodation' && values.checkInDate && values.checkOutDate
+              ? { checkInDate: values.checkInDate, checkOutDate: values.checkOutDate }
+              : undefined,
           });
           onClose();
         })}
@@ -266,16 +281,14 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
               ) : null}
             </Stack>
           ) : null}
+          <Select
+            label={t('category')}
+            data={categoryOptions.map((category) => ({ value: category, label: categoryLabel(t, category) }))}
+            allowDeselect={false}
+            {...form.getInputProps('category')}
+          />
           <TextInput label={t('placeName')} placeholder={t('searchExample')} required {...form.getInputProps('name')} />
-          <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <TextInput label={t('regionCity')} placeholder={t('cityPlaceholder')} required {...form.getInputProps('region')} />
-            <Select
-              label={t('category')}
-              data={categoryOptions.map((category) => ({ value: category, label: categoryLabel(t, category) }))}
-              allowDeselect={false}
-              {...form.getInputProps('category')}
-            />
-          </SimpleGrid>
+          <TextInput label={t('regionCity')} placeholder={t('cityPlaceholder')} required {...form.getInputProps('region')} />
           <Select
             label={t('placeType')}
             data={[
@@ -292,10 +305,17 @@ export function PlaceFormModal({ opened, place, onClose, onSubmit }: PlaceFormMo
             <NumberInput label={t('latitude')} decimalScale={6} {...form.getInputProps('latitude')} />
             <NumberInput label={t('longitude')} decimalScale={6} {...form.getInputProps('longitude')} />
           </SimpleGrid>
-          <SimpleGrid cols={2}>
-            <TextInput label={t('opensAt')} type="time" {...form.getInputProps('opensAt')} />
-            <TextInput label={t('closesAt')} type="time" {...form.getInputProps('closesAt')} />
-          </SimpleGrid>
+          {form.values.category === 'Accommodation' ? (
+            <SimpleGrid cols={2}>
+              <TextInput label={t('checkInDate')} type="date" {...form.getInputProps('checkInDate')} />
+              <TextInput label={t('checkOutDate')} type="date" {...form.getInputProps('checkOutDate')} />
+            </SimpleGrid>
+          ) : (
+            <SimpleGrid cols={2}>
+              <TextInput label={t('opensAt')} type="time" {...form.getInputProps('opensAt')} />
+              <TextInput label={t('closesAt')} type="time" {...form.getInputProps('closesAt')} />
+            </SimpleGrid>
+          )}
           <Textarea
             label={t('notes')}
             placeholder={t('notesPlaceholder')}

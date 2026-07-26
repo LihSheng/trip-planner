@@ -46,7 +46,7 @@ export function PlaceLibrary({
   const filtered = useMemo(
     () =>
       places.filter((place) => {
-        if (place.type === 'placeholder') return false;
+        if (place.type === 'placeholder' || place.assignmentOf) return false;
         const matchesQuery =
           !deferredQuery ||
           place.name.toLowerCase().includes(deferredQuery) ||
@@ -63,7 +63,7 @@ export function PlaceLibrary({
         <div>
           <Text fw={750}>{t('placesOfInterest')}</Text>
           <Text size="xs" c="dimmed">
-            {t('placesCount', { shown: filtered.length, total: places.length })}
+            {t('placesCount', { shown: filtered.length, total: places.filter((place) => !place.assignmentOf && place.type !== 'placeholder').length })}
           </Text>
         </div>
         {!readOnly ? <Tooltip label={t('addPlace')}>

@@ -23,19 +23,13 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { divIcon, latLngBounds } from 'leaflet';
-import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
+import { Circle, CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import type { Place, PlaceCategory, TripDay } from '../types';
+import type { CurrentLocation } from '../hooks/useCurrentLocation';
 import { formatTripDate } from '../utils/date';
 import { categoryLabel, useI18n } from '../i18n';
+import { googleMapsRouteUrl, googleSearchUrl, markerColors } from '../utils/mapPresentation';
 
-const markerColors: Record<PlaceCategory, string> = {
-  Landmark: '#f08c46',
-  Food: '#e85959',
-  Nature: '#2f9e70',
-  Culture: '#7950f2',
-  Shopping: '#339af0',
-  Relaxation: '#15aabf',
-};
 
 const geoapifyMapsApiKey = import.meta.env.VITE_GEOAPIFY_API_KEY as string | undefined;
 
@@ -51,6 +45,7 @@ interface TaiwanMapProps {
   onActiveViewChange: (viewId: string) => void;
   onAddDay: () => void;
   onRemoveDay: (dayId: string) => void;
+  currentLocation: CurrentLocation | null;
   readOnly?: boolean;
 }
 
@@ -116,46 +111,24 @@ function createMarkerIcon({
   color,
   label,
   selected,
+  category,
 }: {
   color: string;
   label: string;
   selected: boolean;
+  category: PlaceCategory;
 }) {
+  const accommodation = category === 'Accommodation';
   return divIcon({
     className: 'map-pin-wrapper',
-    html: `<div class="map-pin${selected ? ' map-pin--selected' : ''}" style="--pin-color:${color}"><span>${label}</span></div>`,
+    html: `<div class="map-pin${selected ? ' map-pin--selected' : ''}${accommodation ? ' map-pin--accommodation' : ''}" style="--pin-color:${color}"><span>${accommodation ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>' : label}</span></div>`,
     iconSize: selected ? [42, 48] : [34, 40],
     iconAnchor: selected ? [21, 48] : [17, 40],
     popupAnchor: [0, -40],
   });
 }
 
-function googleMapsRouteUrl(routePlaces: Place[]) {
-  if (!routePlaces.length) return null;
-  if (routePlaces.length === 1) {
-    const place = routePlaces[0];
-    return `https://www.google.com/maps/search/?api=1&query=${place.latitude},${place.longitude}`;
-  }
 
-  const origin = routePlaces[0];
-  const destination = routePlaces[routePlaces.length - 1];
-  const waypoints = routePlaces
-    .slice(1, -1)
-    .map((place) => `${place.latitude},${place.longitude}`)
-    .join('|');
-  const params = new URLSearchParams({
-    api: '1',
-    origin: `${origin.latitude},${origin.longitude}`,
-    destination: `${destination.latitude},${destination.longitude}`,
-    travelmode: 'driving',
-  });
-  if (waypoints) params.set('waypoints', waypoints);
-  return `https://www.google.com/maps/dir/?${params.toString()}`;
-}
-
-function googleSearchUrl(place: Place) {
-  return `https://www.google.com/search?${new URLSearchParams({ q: `${place.name} ${place.region}` }).toString()}`;
-}
 
 function MapSurface({
   places,
@@ -169,6 +142,7 @@ function MapSurface({
   onActiveViewChange,
   onAddDay,
   onRemoveDay,
+  currentLocation,
   readOnly = false,
   expanded,
   onToggleExpanded,
@@ -176,6 +150,7 @@ function MapSurface({
   const { t } = useI18n();
   const [useOpenStreetMapFallback, setUseOpenStreetMapFallback] = useState(!geoapifyMapsApiKey);
   const [draggedDayId, setDraggedDayId] = useState<string | null>(null);
+  const [daySwitcherCollapsed, setDaySwitcherCollapsed] = useState(false);
   const placesById = useMemo(() => new Map(places.map((place) => [place.id, place])), [places]);
   const dayByPlaceId = useMemo(() => {
     const result = new Map<string, number>();
@@ -214,6 +189,16 @@ function MapSurface({
     return dayIndex === undefined ? 'U' : String(dayIndex + 1);
   }
 
+  function selectMapView(viewId: string) {
+    if (viewId === activeView) {
+      setDaySwitcherCollapsed((collapsed) => !collapsed);
+      return;
+    }
+
+    setDaySwitcherCollapsed(false);
+    onActiveViewChange(viewId);
+  }
+
   return (
     <Paper withBorder radius={expanded ? 0 : 'lg'} className={`map-shell${expanded ? ' map-shell--expanded' : ''}`}>
       <MapContainer center={[23.8, 120.95]} zoom={7} minZoom={6} scrollWheelZoom className="taiwan-map">
@@ -242,13 +227,33 @@ function MapSurface({
           />
         ) : null}
 
+        {currentLocation ? (
+          <>
+            <Circle
+              center={[currentLocation.latitude, currentLocation.longitude]}
+              radius={currentLocation.accuracy}
+              pathOptions={{ color: '#228be6', fillColor: '#228be6', fillOpacity: 0.12, weight: 1 }}
+              interactive={false}
+            />
+            <CircleMarker
+              center={[currentLocation.latitude, currentLocation.longitude]}
+              radius={9}
+              pathOptions={{ color: '#ffffff', fillColor: '#228be6', fillOpacity: 1, weight: 3 }}
+            >
+              <Popup>
+                <Text size="sm" fw={700}>Your live location</Text>
+              </Popup>
+            </CircleMarker>
+          </>
+        ) : null}
+
         {visiblePlaces.map((place, index) => {
           const selected = place.id === selectedId;
           return (
             <Marker
               key={place.id}
               position={[place.latitude, place.longitude]}
-              icon={createMarkerIcon({ color: markerColors[place.category], label: markerLabel(place, index), selected })}
+              icon={createMarkerIcon({ color: markerColors[place.category], label: markerLabel(place, index), selected, category: place.category })}
               eventHandlers={{ click: () => onSelect(place.id) }}
               zIndexOffset={selected ? 1000 : 0}
             >
@@ -299,10 +304,10 @@ function MapSurface({
         })}
       </MapContainer>
 
-      <Box className="map-day-switcher">
+      <Box className={`map-day-switcher${daySwitcherCollapsed ? ' map-day-switcher--collapsed' : ''}`}>
         <Box className="map-day-switcher__scroll" aria-label={t('itineraryDaySelector')}>
           <Group gap="xs" wrap="nowrap">
-            <Button
+            {!daySwitcherCollapsed || activeView === 'all' ? <Button
               size="xs"
               radius="xl"
               variant={activeView === 'all' ? 'filled' : 'white'}
@@ -313,11 +318,11 @@ function MapSurface({
                   {places.length}
                 </Badge>
               }
-              onClick={() => onActiveViewChange('all')}
+              onClick={() => selectMapView('all')}
             >
               {t('all')}
-            </Button>
-            <Button
+            </Button> : null}
+            {!daySwitcherCollapsed || activeView === 'unscheduled' ? <Button
               size="xs"
               radius="xl"
               variant={activeView === 'unscheduled' ? 'filled' : 'white'}
@@ -327,11 +332,11 @@ function MapSurface({
                   {unscheduledIds.length}
                 </Badge>
               }
-              onClick={() => onActiveViewChange('unscheduled')}
+              onClick={() => selectMapView('unscheduled')}
             >
               {t('unscheduled')}
-            </Button>
-            {days.map((day, index) => (
+            </Button> : null}
+            {days.map((day, index) => (!daySwitcherCollapsed || activeView === day.id ? (
               <Button
                 key={day.id}
                 draggable={!readOnly}
@@ -345,7 +350,7 @@ function MapSurface({
                     {day.placeIds.length}
                   </Badge>
                 }
-                onClick={() => onActiveViewChange(day.id)}
+                onClick={() => selectMapView(day.id)}
                 onDragStart={readOnly ? undefined : (event) => {
                   event.dataTransfer.effectAllowed = 'move';
                   event.dataTransfer.setData('text/plain', day.id);
@@ -355,8 +360,8 @@ function MapSurface({
               >
                 {t('day', { number: index + 1 })}
               </Button>
-            ))}
-            {!readOnly ? <Tooltip label={t('addItineraryDay')}>
+            ) : null))}
+            {!readOnly && !daySwitcherCollapsed ? <Tooltip label={t('addItineraryDay')}>
               <ActionIcon
                 size="lg"
                 radius="xl"
@@ -368,7 +373,7 @@ function MapSurface({
                 <IconPlus size={17} />
               </ActionIcon>
             </Tooltip> : null}
-            {!readOnly && draggedDayId ? (
+            {!readOnly && !daySwitcherCollapsed && draggedDayId ? (
               <Tooltip label={t('removeDay')}>
                 <ActionIcon
                   size="lg"

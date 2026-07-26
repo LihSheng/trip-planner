@@ -1,24 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActionIcon, Alert, Badge, Button, Group, Menu, Modal, Paper, Select, Stack, Text, Textarea, Title } from '@mantine/core';
+import { ActionIcon, Badge, Button, Group, Menu, Modal, Paper, Select, Stack, Text, Textarea, Title, Tooltip } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
-  IconCheck, IconChevronDown, IconCircle, IconClock, IconCurrentLocation, IconDots,
+  IconCheck, IconChevronDown, IconCircle, IconClock, IconDots,
   IconFileText, IconMapPin, IconPlayerSkipForward, IconReceipt, IconRoute,
 } from '@tabler/icons-react';
-import type { DayExecutionState, Place, StopExecutionStatus, TripDay, TripExpense, TripState } from '../types';
+import type { Place, StopExecutionStatus, TripDay } from '../types';
 import { addDays } from '../utils/date';
 import { ExpenseSheet } from './ExpenseSheet';
 import { getTwdExchangeRate } from '../lib/exchangeRates';
-import { useCurrentLocation } from '../hooks/useCurrentLocation';
-
-type Props = {
-  state: TripState;
-  placesById: Map<string, Place>;
-  readOnly: boolean;
-  onUpdateExecution: (dayId: string, placeId: string, status: StopExecutionStatus) => void;
-  onUpdatePlace: (place: Place) => void;
-  onAddExpense: (expense: TripExpense) => void;
-};
+import { useTrip } from '../context/TripContext';
+import type { CurrentLocationState } from '../hooks/useCurrentLocation';
+import { navigationUrl, placeStatus, timeRange } from '../utils/mapPresentation';
 
 const labels: Record<StopExecutionStatus, string> = {
   upcoming: 'Up next', current: 'Current stop', completed: 'Completed', skipped: 'Skipped', rescheduled: 'Rescheduled',
@@ -32,40 +25,18 @@ function dateLabel(value: string) {
   return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(`${value}T12:00:00`));
 }
 
-function placeStatus(day: TripDay, execution: DayExecutionState | undefined, placeId: string): StopExecutionStatus {
-  const stored = execution?.stopStates[placeId]?.status;
-  if (stored) return stored;
-  const firstEligible = day.placeIds.find((id) => !['completed', 'skipped', 'rescheduled'].includes(execution?.stopStates[id]?.status ?? 'upcoming'));
-  return firstEligible === placeId ? 'current' : 'upcoming';
+interface TodayModePageProps {
+  location: CurrentLocationState;
 }
 
-function mapsUrl(place: Place, origin?: { latitude: number; longitude: number } | null) {
-  const params = new URLSearchParams({
-    api: '1',
-    destination: `${place.latitude},${place.longitude}`,
-    travelmode: 'walking',
-  });
-  if (origin) params.set('origin', `${origin.latitude},${origin.longitude}`);
-  return `https://www.google.com/maps/dir/?${params.toString()}`;
-}
-
-function timeRange(day: TripDay, placeId: string) {
-  const schedule = day.stopSchedules?.[placeId];
-  if (!schedule?.startTime) return 'No fixed time';
-  if (!schedule.durationMinutes) return schedule.startTime;
-  const [hour, minute] = schedule.startTime.split(':').map(Number);
-  const end = new Date(2000, 0, 1, hour, minute + schedule.durationMinutes);
-  return `${schedule.startTime}–${end.toTimeString().slice(0, 5)}`;
-}
-
-export function TodayModePage({ state, placesById, readOnly, onUpdateExecution, onUpdatePlace, onAddExpense }: Props) {
+export function TodayModePage({ location }: TodayModePageProps) {
+  const { state, placesById, isReadOnly: readOnly, updateExecution: onUpdateExecution, updatePlace: onUpdatePlace, addExpense: onAddExpense } = useTrip();
   const sessionKey = `trip-planner:today-day:${state.tripName}`;
   const [activeDayId, setActiveDayId] = useState(() => sessionStorage.getItem(sessionKey) ?? '');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [expenseOpened, setExpenseOpened] = useState(false);
   const [displayRate, setDisplayRate] = useState<number | null>(null);
-  const location = useCurrentLocation();
 
   const activeDay = useMemo(() => {
     const selected = state.days.find((day) => day.id === activeDayId);
@@ -114,46 +85,34 @@ export function TodayModePage({ state, placesById, readOnly, onUpdateExecution, 
   }
 
   function openNavigation(place: Place) {
-    window.open(mapsUrl(place, location.location), '_blank', 'noopener,noreferrer');
+    window.open(navigationUrl(place, location.location), '_blank', 'noopener,noreferrer');
   }
+
+  const liveDotVisible = location.isTracking && location.permission !== 'unsupported';
+  const liveDotTooltip = location.isTracking
+    ? 'Using your location for navigation origins'
+    : 'Live location lives in trip settings';
 
   return (
     <main className="today-mode" aria-label="Today Mode">
       <header className="today-header">
         <div>
-          <Title order={1}>Today · Day {state.days.indexOf(activeDay) + 1}</Title>
+          <Group gap={8} align="center" wrap="nowrap" className="today-title-row">
+            <Title order={1}>Today · Day {state.days.indexOf(activeDay) + 1}</Title>
+            {liveDotVisible ? (
+              <Tooltip label={liveDotTooltip} withArrow>
+                <span className="today-live-dot" aria-label="Location live">
+                  <span className="today-live-dot__core" />
+                </span>
+              </Tooltip>
+            ) : null}
+          </Group>
           <Text c="dimmed" size="lg">{dateLabel(dayDate(state.startDate, state.days.indexOf(activeDay)))} · {stops[0]?.region || state.tripName}</Text>
         </div>
-        <Select aria-label="Choose day" value={activeDay.id} onChange={(value) => value && setActiveDayId(value)} data={state.days.map((day, index) => ({ value: day.id, label: `Day ${index + 1} · ${day.label}` }))} className="today-day-select" />
-      </header>
-
-      <Paper withBorder radius="xl" p="md">
-        <Group justify="space-between" align="center" wrap="nowrap">
-          <Group gap="sm" wrap="nowrap">
-            <IconCurrentLocation size={22} />
-            <div>
-              <Text fw={750}>Live location</Text>
-              <Text size="sm" c="dimmed">
-                {location.location
-                  ? `Tracking · accurate to about ${Math.round(location.location.accuracy)} m`
-                  : location.permission === 'denied'
-                    ? 'Permission denied in browser settings'
-                    : 'Use your device location for navigation origins'}
-              </Text>
-            </div>
-          </Group>
-          <Button
-            size="xs"
-            variant={location.isTracking ? 'light' : 'filled'}
-            loading={location.isLoading}
-            disabled={location.permission === 'unsupported'}
-            onClick={location.isTracking ? location.stopTracking : location.startTracking}
-          >
-            {location.isTracking ? 'Stop' : 'Locate me'}
-          </Button>
+        <Group className="today-header__controls" gap="sm" wrap="nowrap" align="center">
+          <Select aria-label="Choose day" value={activeDay.id} onChange={(value) => value && setActiveDayId(value)} data={state.days.map((day, index) => ({ value: day.id, label: `Day ${index + 1} · ${day.label}` }))} className="today-day-select" />
         </Group>
-        {location.error ? <Alert color="orange" mt="sm" title="Location unavailable">{location.error}</Alert> : null}
-      </Paper>
+      </header>
 
       {complete ? <Paper className="today-complete"><IconCheck size={22} /><div><Text fw={800}>Day complete</Text><Text size="sm" c="dimmed">All stops have been completed or skipped.</Text></div></Paper> : null}
 

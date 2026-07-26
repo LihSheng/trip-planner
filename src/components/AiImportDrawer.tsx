@@ -4,8 +4,10 @@ import { IconSparkles } from '@tabler/icons-react';
 import type { TripState } from '../types';
 import type { AiImportRequest, AiItineraryDraft, ConfirmedAiDraft } from '../types/aiImport';
 import { useAiImport } from '../hooks/useAiImport';
+import { useTrip } from '../context/TripContext';
 
-export function AiImportDrawer({ opened, planId, onClose, state, onApply }: { opened: boolean; planId: string | null; onClose: () => void; state: TripState; onApply: (confirmed: ConfirmedAiDraft) => void }) {
+export function AiImportDrawer({ opened, onClose, onApply }: { opened: boolean; onClose: () => void; onApply: (confirmed: ConfirmedAiDraft) => void }) {
+  const { planId, state } = useTrip();
   const { draft, setDraft, loading, error, createDraft, cancel, reset } = useAiImport();
   const [sourceType, setSourceType] = useState<'text' | 'url'>('text');
   const [content, setContent] = useState('');

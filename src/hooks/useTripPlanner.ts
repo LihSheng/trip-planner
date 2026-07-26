@@ -1,559 +1,70 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createBlankTripState, createInitialState } from '../data/seed';
+import { useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import type { ContainerId, CurrencyCode, DayExecutionState, PlaceholderKind, Place, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
-import { acceptTripInvitations, createTripPlan, isTripState, listTripPlans, loadPublicTrip, loadTripState, saveTripState, type TripPlanSummary } from '../lib/tripRepository';
-import { movePlace } from '../utils/itinerary';
-import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
-import { markRouteStale, routeLegKey } from '../utils/routing';
-import { applyAiDraft as applyConfirmedAiDraft } from '../utils/applyAiDraft';
-import type { ConfirmedAiDraft } from '../types/aiImport';
-import { ensureActivities, updateActivityDetails, type ActivityDetailUpdates } from '../domain/activity';
+import type { TripPlanSummary } from '../lib/tripRepository';
+import { useTripState } from './useTripState';
+import { useTripPersistence, type SyncStatus } from './useTripPersistence';
 
-const LEGACY_STORAGE_KEY = 'taiwan-trip-planner:v1';
-const DEMO_STORAGE_KEY = 'taiwan-trip-planner:demo:v1';
-const SAVE_DEBOUNCE_MS = 700;
-
-export type SyncStatus = 'loading' | 'saving' | 'saved' | 'error';
-
-function loadStoredState(key: string): TripState | null {
-  try {
-    const stored = window.localStorage.getItem(key);
-    if (!stored) return null;
-    const parsed = JSON.parse(stored) as unknown;
-    return isTripState(parsed)
-      ? ensureActivities({
-          ...parsed,
-          visitedPlaceIds: parsed.visitedPlaceIds ?? [],
-          executionByDay: parsed.executionByDay ?? {},
-          expenses: parsed.expenses ?? [],
-          displayCurrency: parsed.displayCurrency ?? 'MYR',
-          days: parsed.days.map((day) => ({ ...day, travelMode: day.travelMode ?? 'public', stopSchedules: day.stopSchedules ?? {}, timeManagementEnabled: day.timeManagementEnabled ?? false, legModeOverrides: day.legModeOverrides ?? {} })),
-        })
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function loadLegacyState(): TripState | null {
-  return loadStoredState(LEGACY_STORAGE_KEY);
-}
-
-function loadDemoState(): TripState | null {
-  return loadStoredState(DEMO_STORAGE_KEY);
-}
-
-function selectedPlanStorageKey(userId: string) {
-  return `trip-planner:selected-plan:${userId}`;
-}
+export type { SyncStatus };
 
 export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
   const { accessToken, user, isDemo } = useAuth();
-  const [state, setState] = useState<TripState>(() => ensureActivities(createInitialState()));
-  const [isReady, setIsReady] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
-  const [syncError, setSyncError] = useState<string | null>(null);
+  const isReadOnly = Boolean(shareToken);
+
+  const tripState = useTripState(isReadOnly);
   const [planId, setPlanId] = useState<string | null>(null);
   const [plans, setPlans] = useState<TripPlanSummary[]>([]);
-  const saveSequence = useRef(0);
-
   const activePlan = useMemo(
     () => plans.find((plan) => plan.id === planId),
     [planId, plans],
   );
-
-  useEffect(() => {
-    let active = true;
-    setIsReady(false);
-    setSyncStatus('loading');
-    setSyncError(null);
-    setPlanId(null);
-
-    async function hydrate() {
-      try {
-        if (shareToken) {
-          const sharedState = await loadPublicTrip(shareToken);
-          if (!sharedState) throw new Error('This share link is invalid or no longer available.');
-          setState(ensureActivities(sharedState));
-          setSyncStatus('saved');
-          return;
-        }
-
-        if (isDemo) {
-          setState(loadDemoState() ?? ensureActivities(createInitialState()));
-          setPlans([]);
-          setSyncStatus('saved');
-          return;
-        }
-
-        await acceptTripInvitations(accessToken);
-        let remotePlans = await listTripPlans(accessToken, user.id);
-        if (!active) return;
-
-        if (!remotePlans.length) {
-          const initialState = loadDemoState() ?? loadLegacyState() ?? ensureActivities(createBlankTripState());
-          const createdPlanId = await createTripPlan(accessToken, user.id, initialState);
-          if (!active) return;
-          remotePlans = await listTripPlans(accessToken, user.id);
-          if (!remotePlans.some((plan) => plan.id === createdPlanId)) {
-            remotePlans = [{ id: createdPlanId, ownerId: user.id, tripName: initialState.tripName, startDate: initialState.startDate, updatedAt: new Date().toISOString(), isOwner: true }, ...remotePlans];
-          }
-        }
-
-        const storedPlanId = window.localStorage.getItem(selectedPlanStorageKey(user.id));
-        const selectedPlan =
-          remotePlans.find((plan) => plan.id === requestedPlanId) ??
-          remotePlans.find((plan) => plan.id === storedPlanId) ??
-          remotePlans[0];
-        const remoteState = await loadTripState(accessToken, selectedPlan.id);
-        if (!active) return;
-        if (!remoteState) throw new Error('The selected trip plan is no longer available.');
-
-        setPlanId(selectedPlan.id);
-        setPlans(remotePlans);
-        setState(ensureActivities(remoteState));
-        window.localStorage.setItem(selectedPlanStorageKey(user.id), selectedPlan.id);
-        window.localStorage.removeItem(DEMO_STORAGE_KEY);
-        window.localStorage.removeItem(LEGACY_STORAGE_KEY);
-        if (active) setSyncStatus('saved');
-      } catch (reason) {
-        if (!active) return;
-        setState(loadLegacyState() ?? ensureActivities(createInitialState()));
-        setSyncStatus('error');
-        setSyncError(reason instanceof Error ? reason.message : 'Unable to load the saved trip.');
-      } finally {
-        if (active) setIsReady(true);
-      }
-    }
-
-    void hydrate();
-    return () => {
-      active = false;
-    };
-  }, [accessToken, isDemo, requestedPlanId, shareToken, user.id]);
-
-  useEffect(() => {
-    if (!isReady || shareToken || (!isDemo && !planId)) return;
-
-    const sequence = ++saveSequence.current;
-    setSyncStatus('saving');
-    setSyncError(null);
-
-    const timeout = window.setTimeout(() => {
-      if (isDemo) {
-        window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(ensureActivities(state)));
-        if (saveSequence.current === sequence) setSyncStatus('saved');
-        return;
-      }
-
-      saveTripState(accessToken, planId!, state)
-        .then(() => {
-          if (saveSequence.current === sequence) setSyncStatus('saved');
-          setPlans((current) => current.map((plan) => plan.id === planId ? { ...plan, tripName: state.tripName, startDate: state.startDate, updatedAt: new Date().toISOString() } : plan));
-        })
-        .catch((reason: unknown) => {
-          if (saveSequence.current !== sequence) return;
-          setSyncStatus('error');
-          setSyncError(reason instanceof Error ? reason.message : 'Unable to save the trip.');
-        });
-    }, SAVE_DEBOUNCE_MS);
-
-    return () => window.clearTimeout(timeout);
-  }, [accessToken, isDemo, isReady, planId, shareToken, state, user.id]);
-
-  const placesById = useMemo(
-    () => new Map(state.places.map((place) => [place.id, place])),
-    [state.places],
-  );
-
-  const activitiesById = useMemo(
-    () => new Map((ensureActivities(state).activities ?? []).map((activity) => [activity.id, activity])),
-    [state],
-  );
-
-  const addPlace = useCallback((place: Place) => {
-    if (shareToken) return;
-    setState((current) => ({
-      ...current,
-      places: [...current.places, place],
-      unscheduledIds: [...current.unscheduledIds, place.id],
-      hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId,
-    }));
-  }, [shareToken]);
-
-  const addPlaceToDay = useCallback((place: Place, dayId: string) => {
-    if (shareToken) return;
-    setState((current) => ({
-      ...current,
-      places: [...current.places, place],
-      days: current.days.map((day) => (day.id === dayId ? markRouteStale({ ...day, placeIds: [...day.placeIds, place.id] }) : day)),
-      hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId,
-    }));
-  }, [shareToken]);
-
-  const addPlaceholderToDay = useCallback((dayId: string, kind: PlaceholderKind) => {
-    if (shareToken) return;
-    const placeholder: Place = { id: `placeholder-${crypto.randomUUID()}`, name: kind, region: '', category: 'Relaxation', latitude: 0, longitude: 0, notes: '', type: 'placeholder', placeholderKind: kind };
-    setState((current) => ({
-      ...current,
-      places: [...current.places, placeholder],
-      days: current.days.map((day) => day.id === dayId ? markRouteStale({ ...day, placeIds: [...day.placeIds, placeholder.id] }) : day),
-    }));
-  }, [shareToken]);
-
-  const replacePlaceholder = useCallback((placeholderId: string, place: Place) => {
-    if (shareToken) return;
-    setState((current) => ({
-      ...current,
-      places: [...current.places.filter((item) => item.id !== placeholderId), place],
-      days: current.days.map((day) => day.placeIds.includes(placeholderId)
-        ? markRouteStale({ ...day, placeIds: day.placeIds.map((id) => id === placeholderId ? place.id : id) })
-        : day),
-    }));
-  }, [shareToken]);
-
-  const fillPlaceholder = useCallback((placeholderId: string, placeId: string) => {
-    if (shareToken) return;
-    setState((current) => {
-      const placeholder = current.places.find((place) => place.id === placeholderId);
-      const place = current.places.find((item) => item.id === placeId);
-      if (placeholder?.type !== 'placeholder' || !place || place.type === 'placeholder') return current;
-      return {
-        ...current,
-        places: current.places.filter((item) => item.id !== placeholderId),
-        unscheduledIds: current.unscheduledIds.filter((id) => id !== placeId),
-        days: current.days.map((day) => {
-          if (day.placeIds.includes(placeholderId)) return markRouteStale({ ...day, placeIds: day.placeIds.filter((id) => id !== placeId).map((id) => id === placeholderId ? placeId : id) });
-          return day.placeIds.includes(placeId) ? markRouteStale({ ...day, placeIds: day.placeIds.filter((id) => id !== placeId) }) : day;
-        }),
-      };
-    });
-  }, [shareToken]);
-
-  const updatePlace = useCallback((place: Place) => {
-    if (shareToken) return;
-    setState((current) => ({
-      ...current,
-      places: current.places.map((item) => (item.id === place.id ? place : item)),
-      days: current.days.map((day) => day.placeIds.includes(place.id) ? markRouteStale(day) : day),
-      hotelPlaceId: place.type === 'hotel' ? place.id : current.hotelPlaceId === place.id ? undefined : current.hotelPlaceId,
-    }));
-  }, [shareToken]);
-
-  const updateActivity = useCallback((activityId: string, updates: ActivityDetailUpdates) => {
-    if (shareToken) return;
-    setState((current) => updateActivityDetails(current, activityId, updates));
-  }, [shareToken]);
-
-  const removePlace = useCallback((placeId: string) => {
-    if (shareToken) return;
-    setState((current) => ({
-      ...current,
-      places: current.places.filter((place) => place.id !== placeId),
-      unscheduledIds: current.unscheduledIds.filter((id) => id !== placeId),
-      visitedPlaceIds: current.visitedPlaceIds.filter((id) => id !== placeId),
-      hotelPlaceId: current.hotelPlaceId === placeId ? undefined : current.hotelPlaceId,
-      days: current.days.map((day) => markRouteStale({
-        ...day,
-        placeIds: day.placeIds.filter((id) => id !== placeId),
-        lodgingPlaceId: day.lodgingPlaceId === placeId ? undefined : day.lodgingPlaceId,
-      })),
-    }));
-  }, [shareToken]);
-
-  const addDay = useCallback(() => {
-    if (shareToken) return;
-    setState((current) => {
-      const dayNumber = current.days.length + 1;
-      return {
-        ...current,
-        days: [
-          ...current.days,
-          { id: `day-${crypto.randomUUID()}`, label: `Day ${dayNumber}`, placeIds: [], travelMode: 'public', stopSchedules: {}, timeManagementEnabled: false },
-        ],
-      };
-    });
-  }, [shareToken]);
-
-  const updateDayLabel = useCallback((dayId: string, label: string) => {
-    if (shareToken) return;
-    setState((current) => ({
-      ...current,
-      days: current.days.map((day) => (day.id === dayId ? { ...day, label } : day)),
-    }));
-  }, [shareToken]);
-
-  const removeDay = useCallback((dayId: string) => {
-    if (shareToken) return;
-    setState((current) => {
-      const day = current.days.find((item) => item.id === dayId);
-      return {
-        ...current,
-        unscheduledIds: [...current.unscheduledIds, ...(day?.placeIds ?? [])],
-        days: current.days.filter((item) => item.id !== dayId),
-      };
-    });
-  }, [shareToken]);
-
-  const reorderDays = useCallback((fromIndex: number, toIndex: number) => {
-    if (shareToken) return;
-    setState((current) => {
-      if (
-        fromIndex === toIndex ||
-        fromIndex < 0 ||
-        toIndex < 0 ||
-        fromIndex >= current.days.length ||
-        toIndex >= current.days.length
-      ) {
-        return current;
-      }
-
-      const days = [...current.days];
-      const [movedDay] = days.splice(fromIndex, 1);
-      days.splice(toIndex, 0, movedDay);
-      return { ...current, days };
-    });
-  }, [shareToken]);
-
-  const updateDaySchedule = useCallback((dayId: string, updates: { travelMode?: TravelMode; startTime?: string; lodgingPlaceId?: string; timeManagementEnabled?: boolean }) => {
-    if (shareToken) return;
-    setState((current) => {
-      const placesById = new Map(current.places.map((place) => [place.id, place]));
-      return {
-        ...current,
-        days: current.days.map((day) => {
-          if (day.id !== dayId) return day;
-          const firstPlaceId = day.placeIds[0];
-          const firstPlace = firstPlaceId ? placesById.get(firstPlaceId) : undefined;
-          const stopSchedules = { ...day.stopSchedules };
-          if (updates.startTime && firstPlace && !stopSchedules[firstPlace.id]?.startTime) {
-            stopSchedules[firstPlace.id] = { ...stopSchedules[firstPlace.id], startTime: updates.startTime, durationMinutes: defaultDuration(firstPlace.category) };
-          }
-          return markRouteStale({ ...day, ...updates, stopSchedules });
-        }),
-      };
-    });
-  }, [shareToken]);
-
-  const updateStopSchedule = useCallback((dayId: string, placeId: string, updates: StopSchedule) => {
-    if (shareToken) return;
-    setState((current) => {
-      const placesById = new Map(current.places.map((place) => [place.id, place]));
-      return {
-        ...current,
-        days: current.days.map((day) => {
-          if (day.id !== dayId) return day;
-          const stopSchedules = { ...day.stopSchedules, [placeId]: { ...day.stopSchedules?.[placeId], ...updates } };
-          const startIndex = day.placeIds.indexOf(placeId);
-          const firstPlace = placesById.get(placeId);
-          let nextStart = firstPlace && toMinutes(stopSchedules[placeId].startTime);
-          let previousPlace = firstPlace;
-          if (nextStart !== null && nextStart !== undefined && previousPlace && startIndex >= 0) {
-            nextStart += stopSchedules[placeId].durationMinutes ?? defaultDuration(previousPlace.category);
-            for (const nextPlaceId of day.placeIds.slice(startIndex + 1)) {
-              const nextPlace = placesById.get(nextPlaceId);
-              if (!nextPlace) continue;
-              nextStart += estimateTravelMinutes(previousPlace, nextPlace, day.travelMode);
-              if (stopSchedules[nextPlaceId]?.startTime) break;
-              stopSchedules[nextPlaceId] = { ...stopSchedules[nextPlaceId], startTime: toTime(nextStart), durationMinutes: stopSchedules[nextPlaceId]?.durationMinutes ?? defaultDuration(nextPlace.category) };
-              nextStart += stopSchedules[nextPlaceId].durationMinutes ?? defaultDuration(nextPlace.category);
-              previousPlace = nextPlace;
-            }
-          }
-          return markRouteStale({ ...day, stopSchedules });
-        }),
-      };
-    });
-  }, [shareToken]);
-
-  const toggleVisited = useCallback((placeId: string) => {
-    if (shareToken) return;
-    setState((current) => ({
-      ...current,
-      visitedPlaceIds: current.visitedPlaceIds.includes(placeId)
-        ? current.visitedPlaceIds.filter((id) => id !== placeId)
-        : [...current.visitedPlaceIds, placeId],
-    }));
-  }, [shareToken]);
-
-  const updateExecution = useCallback((dayId: string, placeId: string, status: StopExecutionStatus) => {
-    if (shareToken) return;
-    setState((current) => {
-      const day = current.days.find((item) => item.id === dayId);
-      if (!day || !day.placeIds.includes(placeId)) return current;
-      const now = new Date().toISOString();
-      const previous = current.executionByDay?.[dayId];
-      const stopStates = { ...(previous?.stopStates ?? {}) };
-      const currentState = stopStates[placeId] ?? { placeId, status: 'upcoming' as const };
-
-      if (status === 'current') {
-        Object.entries(stopStates).forEach(([id, item]) => {
-          if (id !== placeId && item.status === 'current') stopStates[id] = { ...item, status: 'upcoming' };
-        });
-      }
-      stopStates[placeId] = {
-        ...currentState,
-        status,
-        arrivedAt: status === 'current' ? now : currentState.arrivedAt,
-        completedAt: status === 'completed' ? now : currentState.completedAt,
-        skippedAt: status === 'skipped' ? now : currentState.skippedAt,
-      };
-
-      if (status === 'completed' || status === 'skipped') {
-        const nextId = day.placeIds.find((id) => id !== placeId && !['completed', 'skipped', 'rescheduled'].includes(stopStates[id]?.status ?? 'upcoming'));
-        if (nextId) stopStates[nextId] = { ...(stopStates[nextId] ?? { placeId: nextId }), status: 'current', arrivedAt: now };
-      }
-
-      const execution: DayExecutionState = { dayId, selectedAt: previous?.selectedAt ?? now, stopStates, updatedAt: now };
-      return { ...current, executionByDay: { ...current.executionByDay, [dayId]: execution } };
-    });
-  }, [shareToken]);
-
-  const addExpense = useCallback((expense: TripExpense) => {
-    if (shareToken) return;
-    setState((current) => ({ ...current, expenses: [...(current.expenses ?? []), expense] }));
-  }, [shareToken]);
-
-  const move = useCallback(
-    (placeId: string, destinationId: ContainerId, destinationIndex: number) => {
-      if (shareToken) return;
-      setState((current) => {
-        if (destinationId === 'unscheduled' && current.places.find((place) => place.id === placeId)?.type === 'placeholder') return current;
-        const moved = movePlace(current, placeId, destinationId, destinationIndex);
-        return { ...moved, days: moved.days.map(markRouteStale) };
-      });
-    },
-    [shareToken],
-  );
-
-  const updateTrip = useCallback((tripName: string, startDate: string, displayCurrency?: CurrencyCode) => {
-    if (shareToken) return;
-    setState((current) => ({ ...current, tripName, startDate, displayCurrency: displayCurrency ?? current.displayCurrency ?? 'MYR', days: current.days.map(markRouteStale) }));
-  }, [shareToken]);
-
-  const updateLegMode = useCallback((dayId: string, fromPlaceId: string, toPlaceId: string, mode: TravelMode | 'default') => {
-    if (shareToken) return;
-    const key = routeLegKey(fromPlaceId, toPlaceId);
-    setState((current) => ({
-      ...current,
-      days: current.days.map((day) => day.id === dayId
-        ? markRouteStale({ ...day, legModeOverrides: { ...day.legModeOverrides, [key]: mode } })
-        : day),
-    }));
-  }, [shareToken]);
-
-  const applyAiDraft = useCallback((draft: ConfirmedAiDraft) => {
-    if (shareToken || isDemo) return;
-    setState((current) => applyConfirmedAiDraft(current, draft));
-  }, [isDemo, shareToken]);
-
-  const reset = useCallback(() => {
-    if (!shareToken) setState(ensureActivities(createInitialState()));
-  }, [shareToken]);
-
-  const switchPlan = useCallback(async (nextPlanId: string) => {
-    if (isDemo || shareToken || nextPlanId === planId) return;
-
-    setIsReady(false);
-    setSyncStatus('loading');
-    setSyncError(null);
-    try {
-      const nextState = await loadTripState(accessToken, nextPlanId);
-      if (!nextState) throw new Error('The selected trip plan is no longer available.');
-      setPlanId(nextPlanId);
-      setState(ensureActivities(nextState));
-      window.localStorage.setItem(selectedPlanStorageKey(user.id), nextPlanId);
-      setSyncStatus('saved');
-    } catch (reason) {
-      setSyncStatus('error');
-      setSyncError(reason instanceof Error ? reason.message : 'Unable to load the selected trip.');
-    } finally {
-      setIsReady(true);
-    }
-  }, [accessToken, isDemo, planId, shareToken, user.id]);
-
-  const createPlan = useCallback(async () => {
-    if (isDemo || shareToken) return null;
-
-    const nextState = ensureActivities(createBlankTripState());
-    setSyncStatus('saving');
-    setSyncError(null);
-    try {
-      const nextPlanId = await createTripPlan(accessToken, user.id, nextState);
-      let nextPlans = await listTripPlans(accessToken, user.id);
-      if (!nextPlans.some((plan) => plan.id === nextPlanId)) {
-        nextPlans = [{ id: nextPlanId, ownerId: user.id, tripName: nextState.tripName, startDate: nextState.startDate, updatedAt: new Date().toISOString(), isOwner: true }, ...nextPlans];
-      }
-      setPlans(nextPlans);
-      setPlanId(nextPlanId);
-      setState(nextState);
-      window.localStorage.setItem(selectedPlanStorageKey(user.id), nextPlanId);
-      setSyncStatus('saved');
-      return nextPlanId;
-    } catch (reason) {
-      setSyncStatus('error');
-      setSyncError(reason instanceof Error ? reason.message : 'Unable to create a trip plan.');
-      return null;
-    }
-  }, [accessToken, isDemo, shareToken, user.id]);
-
-  const syncNow = useCallback(async () => {
-    if (isDemo || shareToken || !planId) return;
-
-    setSyncStatus('saving');
-    setSyncError(null);
-    try {
-      await saveTripState(accessToken, planId, state);
-      setSyncStatus('saved');
-      setPlans((current) => current.map((plan) => plan.id === planId ? { ...plan, tripName: state.tripName, startDate: state.startDate, updatedAt: new Date().toISOString() } : plan));
-    } catch (reason) {
-      setSyncStatus('error');
-      setSyncError(reason instanceof Error ? reason.message : 'Unable to save the trip.');
-    }
-  }, [accessToken, isDemo, planId, shareToken, state]);
-
-  const persistForCloudSignIn = useCallback(() => {
-    if (isDemo) window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(ensureActivities(state)));
-  }, [isDemo, state]);
+  const persistence = useTripPersistence({
+    state: tripState.state,
+    setState: tripState.setState,
+    planId,
+    setPlanId,
+    setPlans,
+    shareToken,
+    requestedPlanId,
+  });
 
   return {
-    state,
+    state: tripState.state,
     planId,
     plans,
     activePlan,
-    isReady,
-    syncStatus,
-    syncError,
+    isReady: persistence.isReady,
+    syncStatus: persistence.syncStatus,
+    syncError: persistence.syncError,
     isOwner: !shareToken && (isDemo || activePlan?.isOwner === true),
-    isReadOnly: Boolean(shareToken),
-    placesById,
-    activitiesById,
-    addPlace,
-    addPlaceToDay,
-    addPlaceholderToDay,
-    replacePlaceholder,
-    fillPlaceholder,
-    updatePlace,
-    updateActivity,
-    removePlace,
-    addDay,
-    updateDayLabel,
-    updateDaySchedule,
-    updateStopSchedule,
-    removeDay,
-    reorderDays,
-    toggleVisited,
-    updateExecution,
-    addExpense,
-    move,
-    updateTrip,
-    updateLegMode,
-    applyAiDraft,
-    reset,
-    switchPlan,
-    createPlan,
-    syncNow,
-    persistForCloudSignIn,
+    isReadOnly,
+    placesById: tripState.placesById,
+    activitiesById: tripState.activitiesById,
+    addPlace: tripState.addPlace,
+    addPlaceToDay: tripState.addPlaceToDay,
+    addPlaceholderToDay: tripState.addPlaceholderToDay,
+    replacePlaceholder: tripState.replacePlaceholder,
+    fillPlaceholder: tripState.fillPlaceholder,
+    updatePlace: tripState.updatePlace,
+    updateActivity: tripState.updateActivity,
+    removePlace: tripState.removePlace,
+    removePlannerVisit: tripState.removePlannerVisit,
+    addDay: tripState.addDay,
+    updateDayLabel: tripState.updateDayLabel,
+    updateDaySchedule: tripState.updateDaySchedule,
+    updateStopSchedule: tripState.updateStopSchedule,
+    removeDay: tripState.removeDay,
+    reorderDays: tripState.reorderDays,
+    toggleVisited: tripState.toggleVisited,
+    updateExecution: tripState.updateExecution,
+    addExpense: tripState.addExpense,
+    move: tripState.move,
+    updateTrip: tripState.updateTrip,
+    updateLegMode: tripState.updateLegMode,
+    applyAiDraft: tripState.applyAiDraft,
+    reset: tripState.reset,
+    switchPlan: persistence.switchPlan,
+    createPlan: persistence.createPlan,
+    syncNow: persistence.syncNow,
+    persistForCloudSignIn: persistence.persistForCloudSignIn,
   };
 }

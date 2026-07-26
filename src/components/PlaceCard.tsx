@@ -16,6 +16,7 @@ import {
 import { IconAlertTriangle, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconPencil, IconRoute, IconSun, IconToolsKitchen, IconTrash } from '@tabler/icons-react';
 import type { Place, PlaceCategory, StopSchedule } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
+import { isStayExpired } from '../utils/stay';
 
 const categoryColors: Record<PlaceCategory, string> = {
   Landmark: 'orange',
@@ -24,6 +25,7 @@ const categoryColors: Record<PlaceCategory, string> = {
   Culture: 'violet',
   Shopping: 'blue',
   Relaxation: 'cyan',
+  Accommodation: 'indigo',
 };
 
 interface PlaceCardProps {
@@ -67,6 +69,7 @@ export function PlaceCard({
     disabled: dragDisabled,
   });
   const isPlaceholder = place.type === 'placeholder';
+  const stayExpired = isStayExpired(place);
   const presetPlaceholderLabel = place.placeholderKind === 'meal' ? t('lunchDinner') : place.placeholderKind === 'coffee' ? t('coffeeBreak') : place.placeholderKind === 'free-time' ? t('freeTime') : t('customStop');
   const placeholderLabel = place.name === place.placeholderKind ? presetPlaceholderLabel : place.name;
   const PlaceholderIcon = place.placeholderKind === 'meal' ? IconToolsKitchen : place.placeholderKind === 'coffee' ? IconCoffee : IconSun;
@@ -81,6 +84,7 @@ export function PlaceCard({
       data-selected={selected || undefined}
       data-dragging={isDragging || undefined}
       data-visited={visited || undefined}
+      data-expired={stayExpired || undefined}
       {...attributes}
       {...listeners}
       style={{

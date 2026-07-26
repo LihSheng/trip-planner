@@ -11,7 +11,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { Button, Group, ScrollArea, Stack, Text } from '@mantine/core';
+import { Button, Group, Modal, ScrollArea, Stack, Text } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import type { ContainerId, PlaceholderKind, Place, StopSchedule, TravelMode, TripState } from '../types';
 import { findContainer, getContainerItems } from '../utils/itinerary';
@@ -19,58 +19,56 @@ import { DayColumn } from './DayColumn';
 import { PlaceCardPreview } from './PlaceCard';
 import { UnscheduledColumn } from './UnscheduledColumn';
 import { useI18n } from '../i18n';
+import { addDays } from '../utils/date';
+import { isAccommodation, stayAssignmentStatus, type StayAssignmentStatus } from '../utils/stay';
+
+import { useTrip } from '../context/TripContext';
 
 interface PlannerBoardProps {
-  readOnly?: boolean;
-  state: TripState;
-  placesById: Map<string, Place>;
   selectedId: string | null;
-  visitedPlaceIds: string[];
   onSelect: (placeId: string) => void;
-  onAddDay: () => void;
-  onAddPlaceToDay: (dayId: string) => void;
-  onAddPlaceholderToDay: (dayId: string, kind: PlaceholderKind) => void;
-  onReplacePlaceholder: (placeholderId: string) => void;
-  onFillPlaceholder: (placeholderId: string, placeId: string) => void;
-  onRenamePlaceholder: (place: Place, label: string) => void;
-  onMove: (placeId: string, destinationId: ContainerId, destinationIndex: number) => void;
-  onLabelChange: (dayId: string, label: string) => void;
-  onRemoveDay: (dayId: string) => void;
-  onReorderDays: (fromIndex: number, toIndex: number) => void;
-  onVisitedChange: (placeId: string) => void;
-  onDayScheduleChange: (dayId: string, updates: { travelMode?: TravelMode; startTime?: string; lodgingPlaceId?: string; timeManagementEnabled?: boolean }) => void;
-  onStopScheduleChange: (dayId: string, placeId: string, updates: StopSchedule) => void;
   onEditPlace: (place: Place) => void;
   onDeletePlace: (place: Place) => void;
-  onLegModeChange: (dayId: string, fromPlaceId: string, toPlaceId: string, mode: TravelMode | 'default') => void;
+  onAddPlaceToDay: (dayId: string) => void;
+  onReplacePlaceholder: (placeholderId: string) => void;
 }
 
 export function PlannerBoard({
-  readOnly = false,
-  state,
-  placesById,
   selectedId,
-  visitedPlaceIds,
   onSelect,
-  onAddDay,
-  onAddPlaceToDay,
-  onAddPlaceholderToDay,
-  onReplacePlaceholder,
-  onFillPlaceholder,
-  onRenamePlaceholder,
-  onMove,
-  onLabelChange,
-  onRemoveDay,
-  onReorderDays,
-  onVisitedChange,
-  onDayScheduleChange,
-  onStopScheduleChange,
   onEditPlace,
   onDeletePlace,
-  onLegModeChange,
+  onAddPlaceToDay,
+  onReplacePlaceholder,
 }: PlannerBoardProps) {
+  const {
+    state,
+    placesById,
+    isReadOnly: readOnly,
+    addDay: onAddDay,
+    addPlaceholderToDay: onAddPlaceholderToDay,
+    fillPlaceholder: onFillPlaceholder,
+    updatePlace,
+    removePlannerVisit,
+    move: onMove,
+    updateDayLabel: onLabelChange,
+    removeDay: onRemoveDay,
+    reorderDays: onReorderDays,
+    toggleVisited: onVisitedChange,
+    updateDaySchedule: onDayScheduleChange,
+    updateStopSchedule: onStopScheduleChange,
+    updateLegMode: onLegModeChange,
+  } = useTrip();
   const { t } = useI18n();
+  const visitedPlaceIds = state.visitedPlaceIds;
+  const onRenamePlaceholder = (place: Place, label: string) => updatePlace({ ...place, name: label });
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [pendingAccommodationAssignment, setPendingAccommodationAssignment] = useState<{
+    place: Place;
+    destination: { containerId: ContainerId; index: number };
+    dayNumber: number;
+    status: StayAssignmentStatus;
+  } | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -81,7 +79,14 @@ export function PlannerBoard({
     const place = placesById.get(id);
     return place ? [place] : [];
   });
-  const hotelPlaces = state.places.filter((place) => place.type === 'hotel');
+  const hotelPlaces = state.places.filter((place) => isAccommodation(place) && !place.assignmentOf);
+
+  function dayDate(dayIndex: number) {
+    const date = addDays(state.startDate, dayIndex);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${date.getFullYear()}-${month}-${day}`;
+  }
 
   function getDestination(overId: string): { containerId: ContainerId; index: number } | null {
     const dayId = overId.startsWith('day:') ? overId.slice(4) : overId;
@@ -116,13 +121,33 @@ export function PlannerBoard({
     }
 
     const overId = String(event.over.id);
-    if (placesById.get(overId)?.type === 'placeholder' && placesById.get(activeId)?.type !== 'placeholder') {
+    if (
+      placesById.get(overId)?.type === 'placeholder'
+      && placesById.get(activeId)?.type !== 'placeholder'
+      && !isAccommodation(placesById.get(activeId)!)
+    ) {
       onFillPlaceholder(overId, activeId);
       return;
     }
 
     const destination = getDestination(overId);
     if (!destination) return;
+    const place = placesById.get(activeId);
+    const dayIndex = state.days.findIndex((day) => day.id === destination.containerId);
+    const isNewAccommodationAssignment = Boolean(
+      place
+      && isAccommodation(place)
+      && !place.assignmentOf
+      && state.unscheduledIds.includes(activeId)
+      && !state.days.some((day) => day.placeIds.includes(activeId)),
+    );
+    if (place && isNewAccommodationAssignment && dayIndex >= 0) {
+      const status = stayAssignmentStatus(place, dayDate(dayIndex));
+      if (status !== 'valid') {
+        setPendingAccommodationAssignment({ place, destination, dayNumber: dayIndex + 1, status });
+        return;
+      }
+    }
     onMove(activeId, destination.containerId, destination.index);
   }
 
@@ -180,7 +205,7 @@ export function PlannerBoard({
                   onLabelChange={onLabelChange}
                   onRemove={onRemoveDay}
                   onEditPlace={onEditPlace}
-                  onDeletePlace={onDeletePlace}
+                  onDeletePlace={(place) => removePlannerVisit(place.id, day.id)}
                   onVisitedChange={onVisitedChange}
                   onDayScheduleChange={onDayScheduleChange}
                   onStopScheduleChange={onStopScheduleChange}
@@ -196,6 +221,38 @@ export function PlannerBoard({
       </Stack>
 
       <DragOverlay>{activePlace ? <PlaceCardPreview place={activePlace} /> : null}</DragOverlay>
+      <Modal
+        opened={Boolean(pendingAccommodationAssignment)}
+        onClose={() => setPendingAccommodationAssignment(null)}
+        title="Assign accommodation outside stay dates?"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            {pendingAccommodationAssignment?.status === 'checked-out'
+              ? `${pendingAccommodationAssignment.place.name} is checked out before Day ${pendingAccommodationAssignment.dayNumber}. Assign it anyway?`
+              : pendingAccommodationAssignment?.status === 'before-check-in'
+                ? `${pendingAccommodationAssignment.place.name} is not checked in yet for Day ${pendingAccommodationAssignment.dayNumber}. Assign it anyway?`
+                : `${pendingAccommodationAssignment?.place.name ?? 'This accommodation'} has no check-in and check-out dates. Assign it to Day ${pendingAccommodationAssignment?.dayNumber ?? ''} anyway?`}
+          </Text>
+          <Text size="xs" c="dimmed">It remains in Unscheduled so you can reuse it on other days.</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setPendingAccommodationAssignment(null)}>Cancel</Button>
+            <Button color="orange" onClick={() => {
+              if (pendingAccommodationAssignment) {
+                onMove(
+                  pendingAccommodationAssignment.place.id,
+                  pendingAccommodationAssignment.destination.containerId,
+                  pendingAccommodationAssignment.destination.index,
+                );
+              }
+              setPendingAccommodationAssignment(null);
+            }}>
+              Assign anyway
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </DndContext>
   );
 }

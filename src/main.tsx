@@ -11,6 +11,8 @@ import App from './App';
 import { AuthGate, ReadOnlyAuthProvider } from './context/AuthContext';
 import { I18nProvider } from './i18n';
 
+import { TripProvider } from './context/TripContext';
+
 const theme = createTheme({
   primaryColor: 'teal',
   defaultRadius: 'md',
@@ -44,9 +46,9 @@ createRoot(document.getElementById('root')!).render(
       <Notifications position="top-right" />
       <I18nProvider>
         {shareToken ? (
-          <ReadOnlyAuthProvider><App shareToken={shareToken} /></ReadOnlyAuthProvider>
+          <ReadOnlyAuthProvider><TripProvider shareToken={shareToken}><App /></TripProvider></ReadOnlyAuthProvider>
         ) : (
-          <AuthGate><App requestedPlanId={planId} /></AuthGate>
+          <AuthGate><TripProvider requestedPlanId={planId}><App /></TripProvider></AuthGate>
         )}
       </I18nProvider>
     </MantineProvider>

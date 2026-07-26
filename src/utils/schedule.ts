@@ -7,6 +7,7 @@ const DEFAULT_DURATIONS: Record<PlaceCategory, number> = {
   Culture: 90,
   Shopping: 90,
   Relaxation: 120,
+  Accommodation: 30,
 };
 
 const TRAVEL_SPEEDS_KMH: Record<TravelMode, number> = {

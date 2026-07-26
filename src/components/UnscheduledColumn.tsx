@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { ActionIcon, Badge, Box, Group, Paper, Stack, Text, Tooltip } from '@mantine/core';
+import { ActionIcon, Badge, Box, Divider, Group, Paper, Stack, Text, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconChevronDown, IconChevronUp, IconInbox } from '@tabler/icons-react';
 import type { Place } from '../types';
 import { PlaceCard } from './PlaceCard';
-import { useI18n } from '../i18n';
+import { categoryLabel, useI18n } from '../i18n';
+import { isAccommodation } from '../utils/stay';
 
 interface UnscheduledColumnProps {
   places: Place[];
@@ -29,6 +30,8 @@ export function UnscheduledColumn({
   const [collapsed, setCollapsed] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 75em)');
   const { setNodeRef, isOver } = useDroppable({ id: 'unscheduled', disabled: readOnly });
+  const normalPlaces = places.filter((place) => !isAccommodation(place));
+  const accommodations = places.filter(isAccommodation);
 
   useEffect(() => {
     if (isDesktop) setCollapsed(false);
@@ -84,9 +87,9 @@ export function UnscheduledColumn({
       </Box>
 
       {!collapsed ? (
-        <SortableContext items={places.map((place) => place.id)} strategy={verticalListSortingStrategy}>
-          <Stack gap="xs" p="sm" className="day-column__body">
-            {places.map((place) => (
+        <Stack gap="xs" p="sm" className="day-column__body">
+          <SortableContext items={normalPlaces.map((place) => place.id)} strategy={verticalListSortingStrategy}>
+            {normalPlaces.map((place) => (
               <PlaceCard
                 key={place.id}
                 place={place}
@@ -97,15 +100,31 @@ export function UnscheduledColumn({
                 onDelete={readOnly ? undefined : onDeletePlace}
               />
             ))}
-            {places.length === 0 && (
-              <Box className="drop-placeholder">
-                <Text size="xs" c="dimmed" ta="center">
-                  {t('dropPlacesLater')}
-                </Text>
-              </Box>
-            )}
-          </Stack>
-        </SortableContext>
+          </SortableContext>
+          {normalPlaces.length > 0 && accommodations.length > 0 ? <Divider label={categoryLabel(t, 'Accommodation')} labelPosition="center" /> : null}
+          {accommodations.length > 0 ? (
+            <SortableContext items={accommodations.map((place) => place.id)} strategy={verticalListSortingStrategy}>
+              {accommodations.map((place) => (
+                <PlaceCard
+                  key={place.id}
+                  place={place}
+                  selected={selectedId === place.id}
+                  dragDisabled={readOnly}
+                  onSelect={onSelect}
+                  onEdit={readOnly ? undefined : onEditPlace}
+                  onDelete={readOnly ? undefined : onDeletePlace}
+                />
+              ))}
+            </SortableContext>
+          ) : null}
+          {places.length === 0 ? (
+            <Box className="drop-placeholder">
+              <Text size="xs" c="dimmed" ta="center">
+                {t('dropPlacesLater')}
+              </Text>
+            </Box>
+          ) : null}
+        </Stack>
       ) : null}
     </Paper>
   );

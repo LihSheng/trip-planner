@@ -4,7 +4,8 @@ export type PlaceCategory =
   | 'Nature'
   | 'Culture'
   | 'Shopping'
-  | 'Relaxation';
+  | 'Relaxation'
+  | 'Accommodation';
 
 export type PlaceType = 'place' | 'hotel' | 'airport' | 'station' | 'transit' | 'placeholder';
 export type PlaceholderKind = 'meal' | 'coffee' | 'free-time' | 'custom';
@@ -37,6 +38,11 @@ export interface OpeningHours {
   closesAt: string;
 }
 
+export interface StayDates {
+  checkInDate: string;
+  checkOutDate: string;
+}
+
 export interface StopSchedule {
   startTime?: string;
   durationMinutes?: number;
@@ -51,8 +57,18 @@ export interface Place {
   longitude: number;
   notes: string;
   type?: PlaceType;
+  assignmentOf?: string;
   placeholderKind?: PlaceholderKind;
   openingHours?: OpeningHours;
+  stay?: StayDates;
+}
+
+/** One scheduled or unscheduled visit to a saved Place. */
+export interface ItineraryEntry {
+  id: string;
+  placeId: string;
+  dayId?: string;
+  sortOrder: number;
 }
 
 export type ActivityDurationSource =
@@ -150,6 +166,8 @@ export interface TripState {
   tripName: string;
   startDate: string;
   places: Place[];
+  /** Canonical visit records. Legacy day/place arrays remain during UI migration. */
+  itineraryEntries?: ItineraryEntry[];
   /**
    * Activity snapshot introduced by the activity-domain foundation. During the
    * compatibility period, legacy place/day arrays remain the UI persistence source.

@@ -23,6 +23,7 @@ const categoryOptions: PlaceCategory[] = [
   'Culture',
   'Shopping',
   'Relaxation',
+  'Accommodation',
 ];
 
 interface ActivityEditorValues {

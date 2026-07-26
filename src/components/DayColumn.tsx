@@ -26,6 +26,8 @@ import { PlaceCard } from './PlaceCard';
 import { useI18n } from '../i18n';
 import { dayWarnings, estimateTravelMinutes, scheduleFor } from '../utils/schedule';
 import { routeLegKey } from '../utils/routing';
+import { legGoogleMapsUrl } from '../utils/mapPresentation';
+import { transportIcon } from './transportIcons';
 
 interface DayColumnProps {
   readOnly?: boolean;
@@ -109,21 +111,7 @@ export function DayColumn({
     setCollapsed((value) => !value);
   }
 
-  function legMapUrl(from: Place, to: Place, mode: TravelMode) {
-    const travelmode = mode === 'public' ? 'transit' : mode === 'walk' ? 'walking' : mode === 'bike' ? 'bicycling' : mode === 'other' ? undefined : 'driving';
-    const params = new URLSearchParams({ api: '1', origin: `${from.latitude},${from.longitude}`, destination: `${to.latitude},${to.longitude}` });
-    if (travelmode) params.set('travelmode', travelmode);
-    return `https://www.google.com/maps/dir/?${params.toString()}`;
-  }
 
-  function transportIcon(mode: TravelMode) {
-    if (mode === 'walk') return <IconWalk size={16} />;
-    if (mode === 'bike') return <IconBike size={16} />;
-    if (mode === 'car') return <IconCar size={16} />;
-    if (mode === 'taxi') return <IconCar size={16} />;
-    if (mode === 'other') return <IconDots size={16} />;
-    return <IconBus size={16} />;
-  }
 
   return (
     <Paper
@@ -293,7 +281,7 @@ export function DayColumn({
                 const canOpenRoute = place.type !== 'placeholder' && nextPlace.type !== 'placeholder';
                 return (
                   <Group className="route-leg" gap="xs" justify="center" wrap="nowrap">
-                    {canOpenRoute ? <Tooltip label={t('openRoute')}><ActionIcon component="a" href={legMapUrl(place, nextPlace, actualMode)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon></Tooltip> : <ActionIcon variant="subtle" color="gray" disabled aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon>}
+                    {canOpenRoute ? <Tooltip label={t('openRoute')}><ActionIcon component="a" href={legGoogleMapsUrl(place, nextPlace, actualMode)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon></Tooltip> : <ActionIcon variant="subtle" color="gray" disabled aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon>}
                     {!readOnly ? <Menu position="bottom-end" shadow="md" withinPortal>
                       <Menu.Target>
                         <Tooltip label={t('routeMode')}>

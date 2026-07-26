@@ -8,6 +8,7 @@ import {
   Container,
   Group,
   Loader,
+  List,
   Modal,
   Paper,
   SegmentedControl,
@@ -32,7 +33,7 @@ import {
 } from '@tabler/icons-react';
 import type { Place } from './types';
 import { useAuth } from './context/AuthContext';
-import { useTripPlanner } from './hooks/useTripPlanner';
+import { useTrip } from './context/TripContext';
 import { AppHeader } from './components/AppHeader';
 import { ActivityEditorModal } from './components/ActivityEditorModal';
 import { PlaceDetails } from './components/PlaceDetails';
@@ -44,16 +45,18 @@ import { ShareTripModal } from './components/ShareTripModal';
 import { TodayModePage } from './components/TodayModePage';
 import { AiImportDrawer } from './components/AiImportDrawer';
 import { formatTripPlainText } from './utils/exportTrip';
+import { useCurrentLocation } from './hooks/useCurrentLocation';
 import { useI18n } from './i18n';
 
 const TaiwanMap = lazy(() =>
   import('./components/TaiwanMap').then((module) => ({ default: module.TaiwanMap })),
 );
 
-export default function App({ shareToken, requestedPlanId }: { shareToken?: string; requestedPlanId?: string }) {
-  const planner = useTripPlanner(shareToken, requestedPlanId);
+export default function App() {
+  const planner = useTrip();
   const { user, signOut } = useAuth();
   const { t } = useI18n();
+  const location = useCurrentLocation();
   const mobileViews = [
     { label: 'Today', value: 'today' },
     { label: t('map'), value: 'map' },
@@ -100,6 +103,21 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
     url.searchParams.set('plan', planner.planId);
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   }, [planner.isReadOnly, planner.planId]);
+
+  const deleteAssignments = useMemo(() => {
+    if (!deleteTarget) return [];
+    const linkedIds = new Set(
+      planner.state.places
+        .filter((place) => place.id === deleteTarget.id || place.assignmentOf === deleteTarget.id)
+        .map((place) => place.id),
+    );
+    return planner.state.days.flatMap((day, index) =>
+      day.placeIds.filter((placeId) => linkedIds.has(placeId)).map((placeId) => ({
+        day: t('day', { number: index + 1 }),
+        placeName: planner.placesById.get(placeId)?.name ?? deleteTarget.name,
+      })),
+    );
+  }, [deleteTarget, planner.placesById, planner.state.days, planner.state.places, t]);
 
   if (!planner.isReady) {
     return (
@@ -228,7 +246,7 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
   const map = (
     <Suspense fallback={<Skeleton height="calc(100vh - 176px)" mih={560} radius="lg" />}>
       <TaiwanMap
-        places={planner.state.places.filter((place) => place.type !== 'placeholder')}
+        places={planner.state.places.filter((place) => place.type !== 'placeholder' && !place.assignmentOf)}
         days={planner.state.days}
         unscheduledIds={planner.state.unscheduledIds}
         startDate={planner.state.startDate}
@@ -239,6 +257,7 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
         onActiveViewChange={handleMapViewChange}
         onAddDay={planner.addDay}
         onRemoveDay={setDayDeleteTarget}
+        currentLocation={location.isTracking ? location.location : null}
         readOnly={planner.isReadOnly}
       />
     </Suspense>
@@ -247,7 +266,7 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
   const placesPanel = (
     <Box className="library-panel">
       <PlaceLibrary
-        places={planner.state.places.filter((place) => place.type !== 'placeholder')}
+        places={planner.state.places.filter((place) => place.type !== 'placeholder' && !place.assignmentOf)}
         selectedId={selectedId}
         onSelect={(placeId) => {
           setSelectedId(placeId);
@@ -265,33 +284,17 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
 
   const plannerPanel = (
     <PlannerBoard
-      readOnly={planner.isReadOnly}
-      state={planner.state}
-      placesById={planner.placesById}
       selectedId={selectedId}
-      visitedPlaceIds={planner.state.visitedPlaceIds}
       onSelect={setSelectedId}
-      onAddDay={planner.addDay}
       onAddPlaceToDay={openAddPlaceForDay}
-      onAddPlaceholderToDay={planner.addPlaceholderToDay}
       onReplacePlaceholder={(placeholderId) => {
         setEditingPlace(undefined);
         setAddPlaceDayId(null);
         setReplacePlaceholderId(placeholderId);
         setPlaceModalOpened(true);
       }}
-      onFillPlaceholder={planner.fillPlaceholder}
-      onRenamePlaceholder={(place, label) => planner.updatePlace({ ...place, name: label })}
-      onMove={planner.move}
-      onLabelChange={planner.updateDayLabel}
-      onRemoveDay={setDayDeleteTarget}
-      onReorderDays={planner.reorderDays}
-      onVisitedChange={planner.toggleVisited}
-      onDayScheduleChange={planner.updateDaySchedule}
-      onStopScheduleChange={planner.updateStopSchedule}
       onEditPlace={openEditActivity}
       onDeletePlace={setDeleteTarget}
-      onLegModeChange={planner.updateLegMode}
     />
   );
 
@@ -359,42 +362,22 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
   );
 
   const todayPanel = (
-    <TodayModePage
-      state={planner.state}
-      placesById={planner.placesById}
-      readOnly={planner.isReadOnly}
-      onUpdateExecution={planner.updateExecution}
-      onUpdatePlace={planner.updatePlace}
-      onAddExpense={planner.addExpense}
-    />
+    <TodayModePage location={location} />
   );
 
   return (
     <AppShell header={{ height: 72 }} padding={0}>
       <AppShell.Header>
         <AppHeader
-          tripName={planner.state.tripName}
-          activePlanId={planner.planId}
-          plans={planner.plans}
-          startDate={planner.state.startDate}
-          placeCount={planner.state.places.filter((place) => place.type !== 'placeholder').length}
-          dayCount={planner.state.days.length}
-          syncStatus={planner.syncStatus}
-          syncError={planner.syncError}
-          onSyncNow={planner.syncNow}
-          accountEmail={user.email}
-          readOnly={planner.isReadOnly}
           onAddPlace={openAddPlace}
-          onSwitchPlan={(planId) => void planner.switchPlan(planId)}
-          onCreatePlan={() => void planner.createPlan()}
           onOpenAiImport={() => setAiImportOpened(true)}
           onOpenSettings={() => setSettingsOpened(true)}
-          canShare={planner.isOwner}
           onOpenShare={() => setShareOpened(true)}
           onExport={exportTrip}
           onCopyPlainText={copyItineraryText}
           onReset={resetTrip}
           onSignOut={() => void signOut()}
+          location={location}
         />
       </AppShell.Header>
 
@@ -462,12 +445,10 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
           )}
         </Container>
       </AppShell.Main>
-      <ShareTripModal opened={shareOpened} planId={planner.planId} onClose={() => setShareOpened(false)} onPrepareCloudSignIn={planner.persistForCloudSignIn} />
+      <ShareTripModal opened={shareOpened} onClose={() => setShareOpened(false)} />
       <AiImportDrawer
         opened={aiImportOpened}
         onClose={() => setAiImportOpened(false)}
-        planId={planner.planId}
-        state={planner.state}
         onApply={(draft) => {
           planner.applyAiDraft(draft);
           setDesktopWorkspace('planner');
@@ -489,7 +470,10 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
                 color={active ? 'teal' : 'gray'}
                 className="mobile-bottom-nav__item"
                 data-active={active || undefined}
-                onClick={() => setMobileView(item.value)}
+                onClick={() => {
+                  setSettingsOpened(false);
+                  setMobileView(item.value);
+                }}
                 aria-current={active ? 'page' : undefined}
               >
                 <Icon size={21} stroke={active ? 2.5 : 1.8} />
@@ -525,6 +509,7 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
         tripName={planner.state.tripName}
         startDate={planner.state.startDate}
         displayCurrency={planner.state.displayCurrency ?? 'MYR'}
+        location={location}
         onClose={() => setSettingsOpened(false)}
         onSubmit={planner.updateTrip}
       />
@@ -533,12 +518,28 @@ export default function App({ shareToken, requestedPlanId }: { shareToken?: stri
           <Text size="sm">
             {t('removePlaceConfirm', { name: deleteTarget?.name ?? '' })}
           </Text>
+          {deleteAssignments.length ? (
+            <Stack gap={4}>
+              <Text size="sm" fw={700}>{t('assignedVisits', { count: deleteAssignments.length })}</Text>
+              <List size="sm" spacing={3}>
+                {deleteAssignments.map((assignment, index) => (
+                  <List.Item key={`${assignment.day}-${assignment.placeName}-${index}`}>
+                    {assignment.day} - {assignment.placeName}
+                  </List.Item>
+                ))}
+              </List>
+            </Stack>
+          ) : (
+            <Text size="sm" c="dimmed">{t('noPlannerVisits')}</Text>
+          )}
           <Box className="modal-actions">
             <Button variant="default" onClick={() => setDeleteTarget(undefined)}>
               Cancel
             </Button>
             <Button color="red" onClick={handleDeletePlace}>
-              {t('deletePlace')}
+              {deleteAssignments.length
+                ? t('removePlaceAndVisits', { count: deleteAssignments.length })
+                : t('deletePlace')}
             </Button>
           </Box>
         </Stack>

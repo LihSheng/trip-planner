@@ -3,10 +3,12 @@ import { Alert, Button, Divider, Group, Modal, Stack, Text, TextInput, ThemeIcon
 import { IconCheck, IconCopy, IconInfoCircle, IconMail, IconTrash, IconUsers } from '@tabler/icons-react';
 import { useAuth } from '../context/AuthContext';
 import { getOrCreateShareToken, inviteTripCollaborator, loadTripCollaborators, removeTripCollaborator, type TripCollaborator } from '../lib/tripRepository';
+import { useTrip } from '../context/TripContext';
 
-interface ShareTripModalProps { opened: boolean; planId: string | null; onClose: () => void; onPrepareCloudSignIn: () => void; }
+interface ShareTripModalProps { opened: boolean; onClose: () => void; }
 
-export function ShareTripModal({ opened, planId, onClose, onPrepareCloudSignIn }: ShareTripModalProps) {
+export function ShareTripModal({ opened, onClose }: ShareTripModalProps) {
+  const { planId, persistForCloudSignIn: onPrepareCloudSignIn } = useTrip();
   const { accessToken, user, isDemo, requestMagicLink } = useAuth();
   const [email, setEmail] = useState('');
   const [members, setMembers] = useState<TripCollaborator[]>([]);
