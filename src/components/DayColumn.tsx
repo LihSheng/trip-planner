@@ -20,7 +20,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconCoffee, IconDots, IconListCheck, IconPlus, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconWalk } from '@tabler/icons-react';
+import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconCoffee, IconDots, IconListCheck, IconMapPinPlus, IconPlane, IconPlus, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconWalk } from '@tabler/icons-react';
 import type { DayTask, LocationCluster, PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
@@ -379,29 +379,33 @@ export function DayColumn({
               })() : null}
               </Box>
             )})}
-            {!readOnly ? <><UnstyledButton className="add-place-placeholder" onClick={onAddPlace}>
-              <IconPlus size={17} />
-              <Text size="xs" fw={650}>
-                {t('addPlace')}
-              </Text>
-            </UnstyledButton>
-            <Menu position="top" shadow="md" withinPortal>
-              <Menu.Target>
-                <UnstyledButton className="planned-stop-placeholder">
-                  <IconPlus size={17} />
-                  <Text size="xs" fw={650}>{t('plannedStop')}</Text>
-                </UnstyledButton>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item leftSection={<IconToolsKitchen size={15} />} onClick={() => onAddPlaceholder('meal')}>{t('lunchDinner')}</Menu.Item>
-                <Menu.Item leftSection={<IconCoffee size={15} />} onClick={() => onAddPlaceholder('coffee')}>{t('coffeeBreak')}</Menu.Item>
-                <Menu.Item leftSection={<IconSun size={15} />} onClick={() => onAddPlaceholder('free-time')}>{t('freeTime')}</Menu.Item>
-                <Menu.Item leftSection={<IconPlus size={15} />} onClick={() => onAddPlaceholder('custom')}>{t('customStop')}</Menu.Item>
-              </Menu.Dropdown>
-            </Menu></> : null}
-            {!readOnly && onAddFlight ? <UnstyledButton className="add-place-placeholder" onClick={onAddFlight}>
-              <IconPlus size={17} /><Text size="xs" fw={650}>{locale === 'zh-TW' ? '新增航班' : 'Add flight'}</Text>
-            </UnstyledButton> : null}
+            {!readOnly ? <Group className="day-column__add-actions" gap="xs" justify="center">
+              <Tooltip label={t('addPlace')}>
+                <ActionIcon className="day-column__add-action" variant="light" color="teal" size="lg" onClick={onAddPlace} aria-label={t('addPlace')}>
+                  <IconMapPinPlus size={18} />
+                </ActionIcon>
+              </Tooltip>
+              <Menu position="top" shadow="md" withinPortal>
+                <Menu.Target>
+                  <Tooltip label={t('plannedStop')}>
+                    <ActionIcon className="day-column__add-action" variant="light" color="gray" size="lg" aria-label={t('plannedStop')}>
+                      <IconListCheck size={18} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item leftSection={<IconToolsKitchen size={15} />} onClick={() => onAddPlaceholder('meal')}>{t('lunchDinner')}</Menu.Item>
+                  <Menu.Item leftSection={<IconCoffee size={15} />} onClick={() => onAddPlaceholder('coffee')}>{t('coffeeBreak')}</Menu.Item>
+                  <Menu.Item leftSection={<IconSun size={15} />} onClick={() => onAddPlaceholder('free-time')}>{t('freeTime')}</Menu.Item>
+                  <Menu.Item leftSection={<IconPlus size={15} />} onClick={() => onAddPlaceholder('custom')}>{t('customStop')}</Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+              {onAddFlight ? <Tooltip label={locale === 'zh-TW' ? '新增航班' : 'Add flight'}>
+                <ActionIcon className="day-column__add-action" variant="light" color="blue" size="lg" onClick={onAddFlight} aria-label={locale === 'zh-TW' ? '新增航班' : 'Add flight'}>
+                  <IconPlane size={18} />
+                </ActionIcon>
+              </Tooltip> : null}
+            </Group> : null}
           </Stack>
         </SortableContext>
       ) : null}

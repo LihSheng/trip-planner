@@ -694,18 +694,16 @@ select {
   background: var(--mantine-color-blue-0);
 }
 
-.add-place-placeholder {
-  display: flex;
-  min-height: 4.75rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+.day-column__add-actions {
+  min-height: 3rem;
+  padding: 0.35rem;
   border: 1px dashed var(--mantine-color-gray-4);
   border-radius: var(--mantine-radius-md);
-  color: var(--mantine-color-gray-7);
-  font-weight: 700;
   background: rgba(248, 249, 250, 0.72);
-  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.day-column__add-action {
+  flex: 0 0 auto;
 }
 
 .route-leg {
@@ -715,22 +713,10 @@ select {
   color: var(--mantine-color-gray-6);
 }
 
-.add-place-placeholder:hover,
-.add-place-placeholder:focus-visible {
+.day-column__add-actions:hover,
+.day-column__add-actions:focus-within {
   border-color: var(--mantine-color-gray-6);
   background: var(--mantine-color-gray-1);
-}
-
-.planned-stop-placeholder {
-  display: flex;
-  min-height: 3.25rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border: 1px dashed var(--mantine-color-gray-4);
-  border-radius: var(--mantine-radius-md);
-  color: var(--mantine-color-gray-7);
-  background: rgba(248, 249, 250, 0.72);
 }
 
 .planned-stop-placeholder:hover,
