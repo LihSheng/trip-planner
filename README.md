@@ -1,31 +1,69 @@
 # Trip Planner
 
-A responsive trip-planning workspace built with React, TypeScript, Mantine, React Leaflet, dnd-kit, and Supabase.
+A collaborative, map-first workspace for planning a trip and running each travel day. Build an itinerary from saved places, organize nearby stops, track bookings and spending, then use the mobile-friendly Today view while on the move.
+
+Built with React, TypeScript, Mantine, React Leaflet, dnd-kit, and Supabase.
 
 ![Taiwan Trip Planner map overview](docs/readme-assets/taiwan-trip-planner-map-overview.png)
 
 ## Features
 
-- Map-first desktop workspace with a large interactive map
-- All / Unscheduled / Day filters displayed directly over the map
-- Day-numbered and stop-numbered map pins
-- Route lines between ordered places for each itinerary day
-- One-click handoff of a selected day route to Google Maps
-- Searchable place library with categories and notes
-- Drag-and-drop scheduling across itinerary days
-- Today mode for current stop, next stop, navigation, and day timeline
-- Expense tracking with trip totals and home-currency conversion
-- Editable trip name, start date, and day labels
-- Multiple cloud trip plans per user, with header-based switching and blank-plan creation
-- Add, edit, and remove places
-- Responsive Map / Places / Planner navigation
-- Passwordless email sign-in and email-based trip collaborators
-- Read-only share links for public trip viewing without edit access
-- Supabase cloud persistence across laptop and mobile
-- Automatic migration of the existing browser `localStorage` trip
-- Cloud save status, plain-text copy, and exportable JSON backup
-- AI-assisted itinerary import from travel notes, public links, and Google Maps short links
-- GitHub Pages deployment workflow
+### Plan visually
+
+- Explore the whole trip, unscheduled ideas, or one day at a time on an interactive map.
+- Follow day-numbered and stop-numbered pins with route lines for each ordered itinerary.
+- Save categorized places with coordinates, opening hours, notes, and accommodation dates.
+- Group places into named location clusters when they are inside one venue, walkable, or in the same area. Each connection can include travel time and transport mode.
+- Search and filter the place library, then drag places between unscheduled and itinerary days.
+- Add flexible meal, coffee, free-time, or custom placeholders before choosing the exact place.
+
+### Shape each day
+
+- Reorder stops, rename days, choose a default transport mode, and override the mode for individual legs.
+- Add planned start times and durations with automatic timing and opening-hours warnings.
+- Open a whole-day route or an individual connection in Google Maps.
+- Add per-day checklists, reorder tasks, and carry overdue tasks into Today mode.
+- Record one-way or round-trip flights and accommodation stays. Check-in, check-out, and flight cards appear on the relevant itinerary day.
+- Review a trip activity log showing collaborative place and day changes.
+
+### Travel with Today mode
+
+- Pick the active day and see the current stop, next stop, and full timeline.
+- Mark stops current, completed, or skipped without changing the planned itinerary.
+- Enable live location to use the device position as the starting point for navigation.
+- Check off today's tasks, move overdue tasks forward, and add an expense without leaving the day view.
+- Use the responsive Today, Map, Places, Planner, and Expenses views on mobile.
+
+### Track the trip budget
+
+- Record manual expenses by category, day, place, and purchase date.
+- Keep flight and accommodation costs attached to their booking so each reservation is counted once.
+- Set a whole-trip budget and see totals, category subtotals, remaining budget, and overspending.
+- Convert mixed-currency costs into a selected display currency using cached exchange rates.
+
+### Sync, collaborate, and share
+
+- Use passwordless email sign-in and keep multiple trip plans in Supabase.
+- Invite collaborators by email with Row Level Security-backed edit access.
+- Merge remote collaborator updates with local edits and expose current cloud-save status.
+- Create a read-only public link that works without sign-in.
+- Continue in local demo mode, with automatic migration of earlier `localStorage` trip data after sign-in.
+
+### Import and export
+
+- Import travel notes, public itinerary links, and Google Maps short links through a review-first AI workflow.
+- Copy a plain-text itinerary or download Markdown, multi-sheet Excel, and JSON exports.
+- Deploy the Vite build to GitHub Pages with the included GitHub Actions workflow.
+
+The interface supports English and Traditional Chinese.
+
+## Typical workflow
+
+1. Create a trip and collect places manually or with **Import with AI**.
+2. Group nearby places, then drag them from **Unscheduled** into each day.
+3. Add timing, transport, tasks, flights, stays, and a trip budget.
+4. Invite travel companions or send a read-only link.
+5. Open **Today** on the trip, enable live location if wanted, and update stops, tasks, and expenses as the day unfolds.
 
 ## Import with AI
 
