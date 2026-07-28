@@ -4,6 +4,8 @@ import { ensureActivities } from '../domain/activity';
 import { ensureItineraryEntries } from '../domain/itinerary';
 import { normalizePlace } from '../domain/place';
 import { normalizeLocationClusters } from '../domain/locationCluster';
+import { normalizeDayTasks } from '../domain/dayTask';
+import { normalizeExpenseState } from '../domain/expenses';
 import { supabasePublishableKey, supabaseUrl } from './supabaseConfig';
 
 interface TripRow {
@@ -96,12 +98,13 @@ export function normalizeTripState(state: TripState): TripState {
     })),
     executionByDay: state.executionByDay ?? {},
     expenses: Array.isArray(state.expenses) ? state.expenses : [],
+    dayTasks: normalizeDayTasks(state),
     displayCurrency: state.displayCurrency ?? 'MYR',
   };
-  return ensureActivities(ensureItineraryEntries({
+  return normalizeExpenseState(ensureActivities(ensureItineraryEntries({
     ...normalized,
     locationClusters: normalizeLocationClusters(normalized),
-  }));
+  })));
 }
 
 export interface LoadedTripState {

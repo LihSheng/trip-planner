@@ -25,7 +25,7 @@ const translations = {
     editPlace: 'Edit place', deletePlace: 'Delete place', actionsFor: 'Actions for {name}', markVisited: 'Mark {name} as visited', noNotes: 'No notes added yet.', selectPlace: 'Select a map marker or place card to see its notes.',
     itinerary: 'Itinerary', itineraryHint: 'Drag places between days to shape your route.', addDay: 'Add day', day: 'Day {number}', expandDay: 'Expand day', collapseDay: 'Collapse day', removeDay: 'Remove day', stopsVisited: '{stops} stops · {visited} visited', dayTitle: 'Day {number} title', dropPlace: 'Drop a place here',
     unscheduled: 'Unscheduled', spots: '{count} spots', expandUnscheduled: 'Expand unscheduled places', collapseUnscheduled: 'Collapse unscheduled places', unscheduledHint: 'Ideas ready to be placed into a day', dropPlacesLater: 'Drop places here to plan them later',
-    tripWorkspace: 'Trip workspace', workspaceHint: 'Explore on the map or fine-tune the full itinerary board.', map: 'Map', planner: 'Planner', details: 'Details', places: 'Places', selectedPlace: 'Selected place', addFirstPlace: 'Add your first place', navigation: 'Trip planner navigation',
+    tripWorkspace: 'Trip workspace', workspaceHint: 'Explore on the map or fine-tune the full itinerary board.', map: 'Map', planner: 'Planner', expenses: 'Expenses', details: 'Details', places: 'Places', selectedPlace: 'Selected place', addFirstPlace: 'Add your first place', navigation: 'Trip planner navigation',
     deletePlaceQuestion: 'Delete place?', removePlaceConfirm: 'Remove {name} from the map and every itinerary day?', assignedVisits: 'Assigned planner visits ({count})', noPlannerVisits: 'This place is not assigned in the planner.', removePlaceAndVisits: 'Remove place and {count} visits', cancel: 'Cancel',
     removeDayQuestion: 'Remove day?', removeDayConfirm: 'Remove Day {number}? Its {count} stops will be moved to Unscheduled.',
     placeUpdated: 'Place updated', placeSaved: '{name} was saved.', placeAdded: 'Place added', placeReady: '{name} is ready to schedule.', placeRemoved: 'Place removed', placeDeleted: '{name} was deleted.', dayRemoved: 'Day removed', stopsMoved: '{count} stops moved to Unscheduled.', itineraryCopied: 'Itinerary copied', itineraryCopiedMessage: 'Plain text itinerary copied to your clipboard.', copyFailed: 'Copy failed', clipboardDenied: 'Your browser did not allow clipboard access.', demoRestored: 'Demo restored', demoRestoredMessage: 'The sample trip has been reset.',
@@ -41,6 +41,7 @@ const translations = {
     accommodation: '住宿／宿舍', airport: '機場', station: '火車／公車站', transit: '轉乘點', assignedVisits: '已安排的行程停靠點（{count}）', noPlannerVisits: '此景點尚未安排至行程。', removePlaceAndVisits: '移除景點與 {count} 個停靠點',
     checkInDate: '入住日期',
     checkOutDate: '退房日期',
+    expenses: '支出',
     ...zhRouteTranslations,
   },
 } as const;

@@ -1,4 +1,4 @@
-import type { Place, PlaceCategory } from '../types';
+import type { CurrencyCode, Place, PlaceCategory } from '../types';
 
 export const PLACE_CATEGORIES: readonly PlaceCategory[] = [
   'Landmark',
@@ -54,6 +54,8 @@ export interface PlaceDetailsValues {
   closesAt: string;
   checkInDate: string;
   checkOutDate: string;
+  stayCost?: number | string;
+  stayCurrency?: CurrencyCode;
 }
 
 export type PlaceDetailsErrors = Partial<Record<keyof PlaceDetailsValues, string>>;

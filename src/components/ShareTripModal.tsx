@@ -8,14 +8,15 @@ import { useTrip } from '../context/TripContext';
 interface ShareTripModalProps { opened: boolean; onClose: () => void; }
 
 export function ShareTripModal({ opened, onClose }: ShareTripModalProps) {
-  const { planId, persistForCloudSignIn: onPrepareCloudSignIn } = useTrip();
+  const { planId, state, persistForCloudSignIn: onPrepareCloudSignIn } = useTrip();
   const { accessToken, user, isDemo, requestMagicLink } = useAuth();
   const [email, setEmail] = useState('');
   const [members, setMembers] = useState<TripCollaborator[]>([]);
   const [shareUrl, setShareUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [inviteNotice, setInviteNotice] = useState<{ sent: boolean; message: string } | null>(null);
+  const [inviteNotice, setInviteNotice] = useState<{ sent: boolean; message: string; email: string } | null>(null);
+  const [invitationCopied, setInvitationCopied] = useState(false);
 
   async function refresh() {
     if (isDemo || !planId) return;
@@ -39,14 +40,26 @@ export function ShareTripModal({ opened, onClose }: ShareTripModalProps) {
     catch { setError('Your browser could not copy the share link.'); }
   }
 
+  async function copyInvitationMessage() {
+    if (!planId || !inviteNotice) return;
+    const editableUrl = `${window.location.origin}${window.location.pathname}?plan=${planId}`;
+    const message = `Hi! I invited you to collaborate on “${state.tripName}”. Sign in with ${inviteNotice.email}, then open this trip: ${editableUrl}`;
+    try {
+      await navigator.clipboard.writeText(message);
+      setInvitationCopied(true);
+    } catch {
+      setError('Your browser could not copy the invitation message.');
+    }
+  }
+
   async function invite() {
     const normalized = email.trim().toLowerCase();
     if (!normalized || !normalized.includes('@')) { setError('Enter a valid email address.'); return; }
     if (!planId) { setError('No trip plan is selected.'); return; }
-    setLoading(true); setError(null); setInviteNotice(null);
+    setLoading(true); setError(null); setInviteNotice(null); setInvitationCopied(false);
     try {
       const result = await inviteTripCollaborator(accessToken, planId, normalized);
-      setInviteNotice({ sent: result.emailSent, message: result.message });
+      setInviteNotice({ sent: result.emailSent, message: result.message, email: normalized });
       setEmail('');
       await refresh();
     }
@@ -78,12 +91,27 @@ export function ShareTripModal({ opened, onClose }: ShareTripModalProps) {
         <Button leftSection={<IconMail size={16} />} onClick={() => void signInAndSave()} loading={loading}>Email me a sign-in link</Button>
         <Alert color="teal" variant="light" icon={<IconInfoCircle size={17} />}>Your current demo plan will be saved and moved to your cloud account after you open the email link.</Alert>
       </> : <>
-        <Text size="sm" c="dimmed">Anyone with this link can view the full trip. They cannot edit it and do not need to sign in.</Text>
+        <Text size="sm" c="dimmed">Anyone with this link can view the full trip, including its budget and expenses. They cannot edit it and do not need to sign in.</Text>
         <Group align="end" wrap="nowrap"><TextInput label="Read-only share link" value={shareUrl} readOnly style={{ flex: 1 }} /><Button leftSection={<IconCopy size={16} />} onClick={() => void copyShareUrl()} disabled={!shareUrl} loading={loading}>Copy link</Button></Group>
         <Divider />
         <Text size="sm" c="dimmed">Invite people by email. They sign in with a magic link using that exact email, then can edit this trip.</Text>
         {error ? <Alert color="red">{error}</Alert> : null}
-        {inviteNotice ? <Alert color={inviteNotice.sent ? 'teal' : 'orange'}>{inviteNotice.message}</Alert> : null}
+        {inviteNotice ? (
+          <Alert color={inviteNotice.sent ? 'teal' : 'orange'}>
+            <Stack gap="xs">
+              <Text size="sm">{inviteNotice.message}</Text>
+              <Button
+                variant="light"
+                color={inviteNotice.sent ? 'teal' : 'orange'}
+                size="compact-sm"
+                leftSection={invitationCopied ? <IconCheck size={15} /> : <IconCopy size={15} />}
+                onClick={() => void copyInvitationMessage()}
+              >
+                {invitationCopied ? 'Invitation message copied' : 'Copy invitation message'}
+              </Button>
+            </Stack>
+          </Alert>
+        ) : null}
         <Group align="end" wrap="nowrap"><TextInput label="Collaborator email" placeholder="friend@example.com" type="email" value={email} onChange={(event) => setEmail(event.currentTarget.value)} leftSection={<IconMail size={16} />} style={{ flex: 1 }} /><Button onClick={() => void invite()} loading={loading}>Invite</Button></Group>
         <Alert color="teal" variant="light" icon={<IconMail size={17} />}>Share the app link too. They do not need your password or account.</Alert>
         <Divider label="People with access" labelPosition="left" />

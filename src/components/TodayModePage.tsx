@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActionIcon, Badge, Button, Group, Menu, Modal, Paper, Select, Stack, Text, Textarea, Title, Tooltip } from '@mantine/core';
+import { ActionIcon, Badge, Button, Checkbox, Collapse, Group, Menu, Modal, Paper, Select, Stack, Text, Textarea, Title, Tooltip, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
   IconCheck, IconChevronDown, IconCircle, IconClock, IconDots,
-  IconFileText, IconMapPin, IconPlayerSkipForward, IconReceipt, IconRoute,
+  IconArrowRight, IconFileText, IconListCheck, IconMapPin, IconPlayerSkipForward, IconReceipt, IconRoute, IconTrash,
 } from '@tabler/icons-react';
-import type { Place, StopExecutionStatus, TripDay } from '../types';
+import type { DayTask, Place, StopExecutionStatus, TripDay } from '../types';
 import { addDays } from '../utils/date';
 import { ExpenseSheet } from './ExpenseSheet';
 import { getTwdExchangeRate } from '../lib/exchangeRates';
@@ -30,13 +30,14 @@ interface TodayModePageProps {
 }
 
 export function TodayModePage({ location }: TodayModePageProps) {
-  const { state, placesById, isReadOnly: readOnly, updateExecution: onUpdateExecution, updatePlace: onUpdatePlace, addExpense: onAddExpense } = useTrip();
+  const { state, placesById, isReadOnly: readOnly, updateExecution: onUpdateExecution, updatePlace: onUpdatePlace, addExpense: onAddExpense, toggleDayTask, deleteDayTask, moveDayTask } = useTrip();
   const sessionKey = `trip-planner:today-day:${state.tripName}`;
   const [activeDayId, setActiveDayId] = useState(() => sessionStorage.getItem(sessionKey) ?? '');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [expenseOpened, setExpenseOpened] = useState(false);
   const [displayRate, setDisplayRate] = useState<number | null>(null);
+  const [completedTasksOpen, setCompletedTasksOpen] = useState(false);
 
   const activeDay = useMemo(() => {
     const selected = state.days.find((day) => day.id === activeDayId);
@@ -65,7 +66,14 @@ export function TodayModePage({ location }: TodayModePageProps) {
   const complete = stops.length > 0 && stops.every((place) => ['completed', 'skipped', 'rescheduled'].includes(placeStatus(activeDay, execution, place.id)));
   const detail = detailId ? placesById.get(detailId) : undefined;
   const dayExpenses = (state.expenses ?? []).filter((expense) => expense.dayId === activeDay.id);
-  const dayTotal = dayExpenses.reduce((total, expense) => total + expense.amount, 0);
+  const dayTotals = dayExpenses.reduce((totals, expense) => ({ ...totals, [expense.currency]: (totals[expense.currency] ?? 0) + expense.amount }), {} as Record<string, number>);
+  const twdDayTotal = dayTotals.TWD ?? 0;
+  const activeDayIndex = state.days.indexOf(activeDay);
+  const tasks = state.dayTasks ?? [];
+  const currentTasks = tasks.filter((task) => task.dayId === activeDay.id && !task.completed).sort((a, b) => a.sortOrder - b.sortOrder);
+  const completedTasks = tasks.filter((task) => task.dayId === activeDay.id && task.completed).sort((a, b) => a.sortOrder - b.sortOrder);
+  const priorDayIds = new Set(state.days.slice(0, activeDayIndex).map((day) => day.id));
+  const overdueTasks = tasks.filter((task) => priorDayIds.has(task.dayId) && !task.completed).sort((a, b) => a.sortOrder - b.sortOrder);
 
   useEffect(() => {
     setNoteDraft(detail?.notes ?? '');
@@ -116,6 +124,49 @@ export function TodayModePage({ location }: TodayModePageProps) {
 
       {complete ? <Paper className="today-complete"><IconCheck size={22} /><div><Text fw={800}>Day complete</Text><Text size="sm" c="dimmed">All stops have been completed or skipped.</Text></div></Paper> : null}
 
+      {(overdueTasks.length || currentTasks.length || completedTasks.length) ? (
+        <Paper className="today-tasks" radius="xl">
+          <Group justify="space-between" mb="sm">
+            <Group gap="xs"><IconListCheck size={21} /><Title order={2}>Tasks</Title></Group>
+            <Text size="sm" c="dimmed">{currentTasks.length} remaining today</Text>
+          </Group>
+          {overdueTasks.length ? (
+            <Stack gap={6} className="today-tasks__overdue" mb="md">
+              <Text fw={800} size="sm" c="red">Overdue · {overdueTasks.length}</Text>
+              {overdueTasks.map((task) => (
+                <TodayTaskRow
+                  key={task.id}
+                  task={task}
+                  dayLabel={state.days.find((day) => day.id === task.dayId)?.label}
+                  overdue
+                  readOnly={readOnly}
+                  onToggle={() => toggleDayTask(task.id)}
+                  onMove={() => moveDayTask(task.id, activeDay.id)}
+                  onDelete={() => deleteDayTask(task.id)}
+                />
+              ))}
+            </Stack>
+          ) : null}
+          <Stack gap={6}>
+            {currentTasks.map((task) => <TodayTaskRow key={task.id} task={task} readOnly={readOnly} onToggle={() => toggleDayTask(task.id)} />)}
+            {!currentTasks.length && !completedTasks.length ? <Text c="dimmed" size="sm">No tasks for today.</Text> : null}
+          </Stack>
+          {completedTasks.length ? (
+            <>
+              <UnstyledButton className="today-tasks__completed-toggle" onClick={() => setCompletedTasksOpen((open) => !open)}>
+                <Text size="sm" fw={700}>Completed · {completedTasks.length}</Text>
+                <IconChevronDown size={17} style={{ transform: completedTasksOpen ? 'rotate(180deg)' : undefined }} />
+              </UnstyledButton>
+              <Collapse expanded={completedTasksOpen}>
+                <Stack gap={6} mt={6}>
+                  {completedTasks.map((task) => <TodayTaskRow key={task.id} task={task} readOnly={readOnly} onToggle={() => toggleDayTask(task.id)} onDelete={() => deleteDayTask(task.id)} />)}
+                </Stack>
+              </Collapse>
+            </>
+          ) : null}
+        </Paper>
+      ) : null}
+
       {current ? <StopCard place={current} day={activeDay} status="current" readOnly={readOnly} onDetail={() => setDetailId(current.id)} onNavigate={() => openNavigation(current)} onUpdate={update} /> : null}
       {next ? <StopCard place={next} day={activeDay} status="upcoming" readOnly={readOnly} onDetail={() => setDetailId(next.id)} onNavigate={() => openNavigation(next)} onUpdate={update} /> : null}
 
@@ -126,13 +177,42 @@ export function TodayModePage({ location }: TodayModePageProps) {
         </Stack>
       </Paper>
 
-      {!readOnly ? <><Paper className="today-quick-actions" radius="xl"><Button variant="subtle" leftSection={<IconFileText size={19} />} onClick={() => setDetailId(current?.id ?? next?.id ?? null)} disabled={!current && !next}>Notes</Button><Button variant="subtle" leftSection={<IconReceipt size={19} />} onClick={() => setExpenseOpened(true)}>Expense</Button><Button variant="subtle" leftSection={<IconPlayerSkipForward size={19} />} onClick={() => current && update(current.id, 'skipped')}>Skip</Button></Paper><Paper className="today-expense-summary" radius="xl"><span><IconReceipt size={20} /><Text fw={750}>Today’s spending</Text></span><Text fw={800}>{dayTotal.toLocaleString('en-MY', { style: 'currency', currency: 'TWD', maximumFractionDigits: 2 })}</Text>{displayRate ? <Text size="sm" c="dimmed" className="today-expense-summary__conversion">≈ {(dayTotal * displayRate).toLocaleString('en-MY', { style: 'currency', currency: state.displayCurrency ?? 'MYR', maximumFractionDigits: 2 })} · Daily rate</Text> : null}{dayExpenses.length ? <Text size="sm" c="dimmed">{dayExpenses.length} {dayExpenses.length === 1 ? 'expense' : 'expenses'} recorded</Text> : null}<Text size="xs" c="dimmed" className="today-expense-summary__attribution">Rates by ExchangeRate-API</Text></Paper></> : null}
+      {!readOnly ? <><Paper className="today-quick-actions" radius="xl"><Button variant="subtle" leftSection={<IconFileText size={19} />} onClick={() => setDetailId(current?.id ?? next?.id ?? null)} disabled={!current && !next}>Notes</Button><Button variant="subtle" leftSection={<IconReceipt size={19} />} onClick={() => setExpenseOpened(true)}>Expense</Button><Button variant="subtle" leftSection={<IconPlayerSkipForward size={19} />} onClick={() => current && update(current.id, 'skipped')}>Skip</Button></Paper><Paper className="today-expense-summary" radius="xl"><span><IconReceipt size={20} /><Text fw={750}>Today’s spending</Text></span>{Object.entries(dayTotals).map(([currency, amount]) => <Text key={currency} fw={800}>{amount.toLocaleString('en-MY', { style: 'currency', currency, maximumFractionDigits: 2 })}</Text>)}{!dayExpenses.length ? <Text fw={800}>TWD 0</Text> : null}{displayRate && twdDayTotal ? <Text size="sm" c="dimmed" className="today-expense-summary__conversion">TWD portion ≈ {(twdDayTotal * displayRate).toLocaleString('en-MY', { style: 'currency', currency: state.displayCurrency ?? 'MYR', maximumFractionDigits: 2 })} · Daily rate</Text> : null}{dayExpenses.length ? <Text size="sm" c="dimmed">{dayExpenses.length} {dayExpenses.length === 1 ? 'expense' : 'expenses'} recorded</Text> : null}<Text size="xs" c="dimmed" className="today-expense-summary__attribution">Rates by ExchangeRate-API</Text></Paper></> : null}
 
       <Modal opened={Boolean(detail)} onClose={() => setDetailId(null)} title={detail?.name} centered>
         {detail ? <Stack><Badge color="teal" variant="light">{labels[placeStatus(activeDay, execution, detail.id)]}</Badge>{readOnly ? <Text size="sm">{detail.notes || 'No notes added.'}</Text> : <><Textarea label="Notes" description="Add visit details, tips, or memories for this place." value={noteDraft} onChange={(event) => setNoteDraft(event.currentTarget.value)} minRows={4} autosize /><Button variant="light" color="teal" disabled={noteDraft === detail.notes} onClick={() => { onUpdatePlace({ ...detail, notes: noteDraft.trim() }); notifications.show({ color: 'teal', title: 'Notes saved', message: `Notes for ${detail.name} were updated.` }); }}>Save notes</Button></>}<Text size="sm" c="dimmed">{detail.region} · {timeRange(activeDay, detail.id)}</Text><Button onClick={() => openNavigation(detail)} leftSection={<IconRoute size={18} />}>Open navigation</Button>{!readOnly ? <Button variant="light" color="teal" onClick={() => update(detail.id, 'current')}>Make current stop</Button> : null}</Stack> : null}
       </Modal>
       {!readOnly ? <ExpenseSheet opened={expenseOpened} onClose={() => setExpenseOpened(false)} dayId={activeDay.id} dayLabel={`Day ${state.days.indexOf(activeDay) + 1}`} currentStop={current} onSave={(expense) => { onAddExpense(expense); notifications.show({ color: 'teal', title: 'Expense added', message: `${expense.currency} ${expense.amount.toLocaleString()} ${expense.category} expense added.` }); }} /> : null}
     </main>
+  );
+}
+
+function TodayTaskRow({ task, dayLabel, overdue = false, readOnly, onToggle, onMove, onDelete }: {
+  task: DayTask;
+  dayLabel?: string;
+  overdue?: boolean;
+  readOnly: boolean;
+  onToggle: () => void;
+  onMove?: () => void;
+  onDelete?: () => void;
+}) {
+  return (
+    <Group className={`today-task-row${overdue ? ' today-task-row--overdue' : ''}`} gap="sm" wrap="nowrap">
+      <Checkbox checked={task.completed} disabled={readOnly} onChange={onToggle} aria-label={`Complete ${task.text}`} />
+      <div className="today-task-row__copy">
+        <Text size="sm" td={task.completed ? 'line-through' : undefined}>{task.text}</Text>
+        {dayLabel ? <Text size="xs" c={overdue ? 'red' : 'dimmed'}>{dayLabel}</Text> : null}
+      </div>
+      {!readOnly && (onMove || onDelete) ? (
+        <Menu shadow="md" position="bottom-end">
+          <Menu.Target><ActionIcon variant="subtle" color="gray" aria-label={`Actions for ${task.text}`}><IconDots size={18} /></ActionIcon></Menu.Target>
+          <Menu.Dropdown>
+            {onMove ? <Menu.Item leftSection={<IconArrowRight size={16} />} onClick={onMove}>Move to today</Menu.Item> : null}
+            {onDelete ? <Menu.Item color="red" leftSection={<IconTrash size={16} />} onClick={onDelete}>Delete</Menu.Item> : null}
+          </Menu.Dropdown>
+        </Menu>
+      ) : null}
+    </Group>
   );
 }
 

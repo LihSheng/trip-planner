@@ -44,6 +44,36 @@ export interface StayDates {
   checkOutDate: string;
 }
 
+export interface Money {
+  amount: number;
+  currency: CurrencyCode;
+}
+
+export interface StayBooking extends StayDates {
+  id: string;
+  placeId: string;
+  cost?: Money;
+}
+
+export interface FlightLeg {
+  airline: string;
+  flightNumber?: string;
+  departureAirport: string;
+  departureDate: string;
+  departureTime: string;
+  arrivalAirport: string;
+  arrivalDate: string;
+  arrivalTime: string;
+}
+
+export interface FlightBooking {
+  id: string;
+  tripType: 'one-way' | 'round-trip';
+  outbound: FlightLeg;
+  return?: FlightLeg;
+  totalCost?: Money;
+}
+
 export interface StopSchedule {
   startTime?: string;
   durationMinutes?: number;
@@ -179,13 +209,23 @@ export type ExpenseCategory = 'food' | 'transport' | 'ticket' | 'shopping' | 'ac
 
 export interface TripExpense {
   id: string;
-  dayId: string;
+  name?: string;
+  dayId?: string;
   placeId?: string;
   amount: number;
-  currency: 'TWD';
+  currency: CurrencyCode;
   category: ExpenseCategory;
   note?: string;
+  purchaseDate?: string;
   createdAt: string;
+}
+
+export interface DayTask {
+  id: string;
+  dayId: string;
+  text: string;
+  completed: boolean;
+  sortOrder: number;
 }
 
 export interface TripState {
@@ -207,6 +247,10 @@ export interface TripState {
   hotelPlaceId?: string;
   executionByDay?: Record<string, DayExecutionState>;
   expenses?: TripExpense[];
+  stayBookings?: StayBooking[];
+  flightBookings?: FlightBooking[];
+  budget?: Money;
+  dayTasks?: DayTask[];
   displayCurrency?: CurrencyCode;
 }
 
@@ -229,6 +273,6 @@ export interface TripActivityEvent {
   createdAt: string;
 }
 
-export type CurrencyCode = 'MYR' | 'SGD' | 'USD' | 'EUR' | 'JPY' | 'CNY' | 'AUD' | 'GBP';
+export type CurrencyCode = 'MYR' | 'TWD' | 'SGD' | 'USD' | 'EUR' | 'JPY' | 'CNY' | 'AUD' | 'GBP';
 
 export type ContainerId = 'unscheduled' | string;

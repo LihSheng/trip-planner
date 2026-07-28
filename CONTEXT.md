@@ -31,3 +31,14 @@ An ItineraryEntry for an Accommodation outside its check-in and check-out dates.
 
 **Visit policy**:
 A normal Place has one movable ItineraryEntry. An Accommodation may have multiple ItineraryEntries across or within trip days.
+
+**DayTask**:
+A lightweight checklist item owned by one trip day. It is separate from places and scheduled visits.
+_Avoid_: Todo card, planned stop
+
+**Overdue task**:
+An incomplete DayTask owned by a day before the selected Today day. It keeps its original day until a traveller moves or deletes it.
+
+**Booking cost**:
+A consolidated expense attached to one reservation, independent of how many itinerary days display that hotel or flight. A round-trip flight booking has one total cost; separate reservations remain separate costs.
+_Avoid_: Per-day hotel cost, planner-card expense

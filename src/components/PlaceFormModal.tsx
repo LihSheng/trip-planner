@@ -16,12 +16,13 @@ import {
   TextInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import type { ClusterRelationship, LocationCluster, Place, PlaceCategory, TravelMode } from '../types';
+import type { ClusterRelationship, CurrencyCode, LocationCluster, Place, PlaceCategory, StayBooking, TravelMode } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
 import { PLACE_CATEGORIES, type PlaceDetailsValues, validatePlaceDetails } from '../domain/place';
 import { clusterForPlace, distanceMeters, estimatedWalkMinutes, type ClusterAssignment } from '../domain/locationCluster';
+import { currencies } from './BookingModals';
 
-type PlaceFormValues = PlaceDetailsValues;
+type PlaceFormValues = PlaceDetailsValues & { stayCost: number | string; stayCurrency: CurrencyCode };
 
 interface PlaceFormModalProps {
   opened: boolean;
@@ -30,6 +31,10 @@ interface PlaceFormModalProps {
   clusters?: LocationCluster[];
   onClose: () => void;
   onSubmit: (place: Place, clusterAssignment?: ClusterAssignment) => void;
+  stayBookings?: StayBooking[];
+  defaultCurrency?: CurrencyCode;
+  onSaveStayBooking?: (booking: StayBooking) => void;
+  onAddAnotherStay?: (placeId: string) => void;
 }
 
 interface PlacePrediction {
@@ -79,8 +84,8 @@ async function geoapifyApiError(response: Response, fallback: string) {
   return payload?.message ?? payload?.error ?? `${fallback} (HTTP ${response.status})`;
 }
 
-export function PlaceFormModal({ opened, place, places, clusters, onClose, onSubmit }: PlaceFormModalProps) {
-  const { t } = useI18n();
+export function PlaceFormModal({ opened, place, places, clusters, onClose, onSubmit, stayBookings = [], defaultCurrency = 'MYR', onSaveStayBooking, onAddAnotherStay }: PlaceFormModalProps) {
+  const { t, locale } = useI18n();
   const [placeSearch, setPlaceSearch] = useState('');
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searching, setSearching] = useState(false);
@@ -114,12 +119,23 @@ export function PlaceFormModal({ opened, place, places, clusters, onClose, onSub
       closesAt: '',
       checkInDate: '',
       checkOutDate: '',
+      stayCost: '',
+      stayCurrency: defaultCurrency,
     },
-    validate: validatePlaceDetails,
+    validate: (values) => ({
+      ...validatePlaceDetails(values),
+      stayCost: values.stayCost !== '' && (typeof values.stayCost !== 'number' || values.stayCost <= 0)
+        ? locale === 'zh-TW' ? '請輸入大於零的金額' : 'Use an amount greater than zero'
+        : undefined,
+    }),
   });
 
   useEffect(() => {
     if (!opened) return;
+    const currentStay = place
+      ? stayBookings.find((booking) => booking.placeId === place.id && booking.checkInDate === place.stay?.checkInDate && booking.checkOutDate === place.stay?.checkOutDate)
+        ?? stayBookings.find((booking) => booking.placeId === place.id)
+      : undefined;
     form.setValues(
       place
         ? {
@@ -133,6 +149,8 @@ export function PlaceFormModal({ opened, place, places, clusters, onClose, onSub
             closesAt: place.openingHours?.closesAt ?? '',
             checkInDate: place.stay?.checkInDate ?? '',
             checkOutDate: place.stay?.checkOutDate ?? '',
+            stayCost: currentStay?.cost?.amount ?? '',
+            stayCurrency: currentStay?.cost?.currency ?? defaultCurrency,
           }
         : {
             name: '',
@@ -145,6 +163,8 @@ export function PlaceFormModal({ opened, place, places, clusters, onClose, onSub
             closesAt: '',
             checkInDate: '',
             checkOutDate: '',
+            stayCost: '',
+            stayCurrency: defaultCurrency,
           },
     );
     form.resetDirty();
@@ -271,6 +291,16 @@ export function PlaceFormModal({ opened, place, places, clusters, onClose, onSub
             travelMode: clusterRelationship === 'same-area' ? clusterTravelMode : undefined,
             travelMinutes: clusterRelationship === 'inside' ? undefined : travelMinutes,
           } : undefined);
+          if (savedPlace.category === 'Accommodation' && savedPlace.stay && onSaveStayBooking) {
+            const existing = stayBookings.find((booking) => booking.placeId === savedPlace.id && booking.checkInDate === savedPlace.stay?.checkInDate && booking.checkOutDate === savedPlace.stay?.checkOutDate)
+              ?? stayBookings.find((booking) => booking.placeId === savedPlace.id && booking.id.startsWith(`legacy-stay:${savedPlace.id}:`));
+            onSaveStayBooking({
+              id: existing?.id ?? `stay-${crypto.randomUUID()}`,
+              placeId: savedPlace.id,
+              ...savedPlace.stay,
+              cost: Number(values.stayCost) > 0 ? { amount: Number(values.stayCost), currency: values.stayCurrency } : undefined,
+            });
+          }
           onClose();
         })}
       >
@@ -309,10 +339,17 @@ export function PlaceFormModal({ opened, place, places, clusters, onClose, onSub
             <NumberInput label={t('longitude')} decimalScale={6} {...form.getInputProps('longitude')} />
           </SimpleGrid>
           {form.values.category === 'Accommodation' ? (
-            <SimpleGrid cols={2}>
-              <TextInput label={t('checkInDate')} type="date" {...form.getInputProps('checkInDate')} />
-              <TextInput label={t('checkOutDate')} type="date" {...form.getInputProps('checkOutDate')} />
-            </SimpleGrid>
+            <Stack gap="xs">
+              <SimpleGrid cols={2}>
+                <TextInput label={t('checkInDate')} type="date" {...form.getInputProps('checkInDate')} />
+                <TextInput label={t('checkOutDate')} type="date" {...form.getInputProps('checkOutDate')} />
+              </SimpleGrid>
+              <SimpleGrid cols={2}>
+                <NumberInput label={locale === 'zh-TW' ? '整段住宿費用' : 'Total stay cost'} min={0} decimalScale={2} {...form.getInputProps('stayCost')} />
+                <Select label={locale === 'zh-TW' ? '貨幣' : 'Currency'} data={currencies} allowDeselect={false} {...form.getInputProps('stayCurrency')} />
+              </SimpleGrid>
+              {place && onAddAnotherStay ? <Button variant="light" onClick={() => onAddAnotherStay(place.id)}>{locale === 'zh-TW' ? '新增另一段住宿' : 'Add another stay'}</Button> : null}
+            </Stack>
           ) : (
             <SimpleGrid cols={2}>
               <TextInput label={t('opensAt')} type="time" {...form.getInputProps('opensAt')} />

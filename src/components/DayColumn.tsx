@@ -16,11 +16,12 @@ import {
   Select,
   ThemeIcon,
   Tooltip,
+  Indicator,
   UnstyledButton,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconCoffee, IconDots, IconPlus, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconWalk } from '@tabler/icons-react';
-import type { LocationCluster, PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
+import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconCoffee, IconDots, IconListCheck, IconPlus, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconWalk } from '@tabler/icons-react';
+import type { DayTask, LocationCluster, PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
 import { useI18n } from '../i18n';
@@ -30,6 +31,7 @@ import { legGoogleMapsUrl } from '../utils/mapPresentation';
 import { transportIcon } from './transportIcons';
 import { isPlaceholder } from '../domain/place';
 import { clusterForPlace, clusterMember } from '../domain/locationCluster';
+import { BookingCard, type PlannerBookingCard } from './BookingCard';
 
 interface DayColumnProps {
   readOnly?: boolean;
@@ -55,6 +57,12 @@ interface DayColumnProps {
   tripHotelId?: string;
   onLegModeChange: (dayId: string, fromPlaceId: string, toPlaceId: string, mode: TravelMode | 'default') => void;
   clusters?: LocationCluster[];
+  tasks?: DayTask[];
+  onOpenTasks: (dayId: string) => void;
+  bookingCards?: PlannerBookingCard[];
+  onEditBooking?: (card: PlannerBookingCard) => void;
+  onAddFlight?: () => void;
+  lodgingLabel?: string;
 }
 
 export function DayColumn({
@@ -81,8 +89,14 @@ export function DayColumn({
   tripHotelId,
   onLegModeChange,
   clusters = [],
+  tasks = [],
+  onOpenTasks,
+  bookingCards = [],
+  onEditBooking,
+  onAddFlight,
+  lodgingLabel,
 }: DayColumnProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
   const [renameTarget, setRenameTarget] = useState<Place | null>(null);
   const [renameLabel, setRenameLabel] = useState('');
@@ -97,6 +111,7 @@ export function DayColumn({
   const allPlacesVisited = places.length > 0 && visitedCount === places.length;
   const warningsByPlace = day.timeManagementEnabled ? dayWarnings(day, places) : new Map<string, string[]>();
   const warningCount = [...warningsByPlace.values()].reduce((total, warnings) => total + warnings.length, 0);
+  const incompleteTaskCount = tasks.filter((task) => !task.completed).length;
 
   useEffect(() => {
     if (isDesktop) setCollapsed(false);
@@ -146,6 +161,7 @@ export function DayColumn({
             <Text size="xs" c="dimmed">
               {formatTripDate(startDate, index)}
             </Text>
+            {lodgingLabel ? <Text size="xs" fw={650} c="indigo">{locale === 'zh-TW' ? `住宿：${lodgingLabel}` : `Staying at ${lodgingLabel}`}</Text> : null}
             {collapsed ? (
               <Badge size="sm" variant="light" color="teal" className="day-column__status">
                 {t('stopsVisited', { stops: places.length, visited: visitedCount })}
@@ -153,6 +169,25 @@ export function DayColumn({
             ) : null}
           </Stack>
           <Group gap={2} wrap="nowrap">
+            <Tooltip label="Day tasks">
+              <Indicator
+                label={incompleteTaskCount}
+                size={16}
+                disabled={incompleteTaskCount === 0}
+                color="red"
+                offset={3}
+              >
+                <ActionIcon
+                  variant={tasks.length ? 'light' : 'subtle'}
+                  color={tasks.length > 0 && incompleteTaskCount === 0 ? 'teal' : 'gray'}
+                  size="sm"
+                  aria-label={`${t('day', { number: index + 1 })} tasks`}
+                  onClick={() => onOpenTasks(day.id)}
+                >
+                  {tasks.length > 0 && incompleteTaskCount === 0 ? <IconCircleCheckFilled size={16} /> : <IconListCheck size={16} />}
+                </ActionIcon>
+              </Indicator>
+            </Tooltip>
             <Box className="day-column__completion-slot">
               {allPlacesVisited ? (
               <Tooltip label={t('allStopsVisited')}>
@@ -257,6 +292,7 @@ export function DayColumn({
       {!collapsed ? (
         <SortableContext items={day.placeIds} strategy={verticalListSortingStrategy}>
           <Stack gap="xs" p="sm" className="day-column__body">
+            {bookingCards.map((card) => <BookingCard key={card.id} card={card} onEdit={readOnly ? undefined : onEditBooking} />)}
             {places.map((place, placeIndex) => {
               const cluster = clusterForPlace(clusters, place.id);
               const member = cluster ? clusterMember(cluster, place.id) : undefined;
@@ -363,6 +399,9 @@ export function DayColumn({
                 <Menu.Item leftSection={<IconPlus size={15} />} onClick={() => onAddPlaceholder('custom')}>{t('customStop')}</Menu.Item>
               </Menu.Dropdown>
             </Menu></> : null}
+            {!readOnly && onAddFlight ? <UnstyledButton className="add-place-placeholder" onClick={onAddFlight}>
+              <IconPlus size={17} /><Text size="xs" fw={650}>{locale === 'zh-TW' ? '新增航班' : 'Add flight'}</Text>
+            </UnstyledButton> : null}
           </Stack>
         </SortableContext>
       ) : null}

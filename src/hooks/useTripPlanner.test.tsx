@@ -145,6 +145,26 @@ describe('useTripPlanner', () => {
     expect(hook.result.current.state.days[0].placeIds).toEqual(['taipei-101', 'ximending']);
   });
 
+  it('stores booking costs once and supports a whole-trip budget', async () => {
+    const hook = await planner();
+    await act(async () => {
+      hook.result.current.saveStayBooking({
+        id: 'stay-booking', placeId: 'taipei-101', checkInDate: '2026-11-07', checkOutDate: '2026-11-09',
+        cost: { amount: 600, currency: 'MYR' },
+      });
+      hook.result.current.saveFlightBooking({
+        id: 'flight-booking', tripType: 'round-trip', totalCost: { amount: 1200, currency: 'MYR' },
+        outbound: { airline: 'AirAsia', departureAirport: 'KUL', departureDate: '2026-11-07', departureTime: '10:00', arrivalAirport: 'TPE', arrivalDate: '2026-11-07', arrivalTime: '14:50' },
+        return: { airline: 'AirAsia', departureAirport: 'TPE', departureDate: '2026-11-14', departureTime: '15:30', arrivalAirport: 'KUL', arrivalDate: '2026-11-14', arrivalTime: '20:20' },
+      });
+      hook.result.current.updateBudget({ amount: 3000, currency: 'MYR' });
+    });
+
+    expect(hook.result.current.state.stayBookings).toHaveLength(1);
+    expect(hook.result.current.state.flightBookings).toEqual([expect.objectContaining({ tripType: 'round-trip', totalCost: { amount: 1200, currency: 'MYR' } })]);
+    expect(hook.result.current.state.budget).toEqual({ amount: 3000, currency: 'MYR' });
+  });
+
   it('creates the first cloud plan, selects it, and reports save failures', async () => {
     authState.accessToken = 'token';
     authState.user = { id: 'cloud-user', email: 'cloud@example.com' };

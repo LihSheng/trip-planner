@@ -25,6 +25,10 @@ import { isAccommodation, stayAssignmentStatus, type StayAssignmentStatus } from
 import { useTrip } from '../context/TripContext';
 import { TripActivityDrawer } from './TripActivityDrawer';
 import { isPlaceholder } from '../domain/place';
+import { DayTasksModal } from './DayTasksModal';
+import { FlightBookingModal, StayBookingModal } from './BookingModals';
+import type { FlightBooking, StayBooking } from '../types';
+import type { PlannerBookingCard } from './BookingCard';
 
 interface PlannerBoardProps {
   selectedId: string | null;
@@ -61,12 +65,26 @@ export function PlannerBoard({
     updateStopSchedule: onStopScheduleChange,
     updateLegMode: onLegModeChange,
     activityEvents,
+    addDayTask,
+    updateDayTask,
+    toggleDayTask,
+    deleteDayTask,
+    reorderDayTasks,
+    saveFlightBooking,
+    saveStayBooking,
+    deleteFlightBooking,
+    deleteStayBooking,
   } = useTrip();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const zh = locale === 'zh-TW';
   const visitedPlaceIds = state.visitedPlaceIds;
   const onRenamePlaceholder = (place: Place, label: string) => updatePlace({ ...place, name: label });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activityOpened, setActivityOpened] = useState(false);
+  const [taskDayId, setTaskDayId] = useState<string | null>(null);
+  const [flightDate, setFlightDate] = useState('');
+  const [editingFlight, setEditingFlight] = useState<FlightBooking>();
+  const [editingStay, setEditingStay] = useState<StayBooking>();
   const [pendingAccommodationAssignment, setPendingAccommodationAssignment] = useState<{
     place: Place;
     destination: { containerId: ContainerId; index: number };
@@ -90,6 +108,29 @@ export function PlannerBoard({
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${date.getFullYear()}-${month}-${day}`;
+  }
+
+  function bookingCardsFor(date: string): PlannerBookingCard[] {
+    const stayCards = (state.stayBookings ?? []).flatMap((booking: StayBooking) => {
+      const hotel = placesById.get(booking.placeId);
+      if (!hotel) return [];
+      if (booking.checkInDate === date) return [{ id: `stay-in:${booking.id}`, kind: 'stay' as const, sourceId: booking.id, title: hotel.name, label: zh ? '入住' : 'Check in', detail: `${booking.checkInDate} → ${booking.checkOutDate}`, cost: booking.cost }];
+      if (booking.checkOutDate === date) return [{ id: `stay-out:${booking.id}`, kind: 'stay' as const, sourceId: booking.id, title: hotel.name, label: zh ? '退房' : 'Check out', detail: zh ? '費用已包含於住宿訂單' : 'Cost included in stay booking' }];
+      return [];
+    });
+    const flightCards = (state.flightBookings ?? []).flatMap((booking) => {
+      const legs = [{ leg: booking.outbound, outbound: true }, ...(booking.return ? [{ leg: booking.return, outbound: false }] : [])];
+      return legs.flatMap(({ leg, outbound }) => leg.departureDate === date ? [{
+        id: `flight:${booking.id}:${outbound ? 'out' : 'return'}`,
+        kind: 'flight' as const,
+        sourceId: booking.id,
+        title: `${leg.departureAirport} → ${leg.arrivalAirport}`,
+        label: outbound ? (booking.tripType === 'round-trip' ? (zh ? '去程' : 'Outbound') : (zh ? '航班' : 'Flight')) : (zh ? '回程' : 'Return'),
+        detail: `${leg.airline}${leg.flightNumber ? ` ${leg.flightNumber}` : ''} · ${leg.departureTime} → ${leg.arrivalTime}${leg.arrivalDate > leg.departureDate ? (zh ? ' · 隔日抵達' : ' · +1 day') : ''}${!outbound ? (zh ? ' · 已包含於來回訂單' : ' · Included in round-trip booking') : ''}`,
+        cost: outbound ? booking.totalCost : undefined,
+      }] : []);
+    });
+    return [...stayCards, ...flightCards];
   }
 
   function getDestination(overId: string): { containerId: ContainerId; index: number } | null {
@@ -221,6 +262,22 @@ export function PlannerBoard({
                   tripHotelId={state.hotelPlaceId}
                   onLegModeChange={onLegModeChange}
                   clusters={state.locationClusters}
+                  tasks={(state.dayTasks ?? []).filter((task) => task.dayId === day.id)}
+                  onOpenTasks={setTaskDayId}
+                  bookingCards={bookingCardsFor(dayDate(index))}
+                  lodgingLabel={(() => {
+                    const booking = (state.stayBookings ?? []).find((item) => item.checkInDate <= dayDate(index) && item.checkOutDate > dayDate(index));
+                    return booking ? placesById.get(booking.placeId)?.name : undefined;
+                  })()}
+                  onEditBooking={(card) => {
+                    if (card.kind === 'flight') {
+                      setEditingFlight(state.flightBookings?.find((booking) => booking.id === card.sourceId));
+                      setFlightDate(dayDate(index));
+                    } else {
+                      setEditingStay(state.stayBookings?.find((booking) => booking.id === card.sourceId));
+                    }
+                  }}
+                  onAddFlight={() => { setEditingFlight(undefined); setFlightDate(dayDate(index)); }}
                   readOnly={readOnly}
                 />
               ))}
@@ -231,6 +288,40 @@ export function PlannerBoard({
 
       <DragOverlay>{activePlace ? <PlaceCardPreview place={activePlace} /> : null}</DragOverlay>
       <TripActivityDrawer opened={activityOpened} onClose={() => setActivityOpened(false)} events={activityEvents} />
+      <DayTasksModal
+        opened={Boolean(taskDayId)}
+        dayLabel={(() => {
+          const index = state.days.findIndex((day) => day.id === taskDayId);
+          if (index < 0) return 'Day';
+          return state.days[index].label.trim() || `Day ${index + 1}`;
+        })()}
+        tasks={(state.dayTasks ?? []).filter((task) => task.dayId === taskDayId)}
+        readOnly={readOnly}
+        onClose={() => setTaskDayId(null)}
+        onAdd={(text) => taskDayId && addDayTask(taskDayId, text)}
+        onUpdate={updateDayTask}
+        onToggle={toggleDayTask}
+        onDelete={deleteDayTask}
+        onReorder={(activeId, overId) => taskDayId && reorderDayTasks(taskDayId, activeId, overId)}
+      />
+      <FlightBookingModal
+        opened={Boolean(flightDate)}
+        booking={editingFlight}
+        defaultDate={flightDate}
+        defaultCurrency={state.displayCurrency ?? 'MYR'}
+        onClose={() => { setFlightDate(''); setEditingFlight(undefined); }}
+        onSave={saveFlightBooking}
+        onDelete={deleteFlightBooking}
+      />
+      <StayBookingModal
+        opened={Boolean(editingStay)}
+        booking={editingStay}
+        hotels={hotelPlaces}
+        defaultCurrency={state.displayCurrency ?? 'MYR'}
+        onClose={() => setEditingStay(undefined)}
+        onSave={saveStayBooking}
+        onDelete={deleteStayBooking}
+      />
       <Modal
         opened={Boolean(pendingAccommodationAssignment)}
         onClose={() => setPendingAccommodationAssignment(null)}

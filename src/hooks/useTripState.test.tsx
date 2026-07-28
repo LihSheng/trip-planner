@@ -98,6 +98,40 @@ describe('useTripState', () => {
     expect(result.current.state.days.length).toBe(initialDayCount);
   });
 
+  it('manages, reorders, and moves day tasks', () => {
+    const { result } = renderHook(() => useTripState(false));
+    const firstDayId = result.current.state.days[0].id;
+    const secondDayId = result.current.state.days[1].id;
+
+    act(() => {
+      result.current.addDayTask(firstDayId, 'Bring tickets');
+      result.current.addDayTask(firstDayId, 'Pack umbrella');
+    });
+    const [first, second] = result.current.state.dayTasks!;
+    expect(result.current.state.dayTasks?.map((task) => task.text)).toEqual(['Bring tickets', 'Pack umbrella']);
+
+    act(() => {
+      result.current.toggleDayTask(first.id);
+      result.current.updateDayTask(second.id, 'Pack raincoat');
+      result.current.reorderDayTasks(firstDayId, second.id, first.id);
+    });
+    expect(result.current.state.dayTasks?.find((task) => task.id === first.id)?.completed).toBe(true);
+    expect([...result.current.state.dayTasks!].sort((a, b) => a.sortOrder - b.sortOrder).map((task) => task.text))
+      .toEqual(['Pack raincoat', 'Bring tickets']);
+
+    act(() => result.current.moveDayTask(first.id, secondDayId));
+    expect(result.current.state.dayTasks?.find((task) => task.id === first.id)?.dayId).toBe(secondDayId);
+  });
+
+  it('moves tasks to the next day when their day is removed', () => {
+    const { result } = renderHook(() => useTripState(false));
+    const firstDayId = result.current.state.days[0].id;
+    const nextDayId = result.current.state.days[1].id;
+    act(() => result.current.addDayTask(firstDayId, 'Carry this forward'));
+    act(() => result.current.removeDay(firstDayId));
+    expect(result.current.state.dayTasks?.[0]).toMatchObject({ dayId: nextDayId, text: 'Carry this forward' });
+  });
+
   it('toggles visited place', () => {
     const { result } = renderHook(() => useTripState(false));
     const placeId = result.current.state.places[0].id;

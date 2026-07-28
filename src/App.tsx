@@ -31,6 +31,7 @@ import {
   IconList,
   IconMap,
   IconMapPin,
+  IconReceipt,
   IconSun,
 } from '@tabler/icons-react';
 import type { Place } from './types';
@@ -45,6 +46,8 @@ import { PlannerBoard } from './components/PlannerBoard';
 import { TripSettingsModal } from './components/TripSettingsModal';
 import { ShareTripModal } from './components/ShareTripModal';
 import { TodayModePage } from './components/TodayModePage';
+import { ExpensesPage } from './components/ExpensesPage';
+import { StayBookingModal } from './components/BookingModals';
 import { AiImportDrawer } from './components/AiImportDrawer';
 import { formatTripPlainText } from './utils/exportTrip';
 import { useCurrentLocation } from './hooks/useCurrentLocation';
@@ -66,6 +69,7 @@ export default function App() {
     { label: t('map'), value: 'map' },
     { label: t('places'), value: 'places' },
     { label: t('planner'), value: 'planner' },
+    { label: t('expenses'), value: 'expenses' },
   ];
   const theme = useMantineTheme();
   const isDesktop = useMediaQuery(`(min-width: ${theme.breakpoints.lg})`);
@@ -80,6 +84,7 @@ export default function App() {
   const [addPlaceDayId, setAddPlaceDayId] = useState<string | null>(null);
   const [replacePlaceholderId, setReplacePlaceholderId] = useState<string | null>(null);
   const [placeModalOpened, setPlaceModalOpened] = useState(false);
+  const [addStayPlaceId, setAddStayPlaceId] = useState<string | null>(null);
   const [settingsOpened, setSettingsOpened] = useState(false);
   const [shareOpened, setShareOpened] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Place | undefined>();
@@ -465,10 +470,19 @@ export default function App() {
                         </Box>
                       ),
                     },
+                    {
+                      value: 'expenses',
+                      label: (
+                        <Box className="workspace-tab-label">
+                          <IconReceipt size={15} />
+                          <span>{t('expenses')}</span>
+                        </Box>
+                      ),
+                    },
                   ]}
                 />
               </Group>
-              {desktopWorkspace === 'map' ? mapWorkspace : desktopWorkspace === 'today' ? todayPanel : plannerPanel}
+              {desktopWorkspace === 'map' ? mapWorkspace : desktopWorkspace === 'today' ? todayPanel : desktopWorkspace === 'expenses' ? <ExpensesPage /> : plannerPanel}
             </Stack>
           ) : (
             <Stack gap="md" className="mobile-workspace">
@@ -483,6 +497,7 @@ export default function App() {
               ) : null}
               {mobileView === 'places' ? placesPanel : null}
               {mobileView === 'planner' ? plannerPanel : null}
+              {mobileView === 'expenses' ? <ExpensesPage /> : null}
             </Stack>
           )}
         </Container>
@@ -504,7 +519,7 @@ export default function App() {
           {mobileViews.map((item) => {
             const active = mobileView === item.value;
             const Icon =
-              item.value === 'today' ? IconSun : item.value === 'map' ? IconMap : item.value === 'places' ? IconList : IconCalendarEvent;
+              item.value === 'today' ? IconSun : item.value === 'map' ? IconMap : item.value === 'places' ? IconList : item.value === 'expenses' ? IconReceipt : IconCalendarEvent;
             return (
               <Button
                 key={item.value}
@@ -546,6 +561,10 @@ export default function App() {
         place={editingPlace}
         places={planner.state.places}
         clusters={planner.state.locationClusters}
+        stayBookings={planner.state.stayBookings}
+        defaultCurrency={planner.state.displayCurrency ?? 'MYR'}
+        onSaveStayBooking={planner.saveStayBooking}
+        onAddAnotherStay={(placeId) => { setPlaceModalOpened(false); setAddStayPlaceId(placeId); }}
         onClose={() => setPlaceModalOpened(false)}
         onSubmit={handlePlaceSubmit}
       />
@@ -557,6 +576,14 @@ export default function App() {
         location={location}
         onClose={() => setSettingsOpened(false)}
         onSubmit={planner.updateTrip}
+      />
+      <StayBookingModal
+        opened={Boolean(addStayPlaceId)}
+        hotels={planner.state.places.filter((place) => place.category === 'Accommodation' && !place.assignmentOf)}
+        defaultPlaceId={addStayPlaceId ?? undefined}
+        defaultCurrency={planner.state.displayCurrency ?? 'MYR'}
+        onClose={() => setAddStayPlaceId(null)}
+        onSave={planner.saveStayBooking}
       />
       <Modal opened={Boolean(deleteTarget)} onClose={() => setDeleteTarget(undefined)} title={t('deletePlaceQuestion')} centered>
         <Stack>

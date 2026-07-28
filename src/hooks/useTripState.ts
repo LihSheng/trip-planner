@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import type { ClusterRelationship, ContainerId, CurrencyCode, DayExecutionState, PlaceholderKind, Place, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
+import type { ClusterRelationship, ContainerId, CurrencyCode, DayExecutionState, DayTask, FlightBooking, Money, PlaceholderKind, Place, StayBooking, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
 import { movePlace } from '../utils/itinerary';
 import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
 import { markRouteStale, routeLegKey } from '../utils/routing';
@@ -217,10 +217,79 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     if (readOnly) return;
     setState((current) => {
       const day = current.days.find((item) => item.id === dayId);
+      const removedIndex = current.days.findIndex((item) => item.id === dayId);
+      const remainingDays = current.days.filter((item) => item.id !== dayId);
+      const destination = remainingDays[removedIndex] ?? remainingDays[removedIndex - 1];
+      const destinationTaskCount = (current.dayTasks ?? []).filter((task) => task.dayId === destination?.id).length;
+      let movedTaskIndex = 0;
       return {
         ...current,
         unscheduledIds: [...current.unscheduledIds, ...(day?.placeIds ?? [])],
-        days: current.days.filter((item) => item.id !== dayId),
+        days: remainingDays,
+        dayTasks: (current.dayTasks ?? []).flatMap((task) => {
+          if (task.dayId !== dayId) return [task];
+          if (!destination) return [];
+          return [{ ...task, dayId: destination.id, sortOrder: destinationTaskCount + movedTaskIndex++ }];
+        }),
+      };
+    });
+  }, [readOnly]);
+
+  const addDayTask = useCallback((dayId: string, text: string) => {
+    if (readOnly || !text.trim()) return;
+    setState((current) => {
+      if (!current.days.some((day) => day.id === dayId)) return current;
+      const sortOrder = (current.dayTasks ?? []).filter((task) => task.dayId === dayId).length;
+      const task: DayTask = { id: `task-${crypto.randomUUID()}`, dayId, text: text.trim(), completed: false, sortOrder };
+      return { ...current, dayTasks: [...(current.dayTasks ?? []), task] };
+    });
+  }, [readOnly]);
+
+  const updateDayTask = useCallback((taskId: string, text: string) => {
+    if (readOnly || !text.trim()) return;
+    setState((current) => ({
+      ...current,
+      dayTasks: (current.dayTasks ?? []).map((task) => task.id === taskId ? { ...task, text: text.trim() } : task),
+    }));
+  }, [readOnly]);
+
+  const toggleDayTask = useCallback((taskId: string) => {
+    if (readOnly) return;
+    setState((current) => ({
+      ...current,
+      dayTasks: (current.dayTasks ?? []).map((task) => task.id === taskId ? { ...task, completed: !task.completed } : task),
+    }));
+  }, [readOnly]);
+
+  const deleteDayTask = useCallback((taskId: string) => {
+    if (readOnly) return;
+    setState((current) => ({ ...current, dayTasks: (current.dayTasks ?? []).filter((task) => task.id !== taskId) }));
+  }, [readOnly]);
+
+  const reorderDayTasks = useCallback((dayId: string, activeId: string, overId: string) => {
+    if (readOnly || activeId === overId) return;
+    setState((current) => {
+      const all = current.dayTasks ?? [];
+      const tasks = all.filter((task) => task.dayId === dayId).sort((a, b) => a.sortOrder - b.sortOrder);
+      const from = tasks.findIndex((task) => task.id === activeId);
+      const to = tasks.findIndex((task) => task.id === overId);
+      if (from < 0 || to < 0) return current;
+      const reordered = [...tasks];
+      const [moved] = reordered.splice(from, 1);
+      reordered.splice(to, 0, moved);
+      const byId = new Map(reordered.map((task, sortOrder) => [task.id, { ...task, sortOrder }]));
+      return { ...current, dayTasks: all.map((task) => byId.get(task.id) ?? task) };
+    });
+  }, [readOnly]);
+
+  const moveDayTask = useCallback((taskId: string, dayId: string) => {
+    if (readOnly) return;
+    setState((current) => {
+      if (!current.days.some((day) => day.id === dayId)) return current;
+      const sortOrder = (current.dayTasks ?? []).filter((task) => task.dayId === dayId).length;
+      return {
+        ...current,
+        dayTasks: (current.dayTasks ?? []).map((task) => task.id === taskId ? { ...task, dayId, sortOrder } : task),
       };
     });
   }, [readOnly]);
@@ -342,6 +411,63 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
   const addExpense = useCallback((expense: TripExpense) => {
     if (readOnly) return;
     setState((current) => ({ ...current, expenses: [...(current.expenses ?? []), expense] }));
+  }, [readOnly]);
+
+  const updateExpense = useCallback((expense: TripExpense) => {
+    if (readOnly) return;
+    setState((current) => ({ ...current, expenses: (current.expenses ?? []).map((item) => item.id === expense.id ? expense : item) }));
+  }, [readOnly]);
+
+  const deleteExpense = useCallback((expenseId: string) => {
+    if (readOnly) return;
+    setState((current) => ({ ...current, expenses: (current.expenses ?? []).filter((item) => item.id !== expenseId) }));
+  }, [readOnly]);
+
+  const saveStayBooking = useCallback((booking: StayBooking) => {
+    if (readOnly) return;
+    setState((current) => ({
+      ...current,
+      stayBookings: (current.stayBookings ?? []).some((item) => item.id === booking.id)
+        ? (current.stayBookings ?? []).map((item) => item.id === booking.id ? booking : item)
+        : [...(current.stayBookings ?? []), booking],
+      places: booking.id.startsWith(`legacy-stay:${booking.placeId}:`)
+        ? current.places.map((place) => place.id === booking.placeId ? { ...place, stay: { checkInDate: booking.checkInDate, checkOutDate: booking.checkOutDate } } : place)
+        : current.places,
+    }));
+  }, [readOnly]);
+
+  const deleteStayBooking = useCallback((bookingId: string) => {
+    if (readOnly) return;
+    setState((current) => {
+      const booking = current.stayBookings?.find((item) => item.id === bookingId);
+      return {
+        ...current,
+        stayBookings: (current.stayBookings ?? []).filter((item) => item.id !== bookingId),
+        places: bookingId.startsWith('legacy-stay:') && booking
+          ? current.places.map((place) => place.id === booking.placeId ? { ...place, stay: undefined } : place)
+          : current.places,
+      };
+    });
+  }, [readOnly]);
+
+  const saveFlightBooking = useCallback((booking: FlightBooking) => {
+    if (readOnly) return;
+    setState((current) => ({
+      ...current,
+      flightBookings: (current.flightBookings ?? []).some((item) => item.id === booking.id)
+        ? (current.flightBookings ?? []).map((item) => item.id === booking.id ? booking : item)
+        : [...(current.flightBookings ?? []), booking],
+    }));
+  }, [readOnly]);
+
+  const deleteFlightBooking = useCallback((bookingId: string) => {
+    if (readOnly) return;
+    setState((current) => ({ ...current, flightBookings: (current.flightBookings ?? []).filter((item) => item.id !== bookingId) }));
+  }, [readOnly]);
+
+  const updateBudget = useCallback((budget?: Money) => {
+    if (readOnly) return;
+    setState((current) => ({ ...current, budget }));
   }, [readOnly]);
 
   const move = useCallback(
@@ -512,10 +638,23 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     updateDaySchedule,
     updateStopSchedule,
     removeDay,
+    addDayTask,
+    updateDayTask,
+    toggleDayTask,
+    deleteDayTask,
+    reorderDayTasks,
+    moveDayTask,
     reorderDays,
     toggleVisited,
     updateExecution,
     addExpense,
+    updateExpense,
+    deleteExpense,
+    saveStayBooking,
+    deleteStayBooking,
+    saveFlightBooking,
+    deleteFlightBooking,
+    updateBudget,
     move,
     setPlaceCluster,
     renameLocationCluster,

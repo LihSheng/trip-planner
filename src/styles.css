@@ -881,6 +881,15 @@ select {
 .today-stop-card .mantine-Button-root { min-height: 48px; }
 
 .today-timeline { padding: 20px 24px; }
+.today-tasks { margin-bottom: 18px; padding: 20px 24px; }
+.today-tasks h2 { font-size: 1.2rem; }
+.today-task-row { min-height: 42px; padding: 7px 9px; border: 1px solid #e5e9e8; border-radius: 12px; background: white; }
+.today-task-row--overdue { border-color: var(--mantine-color-red-2); background: var(--mantine-color-red-0); }
+.today-task-row__copy { flex: 1; min-width: 0; }
+.today-tasks__overdue { padding-bottom: 12px; border-bottom: 1px solid #ecefee; }
+.today-tasks__completed-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 12px; padding: 8px 4px; color: #596366; }
+.day-task-editor-row__text { flex: 1; }
+.day-task-editor-row__text--complete input { color: #87908f; text-decoration: line-through; }
 .today-timeline h2 { font-size: 1.2rem; }
 .today-timeline-row {
   width: 100%;
@@ -973,7 +982,7 @@ select {
     bottom: 0;
     left: 0;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     min-height: calc(68px + env(safe-area-inset-bottom));
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--mantine-color-gray-2);
@@ -1186,7 +1195,7 @@ select {
     bottom: 0;
     left: 0;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     min-height: calc(68px + env(safe-area-inset-bottom));
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--mantine-color-gray-2);
