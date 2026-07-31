@@ -31,7 +31,7 @@ export function UnscheduledColumn({
 }: UnscheduledColumnProps) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
-  const isDesktop = useMediaQuery('(min-width: 75em)');
+  const isDesktop = useMediaQuery('(min-width: 48em)');
   const { setNodeRef, isOver } = useDroppable({ id: 'unscheduled', disabled: readOnly });
   const normalPlaces = places.filter((place) => !isAccommodation(place));
   const accommodations = places.filter(isAccommodation);

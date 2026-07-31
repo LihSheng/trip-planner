@@ -540,6 +540,10 @@ select {
   cursor: text;
 }
 
+.day-column__lodging {
+  white-space: nowrap;
+}
+
 .day-column__header--0 {
   background: linear-gradient(145deg, #e8f8f1, #f5fbf8);
 }
@@ -958,7 +962,7 @@ select {
   }
 
   .app-container {
-    padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
   }
 
   .mobile-bottom-nav {
@@ -1004,7 +1008,24 @@ select {
     min-height: calc(100dvh - 8.75rem);
   }
 
-  .today-mode { padding-bottom: 8px; }
+  .mobile-workspace > .library-panel {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - 184px);
+  }
+
+  .mobile-workspace > .library-panel .place-library {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .mobile-workspace > .library-panel .place-library__list {
+    flex: 1;
+    min-height: 0;
+    max-height: none !important;
+  }
+
+  .today-mode { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
 
   .map-shell,
   .taiwan-map {
@@ -1144,7 +1165,7 @@ select {
   }
 
   .app-container {
-    padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
   }
 
   .mobile-workspace {
@@ -1166,7 +1187,7 @@ select {
 
   .mobile-workspace > .library-panel {
     display: flex;
-    height: calc(100dvh - 160px);
+    height: calc(100dvh - 184px);
     flex-direction: column;
   }
 

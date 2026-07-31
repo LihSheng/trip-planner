@@ -100,7 +100,7 @@ export function DayColumn({
   const [collapsed, setCollapsed] = useState(false);
   const [renameTarget, setRenameTarget] = useState<Place | null>(null);
   const [renameLabel, setRenameLabel] = useState('');
-  const isDesktop = useMediaQuery('(min-width: 75em)');
+  const isDesktop = useMediaQuery('(min-width: 48em)');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `day:${day.id}`,
     data: { type: 'day', dayId: day.id },
@@ -133,11 +133,12 @@ export function DayColumn({
 
 
   return (
-    <Paper
-      ref={setNodeRef}
-      withBorder
-      radius="lg"
-      className="day-column day-column--draggable"
+      <Paper
+        ref={setNodeRef}
+        withBorder
+        radius="lg"
+        className="day-column day-column--draggable"
+        data-day-id={day.id}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
       onPointerDown={handlePointerDown}
@@ -151,7 +152,7 @@ export function DayColumn({
         onClick={isDesktop ? undefined : toggleCollapsedFromHeader}
       >
         <Group justify="space-between" align="flex-start" wrap="nowrap">
-          <Stack gap={3} style={{ flex: 1 }}>
+          <Stack gap={3} style={{ flex: 1, minWidth: 0 }}>
             <Group gap={6}>
               <IconCalendar size={15} />
               <Text fw={750} size="sm">
@@ -161,7 +162,6 @@ export function DayColumn({
             <Text size="xs" c="dimmed">
               {formatTripDate(startDate, index)}
             </Text>
-            {lodgingLabel ? <Text size="xs" fw={650} c="indigo">{locale === 'zh-TW' ? `住宿：${lodgingLabel}` : `Staying at ${lodgingLabel}`}</Text> : null}
             {collapsed ? (
               <Badge size="sm" variant="light" color="teal" className="day-column__status">
                 {t('stopsVisited', { stops: places.length, visited: visitedCount })}
@@ -234,6 +234,7 @@ export function DayColumn({
             </Tooltip> : null}
           </Group>
         </Group>
+        {lodgingLabel ? <Text size="xs" fw={650} c="indigo" className="day-column__lodging">{locale === 'zh-TW' ? `住宿：${lodgingLabel}` : `Staying at ${lodgingLabel}`}</Text> : null}
         {!readOnly && !collapsed && day.timeManagementEnabled ? (
           <Stack gap="xs" mt="xs" onClick={(event) => event.stopPropagation()}>
             <Group gap="xs" grow>

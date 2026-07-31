@@ -339,6 +339,7 @@ export default function App() {
     <PlannerBoard
       selectedId={selectedId}
       onSelect={setSelectedId}
+      onRequestRemoveDay={setDayDeleteTarget}
       onAddPlaceToDay={openAddPlaceForDay}
       onReplacePlaceholder={(placeholderId) => {
         setEditingPlace(undefined);

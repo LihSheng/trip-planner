@@ -121,7 +121,7 @@ export function PlaceLibrary({
 
       <ScrollArea.Autosize mah={380} type="auto" offsetScrollbars className="place-library__list">
         <SortableContext items={filtered.map((place) => place.id)} strategy={verticalListSortingStrategy}>
-          <Stack gap="xs" pr={4}>
+          <Stack gap="xs" pr={4} pb="sm">
             {filtered.length ? (
               <>
               {visibleClusters.map(({ cluster, clusterPlaces }) => {

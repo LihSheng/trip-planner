@@ -17,7 +17,6 @@ export function BookingCard({ card, onEdit }: { card: PlannerBookingCard; onEdit
   return <Paper withBorder radius="md" p="sm" className="booking-card" onClick={() => onEdit?.(card)} role={onEdit ? 'button' : undefined}>
     <Group justify="space-between" align="flex-start" wrap="nowrap">
       <Group gap="xs" wrap="nowrap"><Icon size={19} /><div><Badge size="xs" variant="light">{card.label}</Badge><Text fw={750}>{card.title}</Text><Text size="xs" c="dimmed">{card.detail}</Text></div></Group>
-      {card.kind === 'flight' && card.cost ? <Text fw={800} size="sm">{card.cost.currency} {card.cost.amount.toLocaleString()}</Text> : null}
     </Group>
   </Paper>;
 }

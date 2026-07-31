@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   closestCorners,
   DndContext,
@@ -35,6 +35,7 @@ interface PlannerBoardProps {
   onSelect: (placeId: string) => void;
   onEditActivity: (place: Place) => void;
   onDeletePlace: (place: Place) => void;
+  onRequestRemoveDay?: (dayId: string) => void;
   onAddPlaceToDay: (dayId: string) => void;
   onReplacePlaceholder: (placeholderId: string) => void;
 }
@@ -44,6 +45,7 @@ export function PlannerBoard({
   onSelect,
   onEditActivity,
   onDeletePlace,
+  onRequestRemoveDay,
   onAddPlaceToDay,
   onReplacePlaceholder,
 }: PlannerBoardProps) {
@@ -58,7 +60,7 @@ export function PlannerBoard({
     removePlannerVisit,
     move: onMove,
     updateDayLabel: onLabelChange,
-    removeDay: onRemoveDay,
+    removeDay: removeDayDirect,
     reorderDays: onReorderDays,
     toggleVisited: onVisitedChange,
     updateDaySchedule: onDayScheduleChange,
@@ -85,6 +87,8 @@ export function PlannerBoard({
   const [flightDate, setFlightDate] = useState('');
   const [editingFlight, setEditingFlight] = useState<FlightBooking>();
   const [editingStay, setEditingStay] = useState<StayBooking>();
+  const focusNewDayRef = useRef(false);
+  const previousDayCountRef = useRef(state.days.length);
   const [pendingAccommodationAssignment, setPendingAccommodationAssignment] = useState<{
     place: Place;
     destination: { containerId: ContainerId; index: number };
@@ -102,6 +106,15 @@ export function PlannerBoard({
     return place ? [place] : [];
   });
   const hotelPlaces = state.places.filter((place) => isAccommodation(place) && !place.assignmentOf);
+
+  useEffect(() => {
+    if (focusNewDayRef.current && state.days.length > previousDayCountRef.current) {
+      const newDay = state.days[state.days.length - 1];
+      document.querySelector(`[data-day-id="${newDay.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      focusNewDayRef.current = false;
+    }
+    previousDayCountRef.current = state.days.length;
+  }, [state.days.length]);
 
   function dayDate(dayIndex: number) {
     const date = addDays(state.startDate, dayIndex);
@@ -218,7 +231,7 @@ export function PlannerBoard({
           </div>
           {!readOnly ? <Group gap="xs">
             <Button variant="default" leftSection={<IconHistory size={17} />} onClick={() => setActivityOpened(true)}>Activity</Button>
-            <Button variant="light" color="teal" leftSection={<IconPlus size={17} />} onClick={onAddDay}>{t('addDay')}</Button>
+            <Button variant="light" color="teal" leftSection={<IconPlus size={17} />} onClick={() => { focusNewDayRef.current = true; onAddDay(); }}>{t('addDay')}</Button>
           </Group> : null}
         </Group>
 
@@ -252,7 +265,7 @@ export function PlannerBoard({
                   onReplacePlaceholder={onReplacePlaceholder}
                   onRenamePlaceholder={onRenamePlaceholder}
                   onLabelChange={onLabelChange}
-                  onRemove={onRemoveDay}
+                  onRemove={onRequestRemoveDay ?? removeDayDirect}
                   onEditActivity={onEditActivity}
                   onDeletePlace={(place) => removePlannerVisit(place.id, day.id)}
                   onVisitedChange={onVisitedChange}
