@@ -169,6 +169,16 @@ export async function loadPublicTrip(shareToken: string): Promise<TripState | nu
   return normalizeTripState(rows[0].state);
 }
 
+export async function loadEditableTripPlanIdByShareToken(accessToken: string, shareToken: string): Promise<string | null> {
+  const query = new URLSearchParams({ select: 'id', share_token: `eq.${shareToken}`, limit: '1' });
+  const response = await fetch(`${supabaseUrl}/rest/v1/trip_plans?${query.toString()}`, {
+    headers: dataHeaders(accessToken),
+  });
+  if (!response.ok) throw new Error(await parseError(response));
+  const rows = (await response.json()) as Array<{ id: string }>;
+  return rows[0]?.id ?? null;
+}
+
 export async function getOrCreateShareToken(accessToken: string, planId: string): Promise<string> {
   const existingQuery = new URLSearchParams({ select: 'share_token', id: `eq.${planId}`, limit: '1' });
   const existing = await fetch(`${supabaseUrl}/rest/v1/trip_plans?${existingQuery.toString()}`, { headers: dataHeaders(accessToken) });

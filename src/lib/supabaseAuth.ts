@@ -166,7 +166,7 @@ export function restoreSession(): Promise<AuthSession | null> {
 }
 
 export async function sendMagicLink(email: string): Promise<void> {
-  const redirectTo = `${window.location.origin}${window.location.pathname}`;
+  const redirectTo = `${window.location.origin}${window.location.pathname}${window.location.search}`;
   const response = await fetch(
     `${supabaseUrl}/auth/v1/otp?redirect_to=${encodeURIComponent(redirectTo)}`,
     {

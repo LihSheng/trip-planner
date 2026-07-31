@@ -43,6 +43,16 @@ describe('Supabase auth client', () => {
     expect(fetchMock.mock.calls[2][0]).toContain('/logout');
   });
 
+  it('preserves the shared trip in the magic-link redirect', async () => {
+    history.replaceState({}, '', '/trip?share=shared-token');
+    fetchMock.mockResolvedValue(new Response(null, { status: 200 }));
+
+    await sendMagicLink('friend@example.com');
+
+    const requestUrl = new URL(fetchMock.mock.calls[0][0]);
+    expect(requestUrl.searchParams.get('redirect_to')).toBe(`${window.location.origin}/trip?share=shared-token`);
+  });
+
   it('shares a redirect restore across concurrent Strict Mode effects', async () => {
     history.replaceState({}, '', '/#access_token=redirect&refresh_token=refresh&expires_at=4000000000');
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ id: 'redirect-user' }), { status: 200 }));

@@ -63,7 +63,7 @@ export function AiImportDrawer({ opened, onClose, onApply }: { opened: boolean; 
       {draft.unscheduled.length ? <Paper withBorder p="sm"><Text fw={700} mb="xs">Unscheduled</Text><CandidateList places={draft.unscheduled} onIncluded={setIncluded} onChange={updateCandidate} /></Paper> : null}
       {blocked ? <Alert color="orange">Complete the name, region, latitude, and longitude for every included place, or exclude it.</Alert> : null}
       <Divider />
-      <Group justify="flex-end"><Button variant="default" onClick={reset}>Back</Button><Button disabled={blocked || !candidates.some((candidate) => candidate.included)} onClick={() => { onApply({ draft, preferences: request.preferences }); close(); }}>Create draft</Button></Group>
+      <Group justify="flex-end"><Button variant="default" onClick={reset}>Back</Button><Button disabled={blocked || !candidates.some((candidate) => candidate.included)} onClick={() => { onApply({ draft, preferences: request.preferences }); setContent(''); close(); }}>Create draft</Button></Group>
     </Stack>}
   </Drawer>;
 }

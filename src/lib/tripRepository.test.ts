@@ -7,6 +7,7 @@ import {
   inviteTripCollaborator,
   isTripState,
   listTripPlans,
+  loadEditableTripPlanIdByShareToken,
   loadSharedTripPlanId,
   loadTripCollaborators,
   loadTripState,
@@ -111,6 +112,17 @@ describe('trip repository', () => {
     expect(fetchMock.mock.calls[2][0]).toContain('id=eq.plan-2');
     expect(fetchMock.mock.calls[2][1].method).toBe('PATCH');
     expect(JSON.parse(fetchMock.mock.calls[2][1].body).share_token).toBe('new-token');
+  });
+
+  it('resolves a share token only when RLS exposes an editable trip', async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: 'plan-1' }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }));
+
+    await expect(loadEditableTripPlanIdByShareToken('token', 'allowed-token')).resolves.toBe('plan-1');
+    await expect(loadEditableTripPlanIdByShareToken('token', 'denied-token')).resolves.toBeNull();
+    expect(fetchMock.mock.calls[0][0]).toContain('share_token=eq.allowed-token');
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer token');
   });
 
   it('handles invitation, collaborator, and removal requests', async () => {

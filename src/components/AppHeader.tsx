@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import {
   ActionIcon,
+  Alert,
   Avatar,
   Badge,
   Box,
   Button,
   Group,
   Menu,
+  Modal,
   Stack,
   Text,
+  TextInput,
   Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -23,7 +26,9 @@ import {
   IconFileSpreadsheet,
   IconFileText,
   IconJson,
+  IconLogin,
   IconLogout,
+  IconMail,
   IconMap2,
   IconPlus,
   IconRefresh,
@@ -74,9 +79,14 @@ export function AppHeader({
     switchPlan: onSwitchPlan,
     createPlan: onCreatePlan,
   } = useTrip();
-  const { accessToken, user, isDemo } = useAuth();
+  const { accessToken, user, isDemo, isAuthenticated, requestMagicLink } = useAuth();
   const { t } = useI18n();
   const [exporting, setExporting] = useState<'excel' | 'markdown' | null>(null);
+  const [signInOpened, setSignInOpened] = useState(false);
+  const [signInEmail, setSignInEmail] = useState('');
+  const [signInSending, setSignInSending] = useState(false);
+  const [signInSent, setSignInSent] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
   const syncFailed = syncStatus === 'error';
   const cloudExportReady = !isDemo && Boolean(activePlanId) && syncStatus === 'saved' && !exporting;
   const accountEmail = user.email;
@@ -87,6 +97,22 @@ export function AppHeader({
   const canShare = isOwner;
   const liveLocationActive = location.isTracking && location.permission !== 'unsupported';
   const isPhone = useMediaQuery('(max-width: 47.99em)');
+
+  async function signInToEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const email = signInEmail.trim().toLowerCase();
+    if (!email) return;
+    setSignInSending(true);
+    setSignInError(null);
+    try {
+      await requestMagicLink(email);
+      setSignInSent(true);
+    } catch (reason) {
+      setSignInError(reason instanceof Error ? reason.message : 'Could not send the sign-in link.');
+    } finally {
+      setSignInSending(false);
+    }
+  }
 
   async function exportCloudTrip(format: 'excel' | 'markdown') {
     if (!activePlanId) return;
@@ -217,6 +243,16 @@ export function AppHeader({
               <IconSettings size={18} />
             </ActionIcon>
           </Tooltip> : null}
+          {readOnly && !isAuthenticated ? <>
+            <Button color="teal" leftSection={<IconLogin size={17} />} visibleFrom="sm" onClick={() => setSignInOpened(true)}>
+              Sign in to edit
+            </Button>
+            <Tooltip label="Sign in to edit">
+              <ActionIcon color="teal" size="lg" hiddenFrom="sm" onClick={() => setSignInOpened(true)} aria-label="Sign in to edit">
+                <IconLogin size={18} />
+              </ActionIcon>
+            </Tooltip>
+          </> : null}
           {readOnly ? <Badge color="gray" variant="light">Read-only</Badge> : null}
           {canShare ? <Tooltip label="Share trip"><ActionIcon variant="default" size="lg" visibleFrom="sm" onClick={onOpenShare} aria-label="Share trip"><IconUsers size={18} /></ActionIcon></Tooltip> : null}
           <Menu position="bottom-end" withinPortal shadow="md">
@@ -261,13 +297,37 @@ export function AppHeader({
                 {t('resetDemoData')}
               </Menu.Item>
               <Menu.Divider />
-              <Menu.Item leftSection={<IconLogout size={16} />} onClick={onSignOut}>
-                {isDemo ? t('signInToSync') : t('signOut')}
-              </Menu.Item>
+              {readOnly && !isAuthenticated ? (
+                <Menu.Item leftSection={<IconLogin size={16} />} onClick={() => setSignInOpened(true)}>Sign in to edit</Menu.Item>
+              ) : (
+                <Menu.Item leftSection={<IconLogout size={16} />} onClick={onSignOut}>
+                  {isDemo ? t('signInToSync') : t('signOut')}
+                </Menu.Item>
+              )}
             </Menu.Dropdown>
           </Menu>
         </Group>
       </Group>
+      <Modal opened={signInOpened} onClose={() => setSignInOpened(false)} title="Sign in to edit this trip" centered>
+        <form onSubmit={(event) => void signInToEdit(event)}>
+          <Stack>
+            <Text size="sm" c="dimmed">Use the email address the trip owner invited. Other accounts will open their own plans.</Text>
+            {signInError ? <Alert color="red">{signInError}</Alert> : null}
+            {signInSent ? <Alert color="teal" icon={<IconMail size={17} />}>Check your email, then open the sign-in link on this device.</Alert> : null}
+            <TextInput
+              label="Email address"
+              placeholder="you@example.com"
+              type="email"
+              required
+              value={signInEmail}
+              onChange={(event) => setSignInEmail(event.currentTarget.value)}
+              leftSection={<IconMail size={17} />}
+              autoComplete="email"
+            />
+            <Button type="submit" color="teal" loading={signInSending}>Email me a sign-in link</Button>
+          </Stack>
+        </form>
+      </Modal>
     </Box>
   );
 }

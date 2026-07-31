@@ -29,6 +29,7 @@ interface AuthContextValue {
   user: AuthUser;
   accessToken: string;
   isDemo: boolean;
+  isAuthenticated: boolean;
   signOut: () => Promise<void>;
   requestMagicLink: (email: string) => Promise<void>;
 }
@@ -41,18 +42,7 @@ export function useAuth(): AuthContextValue {
   return value;
 }
 
-export function ReadOnlyAuthProvider({ children }: { children: ReactNode }) {
-  const value: AuthContextValue = {
-    user: { id: 'shared-trip-viewer' },
-    accessToken: '',
-    isDemo: true,
-    signOut: async () => undefined,
-    requestMagicLink: async () => undefined,
-  };
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function AuthGate({ children }: { children: ReactNode }) {
+export function AuthGate({ children, allowGuest = false }: { children: ReactNode; allowGuest?: boolean }) {
   const { t } = useI18n();
   const signedInFromRedirect = useRef(
     new URLSearchParams(window.location.hash.slice(1)).has('access_token'),
@@ -115,6 +105,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         user: { id: 'demo', email: 'Demo mode' },
         accessToken: '',
         isDemo: true,
+        isAuthenticated: false,
         signOut: async () => {
           setDemoMode(false);
           setSent(false);
@@ -122,11 +113,21 @@ export function AuthGate({ children }: { children: ReactNode }) {
         requestMagicLink: sendMagicLink,
       };
     }
-    if (!session) return null;
+    if (!session) {
+      return allowGuest ? {
+        user: { id: 'shared-trip-viewer' },
+        accessToken: '',
+        isDemo: true,
+        isAuthenticated: false,
+        signOut: async () => undefined,
+        requestMagicLink: sendMagicLink,
+      } : null;
+    }
     return {
       user: session.user,
       accessToken: session.accessToken,
       isDemo: false,
+      isAuthenticated: true,
       signOut: async () => {
         await signOutSession(session.accessToken);
         setSession(null);
@@ -134,7 +135,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       },
       requestMagicLink: sendMagicLink,
     };
-  }, [demoMode, session]);
+  }, [allowGuest, demoMode, session]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
