@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionIcon,
   Badge,
@@ -128,6 +128,68 @@ function createMarkerIcon({
   });
 }
 
+const PlaceMarker = memo(function PlaceMarker({
+  place,
+  index,
+  activeDay,
+  activeView,
+  dayByPlaceId,
+  selected,
+  onSelect,
+  onEditPlace,
+  currentLocation,
+  readOnly,
+}: {
+  place: Place;
+  index: number;
+  activeDay?: TripDay;
+  activeView: string;
+  dayByPlaceId: Map<string, number>;
+  selected: boolean;
+  onSelect: (placeId: string) => void;
+  onEditPlace: (place: Place) => void;
+  currentLocation: CurrentLocation | null;
+  readOnly: boolean;
+}) {
+  const { t } = useI18n();
+  const dayIndex = dayByPlaceId.get(place.id);
+  const label = activeDay ? String(index + 1) : activeView === 'unscheduled' ? 'U' : dayIndex === undefined ? 'U' : String(dayIndex + 1);
+
+  return <Marker
+    position={[place.latitude, place.longitude]}
+    icon={createMarkerIcon({ color: markerColors[place.category], label, selected, category: place.category })}
+    eventHandlers={{ click: () => onSelect(place.id) }}
+    zIndexOffset={selected ? 1000 : 0}
+  >
+    <Popup>
+      <Stack gap={4} miw={170}>
+        <Text fw={700} size="sm" lineClamp={1}>{place.name}</Text>
+        <Group gap={6} wrap="nowrap">
+          <Text size="xs" c="dimmed" lineClamp={1}>{place.region}</Text>
+          <Badge color={markerColors[place.category]} variant="light" size="xs">{categoryLabel(t, place.category)}</Badge>
+          {activeDay ? <Badge size="xs">{t('stop', { number: index + 1 })}</Badge> : null}
+        </Group>
+        {place.notes ? <Text size="xs" lineClamp={2}>{place.notes}</Text> : null}
+        <Group justify="flex-end" gap={2} mt={2}>
+          <Tooltip label="Get directions">
+            <ActionIcon component="a" href={googleDirectionsUrl(place, currentLocation)} target="_blank" rel="noopener noreferrer" variant="subtle" color="teal" size="sm" aria-label="Get directions"><IconRoute size={15} /></ActionIcon>
+          </Tooltip>
+          <Tooltip label="Google search">
+            <ActionIcon component="a" href={googleSearchUrl(place)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" size="sm" aria-label="Google search"><IconExternalLink size={15} /></ActionIcon>
+          </Tooltip>
+          {!readOnly ? <Tooltip label={t('editPlace')}><ActionIcon variant="subtle" color="gray" size="sm" aria-label={t('editPlace')} onClick={() => onEditPlace(place)}><IconEdit size={15} /></ActionIcon></Tooltip> : null}
+        </Group>
+      </Stack>
+    </Popup>
+  </Marker>;
+}, (previous, next) => previous.place === next.place
+  && previous.index === next.index
+  && previous.activeDay === next.activeDay
+  && previous.activeView === next.activeView
+  && previous.selected === next.selected
+  && previous.currentLocation === next.currentLocation
+  && previous.readOnly === next.readOnly);
+
 
 
 function MapSurface({
@@ -181,13 +243,6 @@ function MapSurface({
   );
   const selectedPlace = visiblePlaces.find((place) => place.id === selectedId);
   const routeUrl = googleMapsRouteUrl(routePlaces);
-
-  function markerLabel(place: Place, visibleIndex: number) {
-    if (activeDay) return String(visibleIndex + 1);
-    if (activeView === 'unscheduled') return 'U';
-    const dayIndex = dayByPlaceId.get(place.id);
-    return dayIndex === undefined ? 'U' : String(dayIndex + 1);
-  }
 
   function selectMapView(viewId: string) {
     if (viewId === activeView) {
@@ -247,75 +302,19 @@ function MapSurface({
           </>
         ) : null}
 
-        {visiblePlaces.map((place, index) => {
-          const selected = place.id === selectedId;
-          return (
-            <Marker
-              key={place.id}
-              position={[place.latitude, place.longitude]}
-              icon={createMarkerIcon({ color: markerColors[place.category], label: markerLabel(place, index), selected, category: place.category })}
-              eventHandlers={{ click: () => onSelect(place.id) }}
-              zIndexOffset={selected ? 1000 : 0}
-            >
-              <Popup>
-                <Stack gap={4} miw={170}>
-                  <Text fw={700} size="sm" lineClamp={1}>
-                    {place.name}
-                  </Text>
-                  <Group gap={6} wrap="nowrap">
-                    <Text size="xs" c="dimmed" lineClamp={1}>
-                      {place.region}
-                    </Text>
-                    <Badge color={markerColors[place.category]} variant="light" size="xs">
-                      {categoryLabel(t, place.category)}
-                    </Badge>
-                    {activeDay ? <Badge size="xs">{t('stop', { number: index + 1 })}</Badge> : null}
-                  </Group>
-                  {place.notes ? (
-                    <Text size="xs" lineClamp={2}>
-                      {place.notes}
-                    </Text>
-                  ) : null}
-                  <Group justify="flex-end" gap={2} mt={2}>
-                    <Tooltip label="Get directions">
-                      <ActionIcon
-                        component="a"
-                        href={googleDirectionsUrl(place, currentLocation)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="subtle"
-                        color="teal"
-                        size="sm"
-                        aria-label="Get directions"
-                      >
-                        <IconRoute size={15} />
-                      </ActionIcon>
-                    </Tooltip>
-                    <Tooltip label="Google search">
-                      <ActionIcon
-                        component="a"
-                        href={googleSearchUrl(place)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="subtle"
-                        color="gray"
-                        size="sm"
-                        aria-label="Google search"
-                      >
-                        <IconExternalLink size={15} />
-                      </ActionIcon>
-                    </Tooltip>
-                    {!readOnly ? <Tooltip label={t('editPlace')}>
-                      <ActionIcon variant="subtle" color="gray" size="sm" aria-label={t('editPlace')} onClick={() => onEditPlace(place)}>
-                        <IconEdit size={15} />
-                      </ActionIcon>
-                    </Tooltip> : null}
-                  </Group>
-                </Stack>
-              </Popup>
-            </Marker>
-          );
-        })}
+        {visiblePlaces.map((place, index) => <PlaceMarker
+          key={place.id}
+          place={place}
+          index={index}
+          activeDay={activeDay}
+          activeView={activeView}
+          dayByPlaceId={dayByPlaceId}
+          selected={place.id === selectedId}
+          onSelect={onSelect}
+          onEditPlace={onEditPlace}
+          currentLocation={currentLocation}
+          readOnly={readOnly}
+        />)}
       </MapContainer>
 
       <Box className={`map-day-switcher${daySwitcherCollapsed ? ' map-day-switcher--collapsed' : ''}`}>

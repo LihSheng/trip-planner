@@ -1,4 +1,4 @@
-import type { OpeningHours, PlaceCategory, StayDates, TravelMode, TripState } from '../types';
+import type { OpeningHours, PlaceCategory, StayDates, TravelMode } from '../types';
 
 export type AiImportSource = { type: 'text'; content: string } | { type: 'url'; url: string };
 export type AiPlaceResolution = 'resolved' | 'ambiguous' | 'not-found' | 'existing-place';
@@ -54,7 +54,6 @@ export interface AiImportRequest {
   planId: string;
   source: AiImportSource;
   preferences: { requestedDays?: number; pace: 'relaxed' | 'balanced' | 'packed'; travelMode?: TravelMode; mergeMode: 'new-days' | 'unscheduled' };
-  existingTrip: Pick<TripState, 'tripName' | 'startDate'> & { places: Array<Pick<TripState['places'][number], 'id' | 'name' | 'region' | 'latitude' | 'longitude'>> };
 }
 
 export interface ConfirmedAiDraft {

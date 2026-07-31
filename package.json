@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:security": "node --test supabase/functions/ai-itinerary-import/_shared/sourceExtractor.security-test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",

@@ -97,6 +97,10 @@ export default function App() {
     () => planner.state.places.find((place) => place.id === selectedId),
     [planner.state.places, selectedId],
   );
+  const mapPlaces = useMemo(
+    () => planner.state.places.filter((place) => !isPlaceholder(place) && !place.assignmentOf),
+    [planner.state.places],
+  );
 
   const editingActivity = editingActivityId ? planner.activitiesById.get(editingActivityId) : undefined;
   const editingActivityPlace = editingActivity?.placeId ? planner.placesById.get(editingActivity.placeId) : undefined;
@@ -290,7 +294,7 @@ export default function App() {
   const map = (
     <Suspense fallback={<Skeleton height="calc(100vh - 176px)" mih={560} radius="lg" />}>
       <TaiwanMap
-        places={planner.state.places.filter((place) => !isPlaceholder(place) && !place.assignmentOf)}
+        places={mapPlaces}
         days={planner.state.days}
         unscheduledIds={planner.state.unscheduledIds}
         startDate={planner.state.startDate}

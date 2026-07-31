@@ -67,7 +67,7 @@ The interface supports English and Traditional Chinese.
 
 ## Import with AI
 
-Select **Import with AI** in the header, then paste travel notes, a public itinerary link, or a Google Maps short link such as `https://maps.app.goo.gl/...`.
+Select **Import with AI** in the header, then paste travel notes, an approved public itinerary link, or a Google Maps short link such as `https://maps.app.goo.gl/...`.
 
 - Google Maps links resolve the place name and coordinates directly, then create a reviewable scheduled card under **Imported places**.
 - Text and public itinerary links use the configured GPT-5.6/provider model to propose places, notes, timing hints, and day groupings.
@@ -76,6 +76,8 @@ Select **Import with AI** in the header, then paste travel notes, a public itine
 - The model never writes directly to the persisted trip; confirmed imports apply through the existing `TripState` update flow.
 
 The import Edge Function requires an authenticated account and the provider/Geoapify secrets described in [the AI import specification](docs/AI_ITINERARY_IMPORT_SPEC.md).
+
+URL import defaults to `google.com,goo.gl`. Approve additional trusted domains with the Edge Function secret `AI_IMPORT_ALLOWED_URL_HOSTS` as a comma-separated list. Keep this list narrow; paste text from unapproved pages instead.
 
 ## Hackathon screenshots
 

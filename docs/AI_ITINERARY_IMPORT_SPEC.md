@@ -439,6 +439,7 @@ supabase/functions/
 ├── ai-itinerary-import/
 │   ├── index.ts
 │   └── _shared/
+│       ├── modelDraft.ts
 │       └── sourceExtractor.ts
 └── _shared/
     ├── aiImportSchemas.ts
@@ -459,6 +460,8 @@ NVIDIA_NIM_MODEL=deepseek-ai/deepseek-v4-flash
 GEOAPIFY_API_KEY=<secret>
 AI_IMPORT_DAILY_LIMIT=20
 AI_IMPORT_MAX_TEXT_LENGTH=30000
+AI_IMPORT_MAX_REQUEST_BYTES=150000
+AI_IMPORT_ALLOWED_URL_HOSTS=google.com,goo.gl
 ```
 
 These values are deployed through Supabase secrets and are not exposed as Vite variables.
@@ -469,6 +472,7 @@ request fails or times out.
 
 ```ts
 interface AiImportRequest {
+  planId: string;
   source:
     | { type: 'text'; content: string }
     | { type: 'url'; url: string };
@@ -480,26 +484,10 @@ interface AiImportRequest {
     startDate?: string;
     mergeMode: 'new-days' | 'append' | 'unscheduled';
   };
-  existingTrip: {
-    tripName: string;
-    startDate: string;
-    places: Array<{
-      id: string;
-      name: string;
-      region: string;
-      latitude: number;
-      longitude: number;
-    }>;
-    days: Array<{
-      id: string;
-      label: string;
-      placeNames: string[];
-    }>;
-  };
 }
 ```
 
-Do not send expenses, execution state, collaborator information, account email, or read-only share tokens to the model.
+The Edge Function loads at most 30 existing place names and regions from the RLS-authorized plan for deduplication. Client-supplied trip context is ignored. Do not send coordinates, expenses, execution state, collaborator information, account email, or read-only share tokens to the model.
 
 ## 9.4 Response contract
 
@@ -541,13 +529,13 @@ The function does not use a service-role key to bypass trip authorization.
 
 ### Step 4: Rate limiting
 
-For the POC, enforce a daily per-user quota, default `20` successful or attempted AI imports per UTC day.
+For the POC, enforce a rolling 24-hour per-user quota, default `20` successful or attempted AI imports.
 
 Rate limiting protects OpenCode Go, not only Supabase invocations.
 
 Recommended behaviour:
 
-- count an invocation after request validation and before calling the model;
+- reserve one invocation atomically after authentication/plan authorization and before URL fetching or model calls;
 - return `429 AI_IMPORT_LIMIT_REACHED` when exhausted;
 - include `retryAfter` as an ISO timestamp;
 - do not count CORS preflight requests;
@@ -567,9 +555,10 @@ Recommended behaviour:
 #### Public URL
 
 - accept only `http` and `https`;
-- resolve DNS and reject loopback, link-local, private, and reserved IP ranges;
+- allow only explicitly approved domains and their subdomains;
+- resolve DNS and reject loopback, link-local, private, reserved, NAT64, and IPv4-mapped IP ranges;
 - reject embedded credentials;
-- follow at most three redirects and validate every redirect target;
+- follow at most eight redirects and validate every redirect target;
 - limit total response size to 1 MB;
 - use a bounded timeout;
 - accept HTML or plain text only;
@@ -613,6 +602,8 @@ Request principles:
 - no tools, shell, file access, or arbitrary agent loop;
 - one provider retry only for transient network or `5xx` errors;
 - no retry on authentication, quota, validation, or safety errors.
+
+The source and compact existing-place context are serialized as values inside one JSON user message. Instructions remain in the system message.
 
 ### Step 7: Model-output validation
 
@@ -798,7 +789,8 @@ Security:
 - enable RLS;
 - users may select only their own usage rows if a future UI needs them;
 - normal browser clients should not insert or update usage rows directly;
-- provide a narrowly scoped security-definer RPC used by the authenticated Edge Function, or use a separate server-only credential only for this usage table;
+- reserve usage atomically through a `security invoker` RPC executable only by `service_role`;
+- serialize reservations per user with a transaction-scoped advisory lock;
 - never use elevated access to read or mutate trips outside existing caller permissions.
 
 The complete pasted source should not be stored by default.

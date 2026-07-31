@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Alert, Badge, Button, Checkbox, Divider, Drawer, Group, NativeSelect, NumberInput, Paper, Radio, SegmentedControl, Stack, Text, Textarea, TextInput, Title } from '@mantine/core';
 import { IconSparkles } from '@tabler/icons-react';
-import type { PlaceCategory, TripState } from '../types';
+import type { PlaceCategory } from '../types';
 import type { AiImportRequest, AiItineraryDraft, AiResolvedPlace, ConfirmedAiDraft } from '../types/aiImport';
 import { useAiImport } from '../hooks/useAiImport';
 import { useTrip } from '../context/TripContext';
 import { PLACE_CATEGORIES, validatePlaceDetails } from '../domain/place';
 
 export function AiImportDrawer({ opened, onClose, onApply }: { opened: boolean; onClose: () => void; onApply: (confirmed: ConfirmedAiDraft) => void }) {
-  const { planId, state } = useTrip();
+  const { planId } = useTrip();
   const { draft, setDraft, loading, error, createDraft, cancel, reset } = useAiImport();
   const [sourceType, setSourceType] = useState<'text' | 'url'>('text');
   const [content, setContent] = useState('');
@@ -18,8 +18,7 @@ export function AiImportDrawer({ opened, onClose, onApply }: { opened: boolean; 
   const request = useMemo<AiImportRequest>(() => ({
     planId: planId ?? '',
     source: sourceType === 'text' ? { type: 'text', content } : { type: 'url', url: content }, preferences: { pace, mergeMode, requestedDays },
-    existingTrip: { tripName: state.tripName, startDate: state.startDate, places: state.places.map(({ id, name, region, latitude, longitude }) => ({ id, name, region, latitude, longitude })) },
-  }), [content, mergeMode, pace, planId, requestedDays, sourceType, state]);
+  }), [content, mergeMode, pace, planId, requestedDays, sourceType]);
 
   function close() { reset(); onClose(); }
   function setIncluded(tempId: string, included: boolean) {
@@ -39,7 +38,7 @@ export function AiImportDrawer({ opened, onClose, onApply }: { opened: boolean; 
       <SegmentedControl value={sourceType} onChange={(value) => { setSourceType(value as typeof sourceType); setContent(''); }} data={[{ value: 'text', label: 'Paste text' }, { value: 'url', label: 'Paste link' }]} />
       {sourceType === 'text'
         ? <Textarea label="Travel content" minRows={10} maxLength={30000} value={content} onChange={(event) => setContent(event.currentTarget.value)} placeholder="Day 1: Visit Taipei 101 at 10:00, then lunch at Din Tai Fung…" />
-        : <TextInput label="Public link" description="Google Maps short links (maps.app.goo.gl) are supported." maxLength={2048} value={content} onChange={(event) => setContent(event.currentTarget.value)} placeholder="https://maps.app.goo.gl/..." />}
+        : <TextInput label="Approved public link" description="Google Maps links are enabled by default. Other domains require server approval." maxLength={2048} value={content} onChange={(event) => setContent(event.currentTarget.value)} placeholder="https://maps.app.goo.gl/..." />}
       <Group grow>
         <NativeSelect label="Pace" value={pace} onChange={(event) => setPace(event.currentTarget.value as typeof pace)} data={['relaxed', 'balanced', 'packed']} />
         <NumberInput label="Days (optional)" min={1} max={14} value={requestedDays ?? ''} onChange={(value) => setRequestedDays(typeof value === 'number' ? value : undefined)} />
