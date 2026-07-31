@@ -12,13 +12,14 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { useMediaQuery } from '@mantine/hooks';
 import {
   IconCloudCheck,
   IconCloudOff,
   IconCloudUpload,
   IconCopy,
   IconChevronDown,
-  IconDownload,
+  IconDotsVertical,
   IconFileSpreadsheet,
   IconFileText,
   IconJson,
@@ -85,6 +86,7 @@ export function AppHeader({
   const dayCount = state.days.length;
   const canShare = isOwner;
   const liveLocationActive = location.isTracking && location.permission !== 'unsupported';
+  const isPhone = useMediaQuery('(max-width: 47.99em)');
 
   async function exportCloudTrip(format: 'excel' | 'markdown') {
     if (!activePlanId) return;
@@ -201,7 +203,7 @@ export function AppHeader({
             {t('addPlace')}
           </Button> : null}
           {!readOnly ? <Tooltip label="Import a Google Maps link, itinerary, or travel notes with AI">
-            <ActionIcon color="violet" variant="light" size="lg" onClick={onOpenAiImport} aria-label="Import with AI">
+            <ActionIcon color="violet" variant="light" size="lg" visibleFrom="sm" onClick={onOpenAiImport} aria-label="Import with AI">
               <IconSparkles size={18} />
             </ActionIcon>
           </Tooltip> : null}
@@ -211,19 +213,25 @@ export function AppHeader({
             </ActionIcon>
           </Tooltip> : null}
           {!readOnly ? <Tooltip label={t('tripSettings')}>
-            <ActionIcon variant="default" size="lg" onClick={onOpenSettings} aria-label={t('tripSettings')}>
+            <ActionIcon variant="default" size="lg" visibleFrom="sm" onClick={onOpenSettings} aria-label={t('tripSettings')}>
               <IconSettings size={18} />
             </ActionIcon>
           </Tooltip> : null}
           {readOnly ? <Badge color="gray" variant="light">Read-only</Badge> : null}
-          {canShare ? <Tooltip label="Share trip"><ActionIcon variant="default" size="lg" onClick={onOpenShare} aria-label="Share trip"><IconUsers size={18} /></ActionIcon></Tooltip> : null}
+          {canShare ? <Tooltip label="Share trip"><ActionIcon variant="default" size="lg" visibleFrom="sm" onClick={onOpenShare} aria-label="Share trip"><IconUsers size={18} /></ActionIcon></Tooltip> : null}
           <Menu position="bottom-end" withinPortal shadow="md">
             <Menu.Target>
               <ActionIcon variant="default" size="lg" aria-label={t('moreActions')}>
-                <IconDownload size={18} />
+                <IconDotsVertical size={18} />
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
+              {isPhone && !readOnly ? <>
+                <Menu.Item leftSection={<IconSparkles size={16} />} onClick={onOpenAiImport}>Import with AI</Menu.Item>
+                <Menu.Item leftSection={<IconSettings size={16} />} onClick={onOpenSettings}>{t('tripSettings')}</Menu.Item>
+                {canShare ? <Menu.Item leftSection={<IconUsers size={16} />} onClick={onOpenShare}>Share trip</Menu.Item> : null}
+                <Menu.Divider />
+              </> : null}
               {accountEmail ? <Menu.Label>{accountEmail}</Menu.Label> : null}
               <Menu.Label>{isDemo ? t('localDemoData') : t('cloudStatus', { status: t({ loading: 'loading', saving: 'saving', saved: 'saved', error: 'syncFailed' }[syncStatus] as 'loading' | 'saving' | 'saved' | 'syncFailed') })}</Menu.Label>
               <Menu.Divider />

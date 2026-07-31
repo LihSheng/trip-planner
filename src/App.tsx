@@ -538,6 +538,7 @@ export default function App() {
                   setSettingsOpened(false);
                   setMobileView(item.value);
                 }}
+                aria-label={item.label}
                 aria-current={active ? 'page' : undefined}
               >
                 <Icon size={21} stroke={active ? 2.5 : 1.8} />

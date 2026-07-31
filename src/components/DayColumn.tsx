@@ -188,15 +188,15 @@ export function DayColumn({
                 </ActionIcon>
               </Indicator>
             </Tooltip>
-            <Box className="day-column__completion-slot">
-              {allPlacesVisited ? (
+            {allPlacesVisited ? (
+              <Box className="day-column__completion-slot">
               <Tooltip label={t('allStopsVisited')}>
                 <ThemeIcon color="teal" variant="light" radius="xl" size="sm" className="day-column__completion" aria-label={t('allStopsVisited')}>
                   <IconCircleCheckFilled size={16} />
                 </ThemeIcon>
               </Tooltip>
-              ) : null}
-            </Box>
+              </Box>
+            ) : null}
             {!isDesktop ? (
               <Tooltip label={collapsed ? t('expandDay') : t('collapseDay')}>
                 <ActionIcon
