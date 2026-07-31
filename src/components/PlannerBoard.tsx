@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/core';
 import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Button, Group, Modal, ScrollArea, Stack, Text } from '@mantine/core';
-import { IconHistory, IconPlus } from '@tabler/icons-react';
+import { IconHistory, IconPlus, IconRoute } from '@tabler/icons-react';
 import type { ContainerId, PlaceholderKind, Place, StopSchedule, TravelMode, TripState } from '../types';
 import { findContainer, getContainerItems } from '../utils/itinerary';
 import { DayColumn } from './DayColumn';
@@ -83,6 +83,7 @@ export function PlannerBoard({
   const onRenamePlaceholder = (place: Place, label: string) => updatePlace({ ...place, name: label });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activityOpened, setActivityOpened] = useState(false);
+  const [showTransport, setShowTransport] = useState(true);
   const [taskDayId, setTaskDayId] = useState<string | null>(null);
   const [flightDate, setFlightDate] = useState('');
   const [editingFlight, setEditingFlight] = useState<FlightBooking>();
@@ -230,6 +231,15 @@ export function PlannerBoard({
             </Text>
           </div>
           {!readOnly ? <Group gap="xs">
+            <Button
+              variant={showTransport ? 'light' : 'default'}
+              color={showTransport ? 'teal' : 'gray'}
+              leftSection={<IconRoute size={17} />}
+              aria-pressed={showTransport}
+              onClick={() => setShowTransport((value) => !value)}
+            >
+              {showTransport ? 'Hide transport' : 'Show transport'}
+            </Button>
             <Button variant="default" leftSection={<IconHistory size={17} />} onClick={() => setActivityOpened(true)}>Activity</Button>
             <Button variant="light" color="teal" leftSection={<IconPlus size={17} />} onClick={() => { focusNewDayRef.current = true; onAddDay(); }}>{t('addDay')}</Button>
           </Group> : null}
@@ -291,6 +301,7 @@ export function PlannerBoard({
                     }
                   }}
                   onAddFlight={() => { setEditingFlight(undefined); setFlightDate(dayDate(index)); }}
+                  showTransport={showTransport}
                   readOnly={readOnly}
                 />
               ))}

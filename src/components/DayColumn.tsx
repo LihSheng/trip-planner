@@ -63,6 +63,7 @@ interface DayColumnProps {
   onEditBooking?: (card: PlannerBookingCard) => void;
   onAddFlight?: () => void;
   lodgingLabel?: string;
+  showTransport?: boolean;
 }
 
 export function DayColumn({
@@ -95,6 +96,7 @@ export function DayColumn({
   onEditBooking,
   onAddFlight,
   lodgingLabel,
+  showTransport = true,
 }: DayColumnProps) {
   const { t, locale } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
@@ -325,7 +327,7 @@ export function DayColumn({
                 clusterLabel={cluster?.name}
                 clusterRelationship={cluster ? member?.relationship ?? 'anchor' : undefined}
               />
-              {places[placeIndex + 1] ? (() => {
+              {showTransport && places[placeIndex + 1] ? (() => {
                 const nextPlace = places[placeIndex + 1];
                 const nextCluster = clusterForPlace(clusters, nextPlace.id);
                 const sameCluster = cluster && nextCluster?.id === cluster.id;
