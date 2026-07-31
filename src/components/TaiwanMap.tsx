@@ -15,6 +15,8 @@ import {
   IconArrowsMaximize,
   IconArrowsMinimize,
   IconCalendar,
+  IconCircleCheck,
+  IconCircleCheckFilled,
   IconEdit,
   IconExternalLink,
   IconMap,
@@ -39,8 +41,10 @@ interface TaiwanMapProps {
   unscheduledIds: string[];
   startDate: string;
   selectedId: string | null;
+  visitedPlaceIds: string[];
   activeView: string;
   onSelect: (placeId: string) => void;
+  onToggleVisited?: (placeId: string) => void;
   onEditPlace: (place: Place) => void;
   onActiveViewChange: (viewId: string) => void;
   onAddDay: () => void;
@@ -135,7 +139,9 @@ const PlaceMarker = memo(function PlaceMarker({
   activeView,
   dayByPlaceId,
   selected,
+  visited,
   onSelect,
+  onToggleVisited,
   onEditPlace,
   currentLocation,
   readOnly,
@@ -146,7 +152,9 @@ const PlaceMarker = memo(function PlaceMarker({
   activeView: string;
   dayByPlaceId: Map<string, number>;
   selected: boolean;
+  visited: boolean;
   onSelect: (placeId: string) => void;
+  onToggleVisited?: (placeId: string) => void;
   onEditPlace: (place: Place) => void;
   currentLocation: CurrentLocation | null;
   readOnly: boolean;
@@ -163,7 +171,22 @@ const PlaceMarker = memo(function PlaceMarker({
   >
     <Popup>
       <Stack gap={4} miw={170}>
-        <Text fw={700} size="sm" lineClamp={1}>{place.name}</Text>
+        <Group justify="space-between" align="center" gap="xs" wrap="nowrap">
+          <Text fw={700} size="sm" lineClamp={1}>{place.name}</Text>
+          {onToggleVisited ? <Tooltip label={t('markVisited', { name: place.name })}>
+            <ActionIcon
+              variant="subtle"
+              color={visited ? 'teal' : 'gray'}
+              size="sm"
+              aria-label={t('markVisited', { name: place.name })}
+              aria-pressed={visited}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => { event.stopPropagation(); onToggleVisited(place.id); }}
+            >
+              {visited ? <IconCircleCheckFilled size={18} /> : <IconCircleCheck size={18} />}
+            </ActionIcon>
+          </Tooltip> : null}
+        </Group>
         <Group gap={6} wrap="nowrap">
           <Text size="xs" c="dimmed" lineClamp={1}>{place.region}</Text>
           <Badge color={markerColors[place.category]} variant="light" size="xs">{categoryLabel(t, place.category)}</Badge>
@@ -187,6 +210,7 @@ const PlaceMarker = memo(function PlaceMarker({
   && previous.activeDay === next.activeDay
   && previous.activeView === next.activeView
   && previous.selected === next.selected
+  && previous.visited === next.visited
   && previous.currentLocation === next.currentLocation
   && previous.readOnly === next.readOnly);
 
@@ -198,8 +222,10 @@ function MapSurface({
   unscheduledIds,
   startDate,
   selectedId,
+  visitedPlaceIds = [],
   activeView,
   onSelect,
+  onToggleVisited,
   onEditPlace,
   onActiveViewChange,
   onAddDay,
@@ -310,7 +336,9 @@ function MapSurface({
           activeView={activeView}
           dayByPlaceId={dayByPlaceId}
           selected={place.id === selectedId}
+          visited={visitedPlaceIds.includes(place.id)}
           onSelect={onSelect}
+          onToggleVisited={onToggleVisited}
           onEditPlace={onEditPlace}
           currentLocation={currentLocation}
           readOnly={readOnly}

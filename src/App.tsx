@@ -299,8 +299,10 @@ export default function App() {
         unscheduledIds={planner.state.unscheduledIds}
         startDate={planner.state.startDate}
         selectedId={selectedId}
+        visitedPlaceIds={planner.state.visitedPlaceIds ?? []}
         activeView={activeMapView}
         onSelect={setSelectedId}
+        onToggleVisited={planner.isReadOnly ? undefined : planner.toggleVisited}
         onEditPlace={openEditPlace}
         onActiveViewChange={handleMapViewChange}
         onAddDay={planner.addDay}

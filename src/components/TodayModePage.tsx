@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActionIcon, Badge, Button, Checkbox, Collapse, Group, Menu, Modal, Paper, Select, Stack, Text, Textarea, Title, Tooltip, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
-  IconCheck, IconChevronDown, IconCircle, IconClock, IconDots,
+  IconCheck, IconChevronDown, IconCircle, IconCircleCheckFilled, IconClock, IconDots,
   IconArrowRight, IconFileText, IconListCheck, IconMapPin, IconPlayerSkipForward, IconReceipt, IconRoute, IconTrash,
 } from '@tabler/icons-react';
 import type { DayTask, Place, StopExecutionStatus, TripDay } from '../types';
@@ -30,8 +30,9 @@ interface TodayModePageProps {
 }
 
 export function TodayModePage({ location }: TodayModePageProps) {
-  const { state, placesById, isReadOnly: readOnly, updateExecution: onUpdateExecution, updatePlace: onUpdatePlace, addExpense: onAddExpense, toggleDayTask, deleteDayTask, moveDayTask } = useTrip();
+  const { state, placesById, isReadOnly: readOnly, updateExecution: onUpdateExecution, updatePlace: onUpdatePlace, addExpense: onAddExpense, toggleDayTask, deleteDayTask, moveDayTask, toggleVisited } = useTrip();
   const sessionKey = `trip-planner:today-day:${state.tripName}`;
+  const visitedPlaceIds = state.visitedPlaceIds ?? [];
   const [activeDayId, setActiveDayId] = useState(() => sessionStorage.getItem(sessionKey) ?? '');
   const [detailId, setDetailId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
@@ -167,13 +168,13 @@ export function TodayModePage({ location }: TodayModePageProps) {
         </Paper>
       ) : null}
 
-      {current ? <StopCard place={current} day={activeDay} status="current" readOnly={readOnly} onDetail={() => setDetailId(current.id)} onNavigate={() => openNavigation(current)} onUpdate={update} /> : null}
-      {next ? <StopCard place={next} day={activeDay} status="upcoming" readOnly={readOnly} onDetail={() => setDetailId(next.id)} onNavigate={() => openNavigation(next)} onUpdate={update} /> : null}
+      {current ? <StopCard place={current} day={activeDay} status="current" visited={visitedPlaceIds.includes(current.id)} readOnly={readOnly} onVisitedChange={toggleVisited} onDetail={() => setDetailId(current.id)} onNavigate={() => openNavigation(current)} onUpdate={update} /> : null}
+      {next ? <StopCard place={next} day={activeDay} status="upcoming" visited={visitedPlaceIds.includes(next.id)} readOnly={readOnly} onVisitedChange={toggleVisited} onDetail={() => setDetailId(next.id)} onNavigate={() => openNavigation(next)} onUpdate={update} /> : null}
 
       <Paper className="today-timeline" radius="xl">
         <Group justify="space-between" mb="xs"><Title order={2}>Day timeline</Title><Text size="sm" c="dimmed">{stops.length} stops</Text></Group>
         <Stack gap={0}>
-          {stops.map((place) => <TimelineRow key={place.id} place={place} day={activeDay} status={placeStatus(activeDay, execution, place.id)} onClick={() => setDetailId(place.id)} />)}
+          {stops.map((place) => <TimelineRow key={place.id} place={place} day={activeDay} status={placeStatus(activeDay, execution, place.id)} visited={visitedPlaceIds.includes(place.id)} onClick={() => setDetailId(place.id)} />)}
         </Stack>
       </Paper>
 
@@ -216,12 +217,12 @@ function TodayTaskRow({ task, dayLabel, overdue = false, readOnly, onToggle, onM
   );
 }
 
-function StopCard({ place, day, status, readOnly, onDetail, onNavigate, onUpdate }: { place: Place; day: TripDay; status: StopExecutionStatus; readOnly: boolean; onDetail: () => void; onNavigate: () => void; onUpdate: (id: string, status: StopExecutionStatus) => void }) {
+function StopCard({ place, day, status, visited, readOnly, onVisitedChange, onDetail, onNavigate, onUpdate }: { place: Place; day: TripDay; status: StopExecutionStatus; visited: boolean; readOnly: boolean; onVisitedChange: (placeId: string) => void; onDetail: () => void; onNavigate: () => void; onUpdate: (id: string, status: StopExecutionStatus) => void }) {
   const current = status === 'current';
-  return <Paper className={`today-stop-card today-stop-card--${status}`} radius="xl"><Group justify="space-between" align="flex-start"><Badge color="teal" variant="light">{current ? 'CURRENT STOP' : 'UP NEXT'}</Badge>{!readOnly ? <Menu shadow="md" position="bottom-end"><Menu.Target><ActionIcon variant="subtle" color="gray" aria-label={`More actions for ${place.name}`}><IconDots size={22} /></ActionIcon></Menu.Target><Menu.Dropdown><Menu.Item leftSection={<IconFileText size={16} />} onClick={onDetail}>View notes</Menu.Item><Menu.Item leftSection={<IconPlayerSkipForward size={16} />} onClick={() => onUpdate(place.id, 'skipped')}>Skip stop</Menu.Item><Menu.Item leftSection={<IconClock size={16} />} onClick={() => onUpdate(place.id, 'current')}>Make current</Menu.Item></Menu.Dropdown></Menu> : null}</Group><Title order={2}>{place.name}</Title><Text c="teal" fw={650}>{place.category}</Text><Stack gap="xs" mt="sm"><Group gap="xs"><IconClock size={19} /><Text>{timeRange(day, place.id)}</Text></Group><Group gap="xs" align="flex-start"><IconMapPin size={19} /><Text>{place.region || 'Location available offline'}</Text></Group></Stack><Group grow mt="lg"><Button onClick={onNavigate} leftSection={<IconRoute size={18} />}>Open navigation</Button>{!readOnly ? <Button variant="outline" color="teal" leftSection={<IconCheck size={18} />} onClick={() => onUpdate(place.id, current ? 'completed' : 'current')}>{current ? 'Mark complete' : 'Mark arrived'}</Button> : null}</Group></Paper>;
+  return <Paper className={`today-stop-card today-stop-card--${status}`} radius="xl"><Group justify="space-between" align="flex-start"><Group gap="xs"><Badge color="teal" variant="light">{current ? 'CURRENT STOP' : 'UP NEXT'}</Badge>{!readOnly ? <Checkbox checked={visited} onChange={() => onVisitedChange(place.id)} aria-label={`Mark ${place.name} as visited`} /> : null}</Group>{!readOnly ? <Menu shadow="md" position="bottom-end"><Menu.Target><ActionIcon variant="subtle" color="gray" aria-label={`More actions for ${place.name}`}><IconDots size={22} /></ActionIcon></Menu.Target><Menu.Dropdown><Menu.Item leftSection={<IconFileText size={16} />} onClick={onDetail}>View notes</Menu.Item><Menu.Item leftSection={<IconPlayerSkipForward size={16} />} onClick={() => onUpdate(place.id, 'skipped')}>Skip stop</Menu.Item><Menu.Item leftSection={<IconClock size={16} />} onClick={() => onUpdate(place.id, 'current')}>Make current</Menu.Item></Menu.Dropdown></Menu> : null}</Group><Title order={2}>{place.name}</Title><Text c="teal" fw={650}>{place.category}</Text><Stack gap="xs" mt="sm"><Group gap="xs"><IconClock size={19} /><Text>{timeRange(day, place.id)}</Text></Group><Group gap="xs" align="flex-start"><IconMapPin size={19} /><Text>{place.region || 'Location available offline'}</Text></Group></Stack><Group grow mt="lg"><Button onClick={onNavigate} leftSection={<IconRoute size={18} />}>Open navigation</Button>{!readOnly ? <Button variant="outline" color="teal" leftSection={<IconCheck size={18} />} onClick={() => onUpdate(place.id, current ? 'completed' : 'current')}>{current ? 'Mark complete' : 'Mark arrived'}</Button> : null}</Group></Paper>;
 }
 
-function TimelineRow({ place, day, status, onClick }: { place: Place; day: TripDay; status: StopExecutionStatus; onClick: () => void }) {
-  const icon = status === 'completed' ? <IconCheck size={17} /> : <IconCircle size={17} />;
+function TimelineRow({ place, day, status, visited, onClick }: { place: Place; day: TripDay; status: StopExecutionStatus; visited: boolean; onClick: () => void }) {
+  const icon = visited ? <IconCircleCheckFilled size={17} /> : status === 'completed' ? <IconCheck size={17} /> : <IconCircle size={17} />;
   return <button type="button" className={`today-timeline-row today-timeline-row--${status}`} onClick={onClick}><span className="today-timeline-row__marker">{icon}</span><span className="today-timeline-row__time">{day.stopSchedules?.[place.id]?.startTime ?? 'Later'}</span><span className="today-timeline-row__copy"><strong>{place.name}</strong><small>{status === 'current' ? `Now · ${timeRange(day, place.id)}` : status === 'upcoming' ? timeRange(day, place.id) : labels[status]}</small></span><IconChevronDown size={18} /></button>;
 }
