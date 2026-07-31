@@ -49,6 +49,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
   // Older saved trips may share a hotel ID between Unscheduled and a day.
   // Give each day assignment its own ID so dnd-kit can distinguish the cards.
   useEffect(() => {
+    if (readOnly) return;
     setState((current) => {
       const additions: Place[] = [];
       let changed = false;
@@ -65,7 +66,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
       });
       return changed ? { ...current, places: [...current.places, ...additions], days } : current;
     });
-  }, [state.days, state.places, state.unscheduledIds]);
+  }, [readOnly, state.days, state.places, state.unscheduledIds]);
 
   const addPlace = useCallback((place: Place) => {
     if (readOnly) return;

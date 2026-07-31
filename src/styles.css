@@ -962,7 +962,7 @@ select {
   }
 
   .app-container {
-    padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
   }
 
   .mobile-bottom-nav {
@@ -1025,7 +1025,7 @@ select {
     max-height: none !important;
   }
 
-  .today-mode { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .today-mode { padding-bottom: 0; }
 
   .map-shell,
   .taiwan-map {
@@ -1162,10 +1162,6 @@ select {
   .app-header .mantine-ActionIcon-root {
     min-width: 44px;
     min-height: 44px;
-  }
-
-  .app-container {
-    padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
   }
 
   .mobile-workspace {

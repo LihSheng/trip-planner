@@ -236,6 +236,18 @@ export default function App() {
     setDeleteTarget(undefined);
   }
 
+  if (planner.loadBlocked) {
+    return (
+      <Center mih="100vh">
+        <Stack align="center" gap="sm" maw={440} px="md">
+          <Text fw={800} size="lg">Unable to load this trip</Text>
+          <Text size="sm" c="dimmed" ta="center">{planner.syncError ?? 'Check your connection and try again.'}</Text>
+          <Button color="teal" onClick={planner.retryLoad}>Retry</Button>
+        </Stack>
+      </Center>
+    );
+  }
+
   const dayToDelete = planner.state.days.find((day) => day.id === dayDeleteTarget);
   const dayToDeleteIndex = dayToDelete ? planner.state.days.indexOf(dayToDelete) : -1;
 
@@ -665,6 +677,38 @@ export default function App() {
               {t('removeDay')}
             </Button>
           </Box>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={planner.syncConflicts.length > 0}
+        onClose={() => undefined}
+        closeOnClickOutside={false}
+        closeOnEscape={false}
+        withCloseButton={false}
+        title="Resolve collaborator changes"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">Both you and another collaborator changed the same field. Choose which value to keep.</Text>
+          {planner.syncConflicts.map((conflict) => (
+            <Paper key={conflict.path} withBorder p="sm">
+              <Text size="xs" fw={700} mb="xs">{conflict.path}</Text>
+              <Group grow align="stretch">
+                <Button variant="light" color="teal" h="auto" py="sm" onClick={() => planner.resolveConflict(conflict.path, 'local')}>
+                  <Stack gap={2} align="flex-start">
+                    <Text size="xs" fw={700}>Keep mine</Text>
+                    <Text size="xs" lineClamp={3}>{JSON.stringify(conflict.localValue) ?? 'Deleted'}</Text>
+                  </Stack>
+                </Button>
+                <Button variant="light" color="blue" h="auto" py="sm" onClick={() => planner.resolveConflict(conflict.path, 'remote')}>
+                  <Stack gap={2} align="flex-start">
+                    <Text size="xs" fw={700}>Keep theirs</Text>
+                    <Text size="xs" lineClamp={3}>{JSON.stringify(conflict.remoteValue) ?? 'Deleted'}</Text>
+                  </Stack>
+                </Button>
+              </Group>
+            </Paper>
+          ))}
         </Stack>
       </Modal>
     </AppShell>

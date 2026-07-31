@@ -40,7 +40,6 @@ import { isPlaceholder } from '../domain/place';
 import { useAuth } from '../context/AuthContext';
 import { useTrip } from '../context/TripContext';
 import type { CurrentLocationState } from '../hooks/useCurrentLocation';
-import { loadTripState } from '../lib/tripRepository';
 import { exportTripExcel, exportTripMarkdown } from '../utils/exportTrip';
 import { useI18n } from '../i18n';
 
@@ -78,8 +77,9 @@ export function AppHeader({
     isOwner,
     switchPlan: onSwitchPlan,
     createPlan: onCreatePlan,
+    getSynchronizedState,
   } = useTrip();
-  const { accessToken, user, isDemo, isAuthenticated, requestMagicLink } = useAuth();
+  const { user, isDemo, isAuthenticated, requestMagicLink } = useAuth();
   const { t } = useI18n();
   const [exporting, setExporting] = useState<'excel' | 'markdown' | null>(null);
   const [signInOpened, setSignInOpened] = useState(false);
@@ -118,7 +118,7 @@ export function AppHeader({
     if (!activePlanId) return;
     setExporting(format);
     try {
-      const state = await loadTripState(accessToken, activePlanId);
+      const state = getSynchronizedState();
       if (!state) throw new Error(t('noSynchronizedTrip'));
       if (format === 'excel') exportTripExcel(state);
       else exportTripMarkdown(state);

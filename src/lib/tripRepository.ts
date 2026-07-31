@@ -1,11 +1,6 @@
 import type { TripActivityEvent, TripState } from '../types';
 import type { PendingTripActivity } from '../domain/tripActivity';
-import { ensureActivities } from '../domain/activity';
-import { ensureItineraryEntries } from '../domain/itinerary';
-import { normalizePlace } from '../domain/place';
-import { normalizeLocationClusters } from '../domain/locationCluster';
-import { normalizeDayTasks } from '../domain/dayTask';
-import { normalizeExpenseState } from '../domain/expenses';
+import { isTripState, normalizeTripState } from '../domain/tripRestoration';
 import { supabasePublishableKey, supabaseUrl } from './supabaseConfig';
 
 interface TripRow {
@@ -57,18 +52,7 @@ async function parseError(response: Response): Promise<string> {
   }
 }
 
-export function isTripState(value: unknown): value is TripState {
-  if (!value || typeof value !== 'object') return false;
-  const candidate = value as Partial<TripState>;
-  return (
-    candidate.version === 1 &&
-    typeof candidate.tripName === 'string' &&
-    typeof candidate.startDate === 'string' &&
-    Array.isArray(candidate.places) &&
-    Array.isArray(candidate.unscheduledIds) &&
-    Array.isArray(candidate.days)
-  );
-}
+export { isTripState, normalizeTripState } from '../domain/tripRestoration';
 
 function tripSummary(row: TripRow, userId: string): TripPlanSummary | null {
   if (!isTripState(row.state)) return null;
@@ -82,33 +66,8 @@ function tripSummary(row: TripRow, userId: string): TripPlanSummary | null {
   };
 }
 
-export function normalizeTripState(state: TripState): TripState {
-  const normalized = {
-    ...state,
-    places: state.places.map(normalizePlace),
-    visitedPlaceIds: Array.isArray(state.visitedPlaceIds)
-      ? state.visitedPlaceIds.filter((placeId): placeId is string => typeof placeId === 'string')
-      : [],
-    days: state.days.map((day) => ({
-      ...day,
-      travelMode: day.travelMode ?? 'public',
-      stopSchedules: day.stopSchedules ?? {},
-      timeManagementEnabled: day.timeManagementEnabled ?? false,
-      legModeOverrides: day.legModeOverrides ?? {},
-    })),
-    executionByDay: state.executionByDay ?? {},
-    expenses: Array.isArray(state.expenses) ? state.expenses : [],
-    dayTasks: normalizeDayTasks(state),
-    displayCurrency: state.displayCurrency ?? 'MYR',
-  };
-  return normalizeExpenseState(ensureActivities(ensureItineraryEntries({
-    ...normalized,
-    locationClusters: normalizeLocationClusters(normalized),
-  })));
-}
-
 export interface LoadedTripState {
-  state: TripState;
+  state: unknown;
   revision: number;
 }
 
@@ -129,34 +88,16 @@ export async function listTripPlans(accessToken: string, userId: string): Promis
   });
 }
 
-export async function loadTripState(accessToken: string, planId: string): Promise<TripState | null> {
-  const query = new URLSearchParams({
-    select: 'id,owner_id,state,updated_at',
-    id: `eq.${planId}`,
-    limit: '1',
-  });
-  const response = await fetch(`${supabaseUrl}/rest/v1/trip_plans?${query.toString()}`, {
-    headers: dataHeaders(accessToken),
-  });
-
-  if (!response.ok) throw new Error(await parseError(response));
-  const rows = (await response.json()) as TripRow[];
-  if (!rows[0]) return null;
-  if (!isTripState(rows[0].state)) throw new Error('The saved trip has an unsupported data format.');
-  return normalizeTripState(rows[0].state);
-}
-
 export async function loadTripStateWithRevision(accessToken: string, planId: string): Promise<LoadedTripState | null> {
   const query = new URLSearchParams({ select: 'id,owner_id,state,updated_at,revision', id: `eq.${planId}`, limit: '1' });
   const response = await fetch(`${supabaseUrl}/rest/v1/trip_plans?${query.toString()}`, { headers: dataHeaders(accessToken) });
   if (!response.ok) throw new Error(await parseError(response));
   const rows = (await response.json()) as TripRow[];
   if (!rows[0]) return null;
-  if (!isTripState(rows[0].state)) throw new Error('The saved trip has an unsupported data format.');
-  return { state: normalizeTripState(rows[0].state), revision: rows[0].revision ?? 0 };
+  return { state: rows[0].state, revision: rows[0].revision ?? 0 };
 }
 
-export async function loadPublicTrip(shareToken: string): Promise<TripState | null> {
+export async function loadPublicTrip(shareToken: string): Promise<unknown | null> {
   const response = await fetch(`${supabaseUrl}/rest/v1/rpc/get_shared_trip`, {
     method: 'POST',
     headers: dataHeaders(supabasePublishableKey, { 'Content-Type': 'application/json' }),
@@ -165,8 +106,7 @@ export async function loadPublicTrip(shareToken: string): Promise<TripState | nu
   if (!response.ok) throw new Error(await parseError(response));
   const rows = (await response.json()) as SharedTripRow[];
   if (!rows[0]) return null;
-  if (!isTripState(rows[0].state)) throw new Error('The shared trip has an unsupported data format.');
-  return normalizeTripState(rows[0].state);
+  return rows[0].state;
 }
 
 export async function loadEditableTripPlanIdByShareToken(accessToken: string, shareToken: string): Promise<string | null> {

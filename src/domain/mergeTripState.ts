@@ -1,5 +1,18 @@
 import type { TripState } from '../types';
 
+export type TripConflictChoice = 'local' | 'remote';
+
+export interface TripConflict {
+  path: string;
+  localValue: unknown;
+  remoteValue: unknown;
+}
+
+export interface TripMergeResult {
+  state: TripState;
+  conflicts: TripConflict[];
+}
+
 function equal(left: unknown, right: unknown) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
@@ -15,7 +28,30 @@ function recordKey(value: unknown): string | undefined {
   return undefined;
 }
 
-function mergeStringArray(base: string[], local: string[], remote: string[]) {
+function conflictPath(path: string[]) {
+  return path.join('.');
+}
+
+function chooseConflict(
+  path: string[],
+  local: unknown,
+  remote: unknown,
+  conflicts: TripConflict[],
+  resolutions: Readonly<Record<string, TripConflictChoice>>,
+) {
+  const key = conflictPath(path);
+  conflicts.push({ path: key, localValue: local, remoteValue: remote });
+  return resolutions[key] === 'remote' ? remote : local;
+}
+
+function mergeStringArray(
+  base: string[],
+  local: string[],
+  remote: string[],
+  path: string[],
+  conflicts: TripConflict[],
+  resolutions: Readonly<Record<string, TripConflictChoice>>,
+) {
   const localSet = new Set(local);
   const baseSet = new Set(base);
   const locallyRemoved = new Set(base.filter((value) => !localSet.has(value)));
@@ -27,7 +63,15 @@ function mergeStringArray(base: string[], local: string[], remote: string[]) {
 
   const localReorderedBaseItems = local.filter((value) => baseSet.has(value));
   const remainingBaseItems = base.filter((value) => localSet.has(value));
-  if (!equal(localReorderedBaseItems, remainingBaseItems)) {
+  const remoteSet = new Set(remote);
+  const remoteReorderedBaseItems = remote.filter((value) => baseSet.has(value));
+  const remoteRemainingBaseItems = base.filter((value) => remoteSet.has(value));
+  const localReordered = !equal(localReorderedBaseItems, remainingBaseItems);
+  const remoteReordered = !equal(remoteReorderedBaseItems, remoteRemainingBaseItems);
+  if (localReordered && remoteReordered && !equal(localReorderedBaseItems, remoteReorderedBaseItems)) {
+    return chooseConflict(path, local, remote, conflicts, resolutions) as string[];
+  }
+  if (localReordered) {
     const remoteOnly = result.filter((value) => !localSet.has(value));
     return [...local.filter((value) => result.includes(value)), ...remoteOnly];
   }
@@ -38,61 +82,94 @@ function mergeKeyedArray(
   base: Array<Record<string, unknown>>,
   local: Array<Record<string, unknown>>,
   remote: Array<Record<string, unknown>>,
+  path: string[],
+  conflicts: TripConflict[],
+  resolutions: Readonly<Record<string, TripConflictChoice>>,
 ) {
   const baseById = new Map(base.map((item) => [recordKey(item)!, item]));
   const localById = new Map(local.map((item) => [recordKey(item)!, item]));
   const remoteById = new Map(remote.map((item) => [recordKey(item)!, item]));
-  const locallyRemoved = new Set(base.filter((item) => !localById.has(recordKey(item)!)).map((item) => recordKey(item)!));
   const result: Array<Record<string, unknown>> = [];
+  const keys = [...new Set([...remoteById.keys(), ...localById.keys(), ...baseById.keys()])];
 
-  for (const remoteItem of remote) {
-    const key = recordKey(remoteItem)!;
-    if (locallyRemoved.has(key)) continue;
+  for (const key of keys) {
+    const itemPath = [...path, key];
+    const remoteItem = remoteById.get(key);
     const localItem = localById.get(key);
     const baseItem = baseById.get(key);
-    result.push(localItem && baseItem
-      ? mergeValue(baseItem, localItem, remoteItem) as Record<string, unknown>
-      : remoteItem);
-  }
+    let merged: unknown;
 
-  for (const localItem of local) {
-    const key = recordKey(localItem)!;
-    if (remoteById.has(key)) continue;
-    const baseItem = baseById.get(key);
-    if (!baseItem || !equal(localItem, baseItem)) result.push(localItem);
+    if (baseItem && !localItem && remoteItem) {
+      merged = equal(remoteItem, baseItem)
+        ? undefined
+        : chooseConflict(itemPath, undefined, remoteItem, conflicts, resolutions);
+    } else if (baseItem && localItem && !remoteItem) {
+      merged = equal(localItem, baseItem)
+        ? undefined
+        : chooseConflict(itemPath, localItem, undefined, conflicts, resolutions);
+    } else if (!baseItem && localItem && remoteItem) {
+      merged = equal(localItem, remoteItem)
+        ? localItem
+        : chooseConflict(itemPath, localItem, remoteItem, conflicts, resolutions);
+    } else if (baseItem && localItem && remoteItem) {
+      merged = mergeValue(baseItem, localItem, remoteItem, itemPath, conflicts, resolutions);
+    } else {
+      merged = localItem ?? remoteItem;
+    }
+
+    if (isRecord(merged)) result.push(merged);
   }
   return result;
 }
 
-function mergeValue(base: unknown, local: unknown, remote: unknown): unknown {
+function mergeValue(
+  base: unknown,
+  local: unknown,
+  remote: unknown,
+  path: string[],
+  conflicts: TripConflict[],
+  resolutions: Readonly<Record<string, TripConflictChoice>>,
+): unknown {
   if (equal(local, base)) return remote;
   if (equal(remote, base) || equal(local, remote)) return local;
-  if (local === undefined || remote === undefined) return local;
+  if (local === undefined || remote === undefined) {
+    return chooseConflict(path, local, remote, conflicts, resolutions);
+  }
 
   if (Array.isArray(base) && Array.isArray(local) && Array.isArray(remote)) {
     if ([...base, ...local, ...remote].every((value) => typeof value === 'string')) {
-      return mergeStringArray(base as string[], local as string[], remote as string[]);
+      return mergeStringArray(base as string[], local as string[], remote as string[], path, conflicts, resolutions);
     }
     if ([...base, ...local, ...remote].every((value) => recordKey(value) !== undefined)) {
-      return mergeKeyedArray(base, local, remote);
+      return mergeKeyedArray(base, local, remote, path, conflicts, resolutions);
     }
-    return local;
+    return chooseConflict(path, local, remote, conflicts, resolutions);
   }
 
   if (isRecord(base) && isRecord(local) && isRecord(remote)) {
     const result: Record<string, unknown> = {};
     for (const key of new Set([...Object.keys(base), ...Object.keys(local), ...Object.keys(remote)])) {
-      const value = mergeValue(base[key], local[key], remote[key]);
+      const value = mergeValue(base[key], local[key], remote[key], [...path, key], conflicts, resolutions);
       if (value !== undefined) result[key] = value;
     }
     return result;
   }
 
-  // Both collaborators changed the same scalar. Keep the local edit.
-  return local;
+  return chooseConflict(path, local, remote, conflicts, resolutions);
 }
 
 /** Rebase unsaved local edits onto a newer collaborator revision. */
 export function mergeTripStates(base: TripState, local: TripState, remote: TripState): TripState {
-  return mergeValue(base, local, remote) as TripState;
+  return mergeTripStatesWithConflicts(base, local, remote).state;
+}
+
+export function mergeTripStatesWithConflicts(
+  base: TripState,
+  local: TripState,
+  remote: TripState,
+  resolutions: Readonly<Record<string, TripConflictChoice>> = {},
+): TripMergeResult {
+  const conflicts: TripConflict[] = [];
+  const state = mergeValue(base, local, remote, [], conflicts, resolutions) as TripState;
+  return { state, conflicts };
 }

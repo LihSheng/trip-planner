@@ -1,13 +1,13 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createInitialState } from '../data/seed';
-import { useTripPersistence } from './useTripPersistence';
+import { useTripLifecycle } from './useTripLifecycle';
 
 const authState = { accessToken: '', user: { id: 'demo', email: 'Demo mode' }, isDemo: true };
 
 vi.mock('../context/AuthContext', () => ({ useAuth: () => authState }));
 
-describe('useTripPersistence', () => {
+describe('useTripLifecycle', () => {
   beforeEach(() => {
     authState.accessToken = '';
     authState.user = { id: 'demo', email: 'Demo mode' };
@@ -29,16 +29,13 @@ describe('useTripPersistence', () => {
         currentState = val;
       }
     });
-    const setPlanId = vi.fn();
-    const setPlans = vi.fn();
+    const setForcedReadOnly = vi.fn();
 
     const { result } = renderHook(() =>
-      useTripPersistence({
+      useTripLifecycle({
         state,
         setState,
-        planId: null,
-        setPlanId,
-        setPlans,
+        setForcedReadOnly,
       }),
     );
 
@@ -50,16 +47,13 @@ describe('useTripPersistence', () => {
   it('persists demo state to localStorage when persistForCloudSignIn is called', async () => {
     const state = { ...createInitialState(), tripName: 'Test Save' };
     const setState = vi.fn();
-    const setPlanId = vi.fn();
-    const setPlans = vi.fn();
+    const setForcedReadOnly = vi.fn();
 
     const { result } = renderHook(() =>
-      useTripPersistence({
+      useTripLifecycle({
         state,
         setState,
-        planId: null,
-        setPlanId,
-        setPlans,
+        setForcedReadOnly,
       }),
     );
 

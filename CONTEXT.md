@@ -16,6 +16,10 @@ _Avoid_: Folder, collection, place group
 A member Place is inside the anchor venue, walkable from it, or part of the same wider area where transport may be required. The anchor itself has no relationship label.
 _Avoid_: Transport mode, category
 
+**Anchor removal disposition**:
+The required choice when removing the anchor Place of a LocationCluster: replace the anchor, ungroup the remaining Places, or remove every Place in the LocationCluster. There is no default disposition.
+_Avoid_: Automatic anchor deletion, implicit cluster cleanup
+
 **ItineraryEntry**:
 One scheduled visit to a Place in a trip day. Multiple entries may reference the same Place, including repeated accommodation visits.
 _Avoid_: Place assignment, duplicated place
@@ -27,7 +31,7 @@ Removal of one ItineraryEntry. It does not remove the referenced Place or any ot
 Removal of a Place and all ItineraryEntries that reference it. This is a destructive, confirmed action.
 
 **Stay-date override**:
-An ItineraryEntry for an Accommodation outside its check-in and check-out dates. A traveller may create it only after confirming a warning.
+An ItineraryEntry for an Accommodation outside its check-in and check-out dates, or when those dates are missing. A traveller may create or move it only after confirming a warning.
 
 **Visit policy**:
 A normal Place has one movable ItineraryEntry. An Accommodation may have multiple ItineraryEntries across or within trip days.
@@ -38,6 +42,10 @@ _Avoid_: Todo card, planned stop
 
 **Overdue task**:
 An incomplete DayTask owned by a day before the selected Today day. It keeps its original day until a traveller moves or deletes it.
+
+**AI import draft**:
+An ephemeral, editable interpretation of imported travel content. It is not part of a Trip until the traveller confirms it; closing, cancelling, switching Trip, or signing out discards it.
+_Avoid_: Imported itinerary, saved draft
 
 **Booking cost**:
 A consolidated expense attached to one reservation, independent of how many itinerary days display that hotel or flight. A round-trip flight booking has one total cost; separate reservations remain separate costs.

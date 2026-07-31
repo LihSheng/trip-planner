@@ -1,41 +1,38 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import type { TripPlanSummary } from '../lib/tripRepository';
 import { useTripState } from './useTripState';
-import { useTripPersistence, type SyncStatus } from './useTripPersistence';
+import { useTripLifecycle, type SyncStatus } from './useTripLifecycle';
 
 export type { SyncStatus };
 
 export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
-  const { accessToken, user, isDemo } = useAuth();
-  const isReadOnly = Boolean(shareToken);
+  const { user, isDemo } = useAuth();
+  const [forcedReadOnly, setForcedReadOnly] = useState(false);
+  const isReadOnly = Boolean(shareToken) || forcedReadOnly;
 
   const tripState = useTripState(isReadOnly, user);
-  const [planId, setPlanId] = useState<string | null>(null);
-  const [plans, setPlans] = useState<TripPlanSummary[]>([]);
-  const activePlan = useMemo(
-    () => plans.find((plan) => plan.id === planId),
-    [planId, plans],
-  );
-  const persistence = useTripPersistence({
+  const lifecycle = useTripLifecycle({
     state: tripState.state,
     setState: tripState.setState,
-    planId,
-    setPlanId,
-    setPlans,
+    setForcedReadOnly,
     shareToken,
     requestedPlanId,
   });
 
   return {
     state: tripState.state,
-    planId,
-    plans,
-    activePlan,
-    isReady: persistence.isReady,
-    syncStatus: persistence.syncStatus,
-    syncError: persistence.syncError,
-    isOwner: !shareToken && (isDemo || activePlan?.isOwner === true),
+    planId: lifecycle.planId,
+    plans: lifecycle.plans,
+    activePlan: lifecycle.activePlan,
+    isReady: lifecycle.isReady,
+    loadBlocked: lifecycle.loadBlocked,
+    retryLoad: lifecycle.retryLoad,
+    syncStatus: lifecycle.syncStatus,
+    syncError: lifecycle.syncError,
+    syncConflicts: lifecycle.syncConflicts,
+    resolveConflict: lifecycle.resolveConflict,
+    getSynchronizedState: lifecycle.getSynchronizedState,
+    isOwner: !shareToken && (isDemo || lifecycle.activePlan?.isOwner === true),
     isReadOnly,
     placesById: tripState.placesById,
     activitiesById: tripState.activitiesById,
@@ -79,11 +76,11 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
     updateLegMode: tripState.updateLegMode,
     applyAiDraft: tripState.applyAiDraft,
     reset: tripState.reset,
-    switchPlan: persistence.switchPlan,
-    createPlan: persistence.createPlan,
-    syncNow: persistence.syncNow,
-    persistForCloudSignIn: persistence.persistForCloudSignIn,
-    activityEvents: persistence.activityEvents,
-    refreshActivity: persistence.refreshActivity,
+    switchPlan: lifecycle.switchPlan,
+    createPlan: lifecycle.createPlan,
+    syncNow: lifecycle.syncNow,
+    persistForCloudSignIn: lifecycle.persistForCloudSignIn,
+    activityEvents: lifecycle.activityEvents,
+    refreshActivity: lifecycle.refreshActivity,
   };
 }

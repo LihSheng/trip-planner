@@ -10,7 +10,7 @@ import {
   loadEditableTripPlanIdByShareToken,
   loadSharedTripPlanId,
   loadTripCollaborators,
-  loadTripState,
+  loadTripStateWithRevision,
   normalizeTripState,
   removeTripCollaborator,
   saveTripState,
@@ -32,20 +32,6 @@ describe('trip repository', () => {
     expect(isTripState(createInitialState())).toBe(true);
     expect(isTripState({ version: 2 })).toBe(false);
     expect(isTripState(null)).toBe(false);
-  });
-
-  it('loads and normalizes legacy optional scheduling fields', async () => {
-    const state = createInitialState();
-    state.days = [{ id: 'd1', label: 'Day', placeIds: [] }];
-    // Simulates a saved pre-scheduling trip.
-    delete (state as Partial<typeof state>).visitedPlaceIds;
-    fetchMock.mockResolvedValue(new Response(JSON.stringify([{ id: 'plan-1', owner_id: 'owner', state }]), { status: 200 }));
-
-    const loaded = await loadTripState('token', 'plan-1');
-
-    expect(loaded?.visitedPlaceIds).toEqual([]);
-    expect(loaded?.days[0]).toMatchObject({ travelMode: 'public', stopSchedules: {}, timeManagementEnabled: false });
-    expect(fetchMock.mock.calls[0][0]).toContain('id=eq.plan-1');
   });
 
   it('normalizes legacy place types into the canonical category-only schema', () => {
@@ -76,7 +62,7 @@ describe('trip repository', () => {
     expect(fetchMock.mock.calls[2][1].method).toBe('POST');
 
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ message: 'Denied' }), { status: 403 }));
-    await expect(loadTripState('token', 'plan-1')).rejects.toThrow('Denied');
+    await expect(loadTripStateWithRevision('token', 'plan-1')).rejects.toThrow('Denied');
   });
 
   it('serializes camelCase activity events to the database snake_case contract', async () => {

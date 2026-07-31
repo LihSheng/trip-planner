@@ -285,6 +285,7 @@ describe('useTripPlanner', () => {
   });
 
   it('switches plans and creates a blank plan even when the refreshed list lags', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     authState.accessToken = 'token';
     authState.user = { id: 'cloud-user', email: 'cloud@example.com' };
     authState.isDemo = false;
@@ -293,7 +294,7 @@ describe('useTripPlanner', () => {
       .mockResolvedValueOnce(cloudPlans);
     vi.mocked(loadTripStateWithRevision)
       .mockResolvedValueOnce({ state: planOneState, revision: 0 })
-      .mockResolvedValueOnce({ state: planTwoState, revision: 0 });
+      .mockResolvedValue({ state: planTwoState, revision: 0 });
     vi.mocked(createTripPlan).mockResolvedValue('plan-3');
     vi.mocked(saveTripState).mockResolvedValue(1);
 
@@ -334,5 +335,81 @@ describe('useTripPlanner', () => {
     expect(hook.result.current.isReadOnly).toBe(true);
     expect(hook.result.current.state).toEqual(original);
     expect(saveTripState).not.toHaveBeenCalled();
+  });
+
+  it('blocks on an initial cloud load failure and retries without showing seed data', async () => {
+    authState.accessToken = 'token';
+    authState.user = { id: 'cloud-user', email: 'cloud@example.com' };
+    authState.isDemo = false;
+    vi.mocked(listTripPlans)
+      .mockRejectedValueOnce(new Error('Network unavailable'))
+      .mockResolvedValue(cloudPlans);
+    vi.mocked(loadTripStateWithRevision).mockResolvedValue({ state: planOneState, revision: 0 });
+
+    const hook = renderHook(() => useTripPlanner());
+    await waitFor(() => expect(hook.result.current).toMatchObject({ isReady: true, loadBlocked: true }));
+    expect(hook.result.current.syncError).toBe('Network unavailable');
+
+    act(() => hook.result.current.retryLoad());
+
+    await waitFor(() => expect(hook.result.current).toMatchObject({ isReady: true, loadBlocked: false, planId: 'plan-1' }));
+    expect(hook.result.current.state.tripName).toBe(planOneState.tripName);
+  });
+
+  it('exports the last synchronized snapshot through the lifecycle', async () => {
+    authState.accessToken = 'token';
+    authState.user = { id: 'cloud-user', email: 'cloud@example.com' };
+    authState.isDemo = false;
+    vi.mocked(listTripPlans).mockResolvedValue(cloudPlans);
+    vi.mocked(loadTripStateWithRevision).mockResolvedValue({ state: planOneState, revision: 0 });
+    vi.mocked(saveTripState).mockResolvedValue(1);
+
+    const hook = await planner();
+    act(() => hook.result.current.updateTrip('Unsaved name', planOneState.startDate));
+    expect(hook.result.current.getSynchronizedState()?.tripName).toBe(planOneState.tripName);
+
+    await act(async () => hook.result.current.syncNow());
+    expect(hook.result.current.getSynchronizedState()?.tripName).toBe('Unsaved name');
+  });
+
+  it('pauses same-field collaborator conflicts until an explicit choice', async () => {
+    authState.accessToken = 'token';
+    authState.user = { id: 'cloud-user', email: 'cloud@example.com' };
+    authState.isDemo = false;
+    vi.mocked(listTripPlans).mockResolvedValue(cloudPlans);
+    vi.mocked(loadTripStateWithRevision)
+      .mockResolvedValueOnce({ state: planOneState, revision: 0 })
+      .mockResolvedValueOnce({ state: { ...planOneState, tripName: 'Remote name' }, revision: 1 });
+    vi.mocked(saveTripState)
+      .mockRejectedValueOnce(new Error('TRIP_CONFLICT'))
+      .mockResolvedValueOnce(2);
+
+    const hook = await planner();
+    act(() => hook.result.current.updateTrip('Local name', planOneState.startDate));
+    await act(async () => hook.result.current.syncNow());
+
+    expect(saveTripState).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(hook.result.current.syncConflicts).toEqual([
+      expect.objectContaining({ path: 'tripName', localValue: 'Local name', remoteValue: 'Remote name' }),
+    ]));
+    act(() => hook.result.current.resolveConflict('tripName', 'remote'));
+    expect(hook.result.current.state.tripName).toBe('Remote name');
+    expect(hook.result.current.syncConflicts).toEqual([]);
+  });
+
+  it('opens a failed migration read-only without replacing the Trip', async () => {
+    authState.accessToken = 'token';
+    authState.user = { id: 'cloud-user', email: 'cloud@example.com' };
+    authState.isDemo = false;
+    const invalid = structuredClone(planOneState);
+    invalid.days[0].placeIds.push('missing-place');
+    vi.mocked(listTripPlans).mockResolvedValue(cloudPlans);
+    vi.mocked(loadTripStateWithRevision).mockResolvedValue({ state: invalid, revision: 0 });
+
+    const hook = await planner();
+
+    expect(hook.result.current.isReadOnly).toBe(true);
+    expect(hook.result.current.state.days[0].placeIds).toContain('missing-place');
+    expect(hook.result.current.syncError).toBe('Itinerary references missing place missing-place.');
   });
 });
