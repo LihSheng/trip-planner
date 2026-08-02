@@ -83,7 +83,7 @@ export function PlannerBoard({
   const onRenamePlaceholder = (place: Place, label: string) => updatePlace({ ...place, name: label });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activityOpened, setActivityOpened] = useState(false);
-  const [showTransport, setShowTransport] = useState(true);
+  const [showTransport, setShowTransport] = useState(false);
   const [taskDayId, setTaskDayId] = useState<string | null>(null);
   const [flightDate, setFlightDate] = useState('');
   const [editingFlight, setEditingFlight] = useState<FlightBooking>();
