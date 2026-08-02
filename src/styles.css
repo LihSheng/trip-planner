@@ -615,6 +615,17 @@ select {
   cursor: grab;
 }
 
+.place-card__drag-handle,
+.day-column__drag-handle {
+  flex: 0 0 44px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  touch-action: none;
+  cursor: grab;
+}
+
 .place-card--draggable:active {
   cursor: grabbing;
 }
@@ -1310,6 +1321,7 @@ select {
   .board-scroll .mantine-ScrollArea-viewport {
     overflow-x: hidden;
     scroll-snap-type: none;
+    touch-action: pan-y;
   }
 
   .board-scroll .mantine-ScrollArea-content > .mantine-Group-root {
@@ -1332,6 +1344,15 @@ select {
   .day-column__body {
     min-height: 0;
     overflow: visible;
+  }
+
+  .day-column--draggable {
+    cursor: default;
+    touch-action: pan-y;
+  }
+
+  .place-card--draggable {
+    cursor: default;
   }
 
   .place-card {

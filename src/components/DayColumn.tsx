@@ -20,7 +20,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconCoffee, IconDots, IconListCheck, IconMapPinPlus, IconPlane, IconPlus, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconWalk } from '@tabler/icons-react';
+import { IconAlertTriangle, IconBike, IconBus, IconCalendar, IconCar, IconChevronDown, IconChevronUp, IconCircleCheckFilled, IconClock, IconCoffee, IconDots, IconGripVertical, IconListCheck, IconMapPinPlus, IconPlane, IconPlus, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconWalk } from '@tabler/icons-react';
 import type { DayTask, LocationCluster, PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
@@ -103,7 +103,7 @@ export function DayColumn({
   const [renameTarget, setRenameTarget] = useState<Place | null>(null);
   const [renameLabel, setRenameLabel] = useState('');
   const isDesktop = useMediaQuery('(min-width: 48em)');
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `day:${day.id}`,
     data: { type: 'day', dayId: day.id },
     disabled: readOnly,
@@ -142,9 +142,9 @@ export function DayColumn({
         className="day-column day-column--draggable"
         data-day-id={day.id}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      {...attributes}
-      onPointerDown={handlePointerDown}
-      onKeyDown={onKeyDown as KeyboardEventHandler<HTMLDivElement> | undefined}
+      {...(isDesktop ? attributes : {})}
+      onPointerDown={isDesktop ? handlePointerDown : undefined}
+      onKeyDown={isDesktop ? onKeyDown as KeyboardEventHandler<HTMLDivElement> | undefined : undefined}
       data-over={isOver || undefined}
       data-dragging={isDragging || undefined}
     >
@@ -171,6 +171,22 @@ export function DayColumn({
             ) : null}
           </Stack>
           <Group gap={2} wrap="nowrap">
+            {!isDesktop && !readOnly ? (
+              <Tooltip label={`Move ${t('day', { number: index + 1 })}`}>
+                <ActionIcon
+                  ref={setActivatorNodeRef}
+                  {...attributes}
+                  {...listeners}
+                  variant="subtle"
+                  color="gray"
+                  className="day-column__drag-handle"
+                  aria-label={`Move ${t('day', { number: index + 1 })}`}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <IconGripVertical size={18} />
+                </ActionIcon>
+              </Tooltip>
+            ) : null}
             <Tooltip label="Day tasks">
               <Indicator
                 label={incompleteTaskCount}

@@ -14,6 +14,7 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconAlertTriangle, IconBuildingCommunity, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconPencil, IconRobot, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconUser } from '@tabler/icons-react';
 import type { ClusterRelationship, Place, PlaceCategory, StopSchedule } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
@@ -75,7 +76,8 @@ export function PlaceCard({
   clusterRelationship,
 }: PlaceCardProps) {
   const { t } = useI18n();
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const isMobile = useMediaQuery('(max-width: 47.99em)');
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: place.id,
     disabled: dragDisabled,
   });
@@ -96,12 +98,12 @@ export function PlaceCard({
       data-dragging={isDragging || undefined}
       data-visited={visited || undefined}
       data-expired={stayExpired || undefined}
-      {...attributes}
-      {...listeners}
+      {...(isMobile ? {} : attributes)}
+      {...(isMobile ? {} : listeners)}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
-        touchAction: dragDisabled ? undefined : 'none',
+        touchAction: dragDisabled ? undefined : isMobile ? 'pan-y' : 'none',
       }}
       onClick={() => onSelect?.(place.id)}
     >
@@ -117,6 +119,22 @@ export function PlaceCard({
           />
         ) : null}
         {placeholder ? <PlaceholderIcon size={18} color="var(--mantine-color-orange-6)" /> : <Box className={`place-card__accent place-card__accent--${place.category.toLowerCase()}`} />}
+        {!dragDisabled && isMobile ? (
+          <Tooltip label={`Move ${place.name}`}>
+            <ActionIcon
+              ref={setActivatorNodeRef}
+              {...attributes}
+              {...listeners}
+              variant="subtle"
+              color="gray"
+              className="place-card__drag-handle"
+              aria-label={`Move ${place.name}`}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <IconGripVertical size={18} />
+            </ActionIcon>
+          </Tooltip>
+        ) : null}
 
         <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
           <Group justify="space-between" align="flex-start" gap="xs" wrap="nowrap">
