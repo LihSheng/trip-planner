@@ -17,7 +17,7 @@ const allowedUrlHosts = (Deno.env.get('AI_IMPORT_ALLOWED_URL_HOSTS') ?? 'google.
 if (!allowedUrlHosts.length) throw new Error('AI_IMPORT_ALLOWED_URL_HOSTS must contain at least one domain.');
 
 type Candidate = ParsedModelCandidate;
-type ModelResult = { content: string; provider: 'opencode-go' | 'nvidia-nim'; model: string };
+type ModelResult = { content: string; provider: 'opencode-zen' | 'nvidia-nim'; model: string };
 
 function corsHeaders(request?: Request) {
   const origin = request?.headers.get('Origin') ?? '';
@@ -156,7 +156,9 @@ Deno.serve(async (request) => {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!serviceKey) return fail('INTERNAL_ERROR', 'AI import is not configured.', 500, requestId, request);
   const service = createClient(supabaseUrl, serviceKey);
-  const openCodeModel = Deno.env.get('OPENCODE_GO_MODEL') ?? 'deepseek-v4-flash';
+  const openCodeModel = Deno.env.get('OPENCODE_ZEN_MODEL') ?? 'deepseek-v4-flash-free';
+  const openCodeEndpoint = 'https://opencode.ai/zen/v1/chat/completions';
+  const openCodeKey = Deno.env.get('OPENCODE_ZEN_API_KEY') ?? Deno.env.get('OPENCODE_GO_API_KEY');
   const nimModel = Deno.env.get('NVIDIA_NIM_MODEL') ?? 'deepseek-ai/deepseek-v4-flash';
   const reservation = await service.rpc('reserve_ai_import_usage', {
     p_user_id: userData.user.id,
@@ -194,10 +196,9 @@ Deno.serve(async (request) => {
     let parsed: { places?: unknown[]; summary?: unknown; destination?: unknown } = { summary: 'Review the location from your Google Maps link before importing.' };
     let candidates: Candidate[] = directGoogleMapsLocation ? [directGoogleMapsLocation.candidate] : [];
     if (!directGoogleMapsLocation) {
-      const openCodeKey = Deno.env.get('OPENCODE_GO_API_KEY');
       const nimKey = Deno.env.get('NVIDIA_NIM_API_KEY');
       let modelResult = openCodeKey
-        ? await generateWithProvider('https://opencode.ai/zen/go/v1/chat/completions', openCodeKey, openCodeModel, 'opencode-go', content, promptExistingPlaces)
+        ? await generateWithProvider(openCodeEndpoint, openCodeKey, openCodeModel, 'opencode-zen', content, promptExistingPlaces)
         : null;
       if (!modelResult && nimKey) modelResult = await generateWithProvider('https://integrate.api.nvidia.com/v1/chat/completions', nimKey, nimModel, 'nvidia-nim', content, promptExistingPlaces);
       if (!modelResult) {
