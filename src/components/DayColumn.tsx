@@ -6,6 +6,7 @@ import {
   Badge,
   Button,
   Box,
+  Collapse,
   Group,
   Menu,
   Modal,
@@ -308,7 +309,7 @@ export function DayColumn({
         ) : null}
       </Box>
 
-      {!collapsed ? (
+      <Collapse expanded={!collapsed}>
         <SortableContext items={day.placeIds} strategy={verticalListSortingStrategy}>
           <Stack gap="xs" p="sm" className="day-column__body">
             {bookingCards.map((card) => <BookingCard key={card.id} card={card} onEdit={readOnly ? undefined : onEditBooking} />)}
@@ -427,7 +428,7 @@ export function DayColumn({
             </Group> : null}
           </Stack>
         </SortableContext>
-      ) : null}
+      </Collapse>
       <Modal opened={Boolean(renameTarget)} onClose={() => setRenameTarget(null)} title={t('renamePlannedStop')} centered>
         <Stack>
           <TextInput value={renameLabel} placeholder={renameTarget?.placeholderKind === 'meal' ? t('lunchDinner') : renameTarget?.placeholderKind === 'coffee' ? t('coffeeBreak') : renameTarget?.placeholderKind === 'free-time' ? t('freeTime') : t('customStop')} onChange={(event) => setRenameLabel(event.currentTarget.value)} autoFocus />

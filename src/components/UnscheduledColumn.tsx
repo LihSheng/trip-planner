@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { ActionIcon, Badge, Box, Divider, Group, Paper, Stack, Text, Tooltip } from '@mantine/core';
+import { ActionIcon, Badge, Box, Collapse, Divider, Group, Paper, Stack, Text, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconChevronDown, IconChevronUp, IconInbox } from '@tabler/icons-react';
 import type { LocationCluster, Place } from '../types';
@@ -89,7 +89,7 @@ export function UnscheduledColumn({
         ) : null}
       </Box>
 
-      {!collapsed ? (
+      <Collapse expanded={!collapsed}>
         <Stack gap="xs" p="sm" className="day-column__body">
           <SortableContext items={normalPlaces.map((place) => place.id)} strategy={verticalListSortingStrategy}>
             {normalPlaces.map((place) => (
@@ -142,7 +142,7 @@ export function UnscheduledColumn({
             </Box>
           ) : null}
         </Stack>
-      ) : null}
+      </Collapse>
     </Paper>
   );
 }
