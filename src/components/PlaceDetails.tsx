@@ -52,6 +52,13 @@ export function PlaceDetails({ place, onEdit, readOnly = false }: PlaceDetailsPr
           {place.notes || t('noNotes')}
         </Text>
       </Group>
+      {place.createdByEmail ? (
+        <Text size="xs" c="dimmed" mt="xs">
+          {place.updatedByEmail && place.updatedByEmail !== place.createdByEmail
+            ? `Added by ${place.createdByEmail} · Last updated by ${place.updatedByEmail}`
+            : `Added by ${place.createdByEmail}`}
+        </Text>
+      ) : null}
     </Paper>
   );
 }

@@ -514,6 +514,13 @@ select {
   transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
+.day-column__collapse {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
 .day-column[data-over] {
   border-color: var(--mantine-color-teal-5);
   box-shadow: 0 0 0 3px rgba(43, 200, 166, 0.12);
@@ -593,7 +600,7 @@ select {
 
 .drop-placeholder {
   display: grid;
-  min-height: 76px;
+  min-height: 120px;
   place-items: center;
   padding: 12px;
   border: 1px dashed var(--mantine-color-gray-4);
@@ -606,7 +613,52 @@ select {
   cursor: pointer;
   background: #ffffff;
   box-shadow: 0 4px 14px rgba(34, 54, 51, 0.04);
-  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease, opacity 120ms ease;
+  transition: background-color 180ms ease, border-color 180ms ease, border-style 180ms ease, box-shadow 180ms ease, transform 180ms ease, opacity 180ms ease;
+}
+
+.place-card--tint-landmark { background: color-mix(in srgb, var(--mantine-color-orange-6) 10%, #fff); }
+.place-card--tint-food { background: color-mix(in srgb, var(--mantine-color-red-6) 14%, #fff); }
+.place-card--tint-nature { background: color-mix(in srgb, var(--mantine-color-green-6) 10%, #fff); }
+.place-card--tint-culture { background: color-mix(in srgb, var(--mantine-color-violet-6) 10%, #fff); }
+.place-card--tint-shopping { background: color-mix(in srgb, var(--mantine-color-blue-6) 14%, #fff); }
+.place-card--tint-relaxation { background: color-mix(in srgb, var(--mantine-color-cyan-6) 17%, #fff); }
+.place-card--tint-accommodation { background: color-mix(in srgb, var(--mantine-color-indigo-6) 18%, #fff); }
+.place-card--tint-airport { background: color-mix(in srgb, var(--mantine-color-gray-6) 10%, #fff); }
+/* ponytail: airport gray tint stays near the unscheduled gray — a gray cannot read
+   as both neutral and tinted; dashed/solid border + icon + badge carry the state. */
+.place-card--tint-station { background: color-mix(in srgb, var(--mantine-color-lime-6) 13%, #fff); }
+.place-card--tint-transit { background: color-mix(in srgb, var(--mantine-color-yellow-6) 13.5%, #fff); }
+
+.place-card--unscheduled {
+  border-style: dashed;
+  border-color: var(--mantine-color-gray-4);
+  background: var(--mantine-color-gray-1);
+}
+
+.place-card__icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--mantine-color-teal-6);
+}
+
+.place-card__icon--landmark { color: var(--mantine-color-orange-6); }
+.place-card__icon--food { color: var(--mantine-color-red-6); }
+.place-card__icon--nature { color: var(--mantine-color-green-7); }
+.place-card__icon--culture { color: var(--mantine-color-violet-6); }
+.place-card__icon--shopping { color: var(--mantine-color-blue-6); }
+.place-card__icon--relaxation { color: var(--mantine-color-cyan-7); }
+.place-card__icon--accommodation { color: var(--mantine-color-indigo-6); }
+.place-card__icon--airport { color: var(--mantine-color-gray-6); }
+.place-card__icon--station { color: var(--mantine-color-lime-7); }
+.place-card__icon--transit { color: var(--mantine-color-yellow-7); }
+.place-card__icon--placeholder { color: var(--mantine-color-dimmed); }
+
+.place-card__lead {
+  display: flex;
+  flex: 0 0 44px;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
 .day-column--draggable {
@@ -635,6 +687,16 @@ select {
   min-height: 44px;
   touch-action: none;
   cursor: grab;
+}
+
+.place-card__drag-handle {
+  opacity: 0.45;
+  transition: opacity 140ms ease;
+}
+
+.place-card:hover .place-card__drag-handle,
+.place-card:focus-within .place-card__drag-handle {
+  opacity: 1;
 }
 
 .place-card--draggable:active {
@@ -774,11 +836,6 @@ select {
   opacity: 0.58;
 }
 
-.place-card__visited {
-  flex: 0 0 auto;
-  margin-top: 2px;
-}
-
 .place-card__name--visited {
   color: var(--mantine-color-gray-6);
   text-decoration: line-through;
@@ -786,40 +843,30 @@ select {
 
 .place-card--preview {
   width: 252px;
-  transform: rotate(1.5deg);
+  transform: rotate(2deg);
   cursor: grabbing;
 }
 
-.place-card__accent {
-  width: 4px;
-  align-self: stretch;
-  min-height: 46px;
-  border-radius: 999px;
-  background: var(--mantine-color-teal-5);
+.day-column[data-over] .day-column__body {
+  outline: 2px dashed var(--mantine-color-teal-5);
+  outline-offset: -6px;
+  border-radius: var(--mantine-radius-md);
 }
 
-.place-card__accent--landmark {
-  background: var(--mantine-color-orange-5);
+.day-column__empty {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 16px;
+  border: 2px dashed var(--mantine-color-gray-4);
+  border-radius: var(--mantine-radius-md);
+  background: rgba(248, 249, 250, 0.55);
 }
 
-.place-card__accent--food {
-  background: var(--mantine-color-red-5);
-}
-
-.place-card__accent--nature {
-  background: var(--mantine-color-green-6);
-}
-
-.place-card__accent--culture {
-  background: var(--mantine-color-violet-5);
-}
-
-.place-card__accent--shopping {
-  background: var(--mantine-color-blue-5);
-}
-
-.place-card__accent--relaxation {
-  background: var(--mantine-color-cyan-5);
+.day-column__empty-icon {
+  color: var(--mantine-color-gray-5);
 }
 
 .today-mode {

@@ -51,7 +51,6 @@ interface DayColumnProps {
   onRemove: (dayId: string) => void;
   onEditActivity: (place: Place) => void;
   onDeletePlace: (place: Place) => void;
-  onVisitedChange: (placeId: string) => void;
   onDayScheduleChange: (dayId: string, updates: { travelMode?: TravelMode; startTime?: string; lodgingPlaceId?: string; timeManagementEnabled?: boolean }) => void;
   onStopScheduleChange: (dayId: string, placeId: string, updates: StopSchedule) => void;
   hotelPlaces: Place[];
@@ -65,6 +64,8 @@ interface DayColumnProps {
   onAddFlight?: () => void;
   lodgingLabel?: string;
   showTransport?: boolean;
+  moveTargets?: { id: string; label: string }[];
+  onMoveToPlace?: (placeId: string, containerId: string) => void;
 }
 
 export function DayColumn({
@@ -84,7 +85,6 @@ export function DayColumn({
   onRemove,
   onEditActivity,
   onDeletePlace,
-  onVisitedChange,
   onDayScheduleChange,
   onStopScheduleChange,
   hotelPlaces,
@@ -98,6 +98,8 @@ export function DayColumn({
   onAddFlight,
   lodgingLabel,
   showTransport = true,
+  moveTargets,
+  onMoveToPlace,
 }: DayColumnProps) {
   const { t, locale } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
@@ -166,7 +168,7 @@ export function DayColumn({
               {formatTripDate(startDate, index)}
             </Text>
             {collapsed ? (
-              <Badge size="sm" variant="light" color="teal" className="day-column__status">
+              <Badge size="sm" variant="light" color="teal" autoContrast className="day-column__status">
                 {t('stopsVisited', { stops: places.length, visited: visitedCount })}
               </Badge>
             ) : null}
@@ -309,7 +311,7 @@ export function DayColumn({
         ) : null}
       </Box>
 
-      <Collapse expanded={!collapsed}>
+      <Collapse className="day-column__collapse" expanded={!collapsed}>
         <SortableContext items={day.placeIds} strategy={verticalListSortingStrategy}>
           <Stack gap="xs" p="sm" className="day-column__body">
             {bookingCards.map((card) => <BookingCard key={card.id} card={card} onEdit={readOnly ? undefined : onEditBooking} />)}
@@ -329,13 +331,15 @@ export function DayColumn({
                 selected={selectedId === place.id}
                 dragDisabled={readOnly}
                 visited={visitedPlaceIds.includes(place.id)}
+                currentContainerId={day.id}
+                moveTargets={moveTargets}
+                onMoveTo={onMoveToPlace ? (containerId) => onMoveToPlace(place.id, containerId) : undefined}
                 onSelect={onSelect}
                 onEdit={readOnly ? undefined : onEditActivity}
                 editLabel="Edit plan & schedule"
                 onDelete={readOnly ? undefined : onDeletePlace}
                 onReplace={!readOnly && isPlaceholder(place) ? onReplacePlaceholder : undefined}
                 onRename={!readOnly && isPlaceholder(place) ? (target) => { setRenameTarget(target); setRenameLabel(target.name === target.placeholderKind ? '' : target.name); } : undefined}
-                onVisitedChange={readOnly ? undefined : onVisitedChange}
                 schedule={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] ? scheduleFor(day, place) : undefined}
                 travelMinutes={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 && !isPlaceholder(place) && !isPlaceholder(places[placeIndex - 1]) ? estimateTravelMinutes(places[placeIndex - 1], place, day.travelMode) : undefined}
                 warnings={readOnly ? undefined : warningsByPlace.get(place.id)}
@@ -398,7 +402,13 @@ export function DayColumn({
                 );
               })() : null}
               </Box>
-            )})}
+            )            })}
+            {places.length === 0 && bookingCards.length === 0 ? (
+              <Box className="day-column__empty">
+                <IconPlus size={22} className="day-column__empty-icon" />
+                <Text size="sm" c="dimmed" ta="center">{t('emptyDayHint')}</Text>
+              </Box>
+            ) : null}
             {!readOnly ? <Group className="day-column__add-actions" gap="xs" justify="center">
               <Tooltip label={t('addPlace')}>
                 <ActionIcon className="day-column__add-action" variant="light" color="teal" size="lg" onClick={onAddPlace} aria-label={t('addPlace')}>

@@ -19,7 +19,6 @@ import { useMediaQuery } from '@mantine/hooks';
 import {
   IconCloudCheck,
   IconCloudOff,
-  IconCloudUpload,
   IconCopy,
   IconChevronDown,
   IconDotsVertical,
@@ -72,7 +71,6 @@ export function AppHeader({
     plans,
     syncStatus,
     syncError,
-    syncNow: onSyncNow,
     isReadOnly: readOnly,
     isOwner,
     switchPlan: onSwitchPlan,
@@ -198,27 +196,12 @@ export function AppHeader({
           ) : null}
           <Tooltip label={syncError ?? t('syncDescription')}>
             <Badge
-              visibleFrom="lg"
               variant="light"
               color={syncFailed ? 'red' : syncStatus === 'saved' ? 'teal' : 'gray'}
               leftSection={syncFailed ? <IconCloudOff size={13} /> : <IconCloudCheck size={13} />}
             >
               {t({ loading: 'loading', saving: 'saving', saved: 'saved', error: 'syncFailed' }[syncStatus] as 'loading' | 'saving' | 'saved' | 'syncFailed')}
             </Badge>
-          </Tooltip>
-          <Tooltip label={isDemo ? t('demoHint') : syncError ?? t('cloudStatus', { status: t({ loading: 'loading', saving: 'saving', saved: 'saved', error: 'syncFailed' }[syncStatus] as 'loading' | 'saving' | 'saved' | 'syncFailed') })}>
-            <ActionIcon
-              hiddenFrom="lg"
-              variant="light"
-              color={syncFailed ? 'red' : syncStatus === 'saved' ? 'teal' : 'yellow'}
-              size="lg"
-              loading={syncStatus === 'saving'}
-              disabled={isDemo || syncStatus === 'saving'}
-              onClick={() => void onSyncNow()}
-              aria-label={t('cloudStatus', { status: t({ loading: 'loading', saving: 'saving', saved: 'saved', error: 'syncFailed' }[syncStatus] as 'loading' | 'saving' | 'saved' | 'syncFailed') })}
-            >
-              {syncFailed ? <IconCloudOff size={18} /> : syncStatus === 'saved' ? <IconCloudCheck size={18} /> : <IconCloudUpload size={18} />}
-            </ActionIcon>
           </Tooltip>
           {!readOnly ? <Button
             color="teal"
@@ -229,7 +212,7 @@ export function AppHeader({
             {t('addPlace')}
           </Button> : null}
           {!readOnly ? <Tooltip label="Import a Google Maps link, itinerary, or travel notes with AI">
-            <ActionIcon color="violet" variant="light" size="lg" visibleFrom="sm" onClick={onOpenAiImport} aria-label="Import with AI">
+            <ActionIcon color="violet" variant="subtle" size="lg" visibleFrom="sm" onClick={onOpenAiImport} aria-label="Import with AI">
               <IconSparkles size={18} />
             </ActionIcon>
           </Tooltip> : null}
@@ -239,7 +222,7 @@ export function AppHeader({
             </ActionIcon>
           </Tooltip> : null}
           {!readOnly ? <Tooltip label={t('tripSettings')}>
-            <ActionIcon variant="default" size="lg" visibleFrom="sm" onClick={onOpenSettings} aria-label={t('tripSettings')}>
+            <ActionIcon variant="subtle" size="lg" visibleFrom="sm" onClick={onOpenSettings} aria-label={t('tripSettings')}>
               <IconSettings size={18} />
             </ActionIcon>
           </Tooltip> : null}
@@ -254,10 +237,10 @@ export function AppHeader({
             </Tooltip>
           </> : null}
           {readOnly ? <Badge color="gray" variant="light">Read-only</Badge> : null}
-          {canShare ? <Tooltip label="Share trip"><ActionIcon variant="default" size="lg" visibleFrom="sm" onClick={onOpenShare} aria-label="Share trip"><IconUsers size={18} /></ActionIcon></Tooltip> : null}
+          {canShare ? <Tooltip label="Share trip"><ActionIcon variant="subtle" size="lg" visibleFrom="sm" onClick={onOpenShare} aria-label="Share trip"><IconUsers size={18} /></ActionIcon></Tooltip> : null}
           <Menu position="bottom-end" withinPortal shadow="md">
             <Menu.Target>
-              <ActionIcon variant="default" size="lg" aria-label={t('moreActions')}>
+              <ActionIcon variant="subtle" size="lg" aria-label={t('moreActions')}>
                 <IconDotsVertical size={18} />
               </ActionIcon>
             </Menu.Target>

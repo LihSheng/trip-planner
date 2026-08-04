@@ -62,7 +62,6 @@ export function PlannerBoard({
     updateDayLabel: onLabelChange,
     removeDay: removeDayDirect,
     reorderDays: onReorderDays,
-    toggleVisited: onVisitedChange,
     updateDaySchedule: onDayScheduleChange,
     updateStopSchedule: onStopScheduleChange,
     updateLegMode: onLegModeChange,
@@ -124,6 +123,16 @@ export function PlannerBoard({
     return `${date.getFullYear()}-${month}-${day}`;
   }
 
+  const moveTargets = [
+    ...state.days.map((day, index) => ({ id: day.id, label: day.label.trim() || t('day', { number: index + 1 }) })),
+    { id: 'unscheduled', label: t('unscheduled') },
+  ];
+  const onMoveToPlace = (placeId: string, containerId: string) => {
+    const place = placesById.get(placeId);
+    if (!place) return;
+    requestStayCheckOrMove(place, { containerId: containerId as ContainerId, index: getContainerItems(state, containerId as ContainerId).length });
+  };
+
   function bookingCardsFor(date: string): PlannerBookingCard[] {
     const stayCards = (state.stayBookings ?? []).flatMap((booking: StayBooking) => {
       const hotel = placesById.get(booking.placeId);
@@ -160,6 +169,24 @@ export function PlannerBoard({
     return { containerId, index: Math.max(0, index) };
   }
 
+  function requestStayCheckOrMove(place: Place, destination: { containerId: ContainerId; index: number }) {
+    const dayIndex = state.days.findIndex((day) => day.id === destination.containerId);
+    const isNewAccommodationAssignment = Boolean(
+      isAccommodation(place)
+      && !place.assignmentOf
+      && state.unscheduledIds.includes(place.id)
+      && !state.days.some((day) => day.placeIds.includes(place.id)),
+    );
+    if (isNewAccommodationAssignment && dayIndex >= 0) {
+      const status = stayAssignmentStatus(place, dayDate(dayIndex));
+      if (status !== 'valid') {
+        setPendingAccommodationAssignment({ place, destination, dayNumber: dayIndex + 1, status });
+        return;
+      }
+    }
+    onMove(place.id, destination.containerId, destination.index);
+  }
+
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id));
   }
@@ -194,21 +221,7 @@ export function PlannerBoard({
     const destination = getDestination(overId);
     if (!destination) return;
     const place = placesById.get(activeId);
-    const dayIndex = state.days.findIndex((day) => day.id === destination.containerId);
-    const isNewAccommodationAssignment = Boolean(
-      place
-      && isAccommodation(place)
-      && !place.assignmentOf
-      && state.unscheduledIds.includes(activeId)
-      && !state.days.some((day) => day.placeIds.includes(activeId)),
-    );
-    if (place && isNewAccommodationAssignment && dayIndex >= 0) {
-      const status = stayAssignmentStatus(place, dayDate(dayIndex));
-      if (status !== 'valid') {
-        setPendingAccommodationAssignment({ place, destination, dayNumber: dayIndex + 1, status });
-        return;
-      }
-    }
+    if (place && requestStayCheckOrMove(place, destination)) return;
     onMove(activeId, destination.containerId, destination.index);
   }
 
@@ -255,6 +268,8 @@ export function PlannerBoard({
               onDeletePlace={onDeletePlace}
               clusters={state.locationClusters}
               readOnly={readOnly}
+              moveTargets={moveTargets}
+              onMoveToPlace={readOnly ? undefined : onMoveToPlace}
             />
             <SortableContext items={state.days.map((day) => `day:${day.id}`)} strategy={horizontalListSortingStrategy}>
               {state.days.map((day, index) => (
@@ -278,7 +293,6 @@ export function PlannerBoard({
                   onRemove={onRequestRemoveDay ?? removeDayDirect}
                   onEditActivity={onEditActivity}
                   onDeletePlace={(place) => removePlannerVisit(place.id, day.id)}
-                  onVisitedChange={onVisitedChange}
                   onDayScheduleChange={onDayScheduleChange}
                   onStopScheduleChange={onStopScheduleChange}
                   hotelPlaces={hotelPlaces}
@@ -303,6 +317,8 @@ export function PlannerBoard({
                   onAddFlight={() => { setEditingFlight(undefined); setFlightDate(dayDate(index)); }}
                   showTransport={showTransport}
                   readOnly={readOnly}
+                  moveTargets={moveTargets}
+                  onMoveToPlace={readOnly ? undefined : onMoveToPlace}
                 />
               ))}
             </SortableContext>

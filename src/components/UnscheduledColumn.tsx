@@ -18,6 +18,8 @@ interface UnscheduledColumnProps {
   onDeletePlace: (place: Place) => void;
   readOnly?: boolean;
   clusters?: LocationCluster[];
+  moveTargets?: { id: string; label: string }[];
+  onMoveToPlace?: (placeId: string, containerId: string) => void;
 }
 
 export function UnscheduledColumn({
@@ -28,6 +30,8 @@ export function UnscheduledColumn({
   onDeletePlace,
   readOnly = false,
   clusters = [],
+  moveTargets,
+  onMoveToPlace,
 }: UnscheduledColumnProps) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
@@ -61,7 +65,7 @@ export function UnscheduledColumn({
             </Text>
           </Group>
           <Group gap={2} wrap="nowrap">
-            <Badge variant="light" color="gray">
+            <Badge variant="light" color="gray" autoContrast>
               {collapsed ? t('spots', { count: places.length }) : places.length}
             </Badge>
             {!isDesktop ? (
@@ -89,7 +93,7 @@ export function UnscheduledColumn({
         ) : null}
       </Box>
 
-      <Collapse expanded={!collapsed}>
+      <Collapse className="day-column__collapse" expanded={!collapsed}>
         <Stack gap="xs" p="sm" className="day-column__body">
           <SortableContext items={normalPlaces.map((place) => place.id)} strategy={verticalListSortingStrategy}>
             {normalPlaces.map((place) => (
@@ -98,6 +102,10 @@ export function UnscheduledColumn({
                 place={place}
                 selected={selectedId === place.id}
                 dragDisabled={readOnly}
+                unscheduled
+                currentContainerId="unscheduled"
+                moveTargets={moveTargets}
+                onMoveTo={onMoveToPlace ? (containerId) => onMoveToPlace(place.id, containerId) : undefined}
                 onSelect={onSelect}
                 onEdit={readOnly ? undefined : onEditActivity}
                 editLabel="Edit plan & schedule"
@@ -120,6 +128,10 @@ export function UnscheduledColumn({
                   place={place}
                   selected={selectedId === place.id}
                   dragDisabled={readOnly}
+                  unscheduled
+                  currentContainerId="unscheduled"
+                  moveTargets={moveTargets}
+                  onMoveTo={onMoveToPlace ? (containerId) => onMoveToPlace(place.id, containerId) : undefined}
                   onSelect={onSelect}
                   onEdit={readOnly ? undefined : onEditActivity}
                   editLabel="Edit plan & schedule"

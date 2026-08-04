@@ -4,7 +4,6 @@ import {
   ActionIcon,
   Badge,
   Box,
-  Checkbox,
   Group,
   Menu,
   NumberInput,
@@ -15,7 +14,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconAlertTriangle, IconBuildingCommunity, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconMapPin, IconPencil, IconRobot, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconUser } from '@tabler/icons-react';
+import { IconAlertTriangle, IconBed, IconBuildingCommunity, IconBuildingMonument, IconBus, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconLeaf, IconMapPin, IconPalette, IconPencil, IconPlane, IconRobot, IconRoute, IconShoppingBag, IconSun, IconToolsKitchen, IconTrain, IconTrash, IconTree } from '@tabler/icons-react';
 import type { ClusterRelationship, Place, PlaceCategory, StopSchedule } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
 import { isStayExpired } from '../utils/stay';
@@ -34,16 +33,32 @@ const categoryColors: Record<PlaceCategory, string> = {
   Transit: 'yellow',
 };
 
+const categoryIcons: Record<PlaceCategory, typeof IconTree> = {
+  Landmark: IconBuildingMonument,
+  Food: IconToolsKitchen,
+  Nature: IconTree,
+  Culture: IconPalette,
+  Shopping: IconShoppingBag,
+  Relaxation: IconLeaf,
+  Accommodation: IconBed,
+  Airport: IconPlane,
+  Station: IconTrain,
+  Transit: IconBus,
+};
+
 interface PlaceCardProps {
   place: Place;
   selected?: boolean;
   dragDisabled?: boolean;
+  unscheduled?: boolean;
+  currentContainerId?: string;
+  moveTargets?: { id: string; label: string }[];
+  onMoveTo?: (containerId: string) => void;
   onSelect?: (placeId: string) => void;
   onEdit?: (place: Place) => void;
   editLabel?: string;
   onDelete?: (place: Place) => void;
   visited?: boolean;
-  onVisitedChange?: (placeId: string) => void;
   schedule?: StopSchedule;
   travelMinutes?: number;
   warnings?: string[];
@@ -59,12 +74,15 @@ export function PlaceCard({
   place,
   selected = false,
   dragDisabled = false,
+  unscheduled = false,
+  currentContainerId,
+  moveTargets,
+  onMoveTo,
   onSelect,
   onEdit,
   editLabel = 'Edit place details',
   onDelete,
   visited = false,
-  onVisitedChange,
   schedule,
   travelMinutes,
   warnings = [],
@@ -86,6 +104,8 @@ export function PlaceCard({
   const presetPlaceholderLabel = place.placeholderKind === 'meal' ? t('lunchDinner') : place.placeholderKind === 'coffee' ? t('coffeeBreak') : place.placeholderKind === 'free-time' ? t('freeTime') : t('customStop');
   const placeholderLabel = place.name === place.placeholderKind ? presetPlaceholderLabel : place.name;
   const PlaceholderIcon = place.placeholderKind === 'meal' ? IconToolsKitchen : place.placeholderKind === 'coffee' ? IconCoffee : IconSun;
+  const CategoryIcon = categoryIcons[place.category];
+  const displayName = placeholder ? placeholderLabel : place.name;
 
   return (
     <Paper
@@ -93,7 +113,7 @@ export function PlaceCard({
       withBorder
       radius="md"
       p="sm"
-      className={`place-card${dragDisabled ? '' : ' place-card--draggable'}${placeholder ? ' place-card--placeholder' : ''}`}
+      className={`place-card place-card--tint-${place.category.toLowerCase()}${dragDisabled ? '' : ' place-card--draggable'}${placeholder ? ' place-card--placeholder' : ''}${unscheduled ? ' place-card--unscheduled' : ''}`}
       data-selected={selected || undefined}
       data-dragging={isDragging || undefined}
       data-visited={visited || undefined}
@@ -108,39 +128,37 @@ export function PlaceCard({
       onClick={() => onSelect?.(place.id)}
     >
       <Group align="flex-start" gap="xs" wrap="nowrap">
-        {onVisitedChange && !placeholder ? (
-          <Checkbox
-            checked={visited}
-            onChange={() => onVisitedChange(place.id)}
-            aria-label={t('markVisited', { name: place.name })}
-            className="place-card__visited"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => event.stopPropagation()}
-          />
-        ) : null}
-        {placeholder ? <PlaceholderIcon size={18} color="var(--mantine-color-orange-6)" /> : <Box className={`place-card__accent place-card__accent--${place.category.toLowerCase()}`} />}
-        {!dragDisabled && isMobile ? (
-          <Tooltip label={`Move ${place.name}`}>
-            <ActionIcon
-              ref={setActivatorNodeRef}
-              {...attributes}
-              {...listeners}
-              variant="subtle"
-              color="gray"
-              className="place-card__drag-handle"
-              aria-label={`Move ${place.name}`}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <IconGripVertical size={18} />
-            </ActionIcon>
-          </Tooltip>
-        ) : null}
+        <Box className="place-card__lead">
+          {placeholder ? (
+            <PlaceholderIcon size={18} className="place-card__icon place-card__icon--placeholder" />
+          ) : (
+            <CategoryIcon size={18} className={`place-card__icon place-card__icon--${place.category.toLowerCase()}`} />
+          )}
+          {!dragDisabled ? (
+            <Tooltip label={`Move ${place.name}`}>
+              <ActionIcon
+                ref={isMobile ? setActivatorNodeRef : undefined}
+                {...(isMobile ? attributes : {})}
+                {...(isMobile ? listeners : {})}
+                variant="subtle"
+                color="gray"
+                className="place-card__drag-handle"
+                aria-label={`Move ${place.name}`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <IconGripVertical size={18} />
+              </ActionIcon>
+            </Tooltip>
+          ) : null}
+        </Box>
 
         <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
           <Group justify="space-between" align="flex-start" gap="xs" wrap="nowrap">
-            <Text fw={650} size="sm" lineClamp={1} className={visited ? 'place-card__name--visited' : undefined}>
-              {placeholder ? placeholderLabel : place.name}
-            </Text>
+            <Tooltip label={displayName} withinPortal openDelay={400} disabled={displayName.length < 14}>
+              <Text fw={650} size="sm" lineClamp={1} className={visited ? 'place-card__name--visited' : undefined}>
+                {displayName}
+              </Text>
+            </Tooltip>
             {(onEdit || onDelete || onEnableSchedule || onReplace || onRename) && (
               <Menu position="bottom-end" withinPortal shadow="md">
                 <Menu.Target>
@@ -171,6 +189,17 @@ export function PlaceCard({
                       Add time
                     </Menu.Item>
                   ) : null}
+                  {onMoveTo && moveTargets && currentContainerId ? (
+                    <>
+                      <Menu.Divider />
+                      <Menu.Label>{t('moveToDay')}</Menu.Label>
+                      {moveTargets.filter((target) => target.id !== currentContainerId).map((target) => (
+                        <Menu.Item key={target.id} onClick={() => onMoveTo(target.id)}>
+                          {target.label}
+                        </Menu.Item>
+                      ))}
+                    </>
+                  ) : null}
                   {onDelete && (
                     <Menu.Item
                       color="red"
@@ -186,11 +215,13 @@ export function PlaceCard({
           </Group>
           {!placeholder ? <Group gap={5} wrap="nowrap">
             <IconMapPin size={13} color="var(--mantine-color-dimmed)" />
-            <Text size="xs" c="dimmed" lineClamp={1}>
-              {place.region}
-            </Text>
+            <Tooltip label={place.region} withinPortal openDelay={400} disabled={place.region.length < 14}>
+              <Text size="xs" c="dimmed" lineClamp={1}>
+                {place.region}
+              </Text>
+            </Tooltip>
           </Group> : null}
-          {!placeholder ? <Badge color={categoryColors[place.category]} variant="light" size="xs">
+          {!placeholder ? <Badge color={categoryColors[place.category]} variant="light" size="xs" autoContrast>
             {categoryLabel(t, place.category)}
           </Badge> : null}
           {!placeholder && clusterLabel ? (
@@ -211,12 +242,6 @@ export function PlaceCard({
             </Badge>
           ) : null}
           {!placeholder ? <Group gap={5} wrap="nowrap" mt={1}>
-            <Tooltip label={authorDetails(place)}>
-              <Group gap={3} wrap="nowrap">
-                <IconUser size={12} color="var(--mantine-color-dimmed)" />
-                <Text size="xs" c="dimmed" lineClamp={1}>{shortAuthor(place.createdByEmail)}</Text>
-              </Group>
-            </Tooltip>
             {place.importedWithAi ? <Tooltip label="Imported with AI"><IconRobot size={13} color="var(--mantine-color-violet-6)" /></Tooltip> : null}
           </Group> : null}
           {schedule && onScheduleChange ? (
@@ -266,22 +291,9 @@ export function PlaceCard({
   );
 }
 
-function shortAuthor(email?: string): string {
-  if (!email) return 'Unknown';
-  const [local, domain] = email.split('@');
-  return domain ? `${local.slice(0, 12)}@…` : email.slice(0, 14);
-}
-
-function authorDetails(place: Place): string {
-  const author = place.createdByEmail ?? 'Author unavailable';
-  if (!place.updatedByEmail || place.updatedByEmail === place.createdByEmail) return `Added by ${author}`;
-  const when = place.updatedAt ? ` · ${new Date(place.updatedAt).toLocaleString()}` : '';
-  return `Added by ${author}\nLast updated by ${place.updatedByEmail}${when}`;
-}
-
 export function PlaceCardPreview({ place }: { place: Place }) {
   return (
-    <Paper withBorder radius="md" p="sm" shadow="lg" className="place-card place-card--preview">
+    <Paper withBorder radius="md" p="sm" shadow="lg" className="place-card place-card--preview" style={{ boxShadow: '0 20px 44px rgba(23, 48, 44, 0.25)' }}>
       <Group gap="xs" wrap="nowrap">
         <IconGripVertical size={16} color="var(--mantine-color-dimmed)" />
         <Stack gap={2}>
