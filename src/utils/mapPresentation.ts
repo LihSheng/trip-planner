@@ -1,3 +1,4 @@
+import type { PathOptions } from 'leaflet';
 import type { DayExecutionState, Place, PlaceCategory, StopExecutionStatus, TravelMode, TripDay } from '../types';
 
 /** Category → marker pin colour used by the map. */
@@ -116,3 +117,25 @@ export function timeRange(day: TripDay, placeId: string): string {
   const end = new Date(2000, 0, 1, hour, minute + schedule.durationMinutes);
   return `${schedule.startTime}–${end.toTimeString().slice(0, 5)}`;
 }
+
+/** Polyline style per travel mode: public solid teal, car/taxi dashed, walk dotted, bike dot-dash, other grey dashed. */
+export const legPathOptions: Record<TravelMode, PathOptions> = {
+  public: { color: '#13a889', weight: 5, opacity: 0.85, lineCap: 'round' },
+  car: { color: '#f08c46', weight: 4, dashArray: '12 8', lineCap: 'round' },
+  taxi: { color: '#f59f00', weight: 4, dashArray: '12 8', lineCap: 'round' },
+  walk: { color: '#2f9e70', weight: 5, dashArray: '1 9', lineCap: 'round' },
+  bike: { color: '#339af0', weight: 4, dashArray: '10 4 2 4', lineCap: 'round' },
+  other: { color: '#8a9a96', weight: 4, dashArray: '6 6', lineCap: 'round' },
+};
+
+/** Faint style for other days' routes drawn behind the selected day. */
+export const ghostPathOptions: PathOptions = { color: '#9fb4ae', weight: 2.5, dashArray: '6 6', opacity: 0.8, interactive: false };
+
+export const legModeColor: Record<TravelMode, string> = {
+  public: '#13a889',
+  car: '#f08c46',
+  taxi: '#f59f00',
+  walk: '#2f9e70',
+  bike: '#339af0',
+  other: '#8a9a96',
+};
