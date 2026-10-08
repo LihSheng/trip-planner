@@ -26,6 +26,7 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
     activePlan: lifecycle.activePlan,
     isReady: lifecycle.isReady,
     loadBlocked: lifecycle.loadBlocked,
+    isOfflineCopy: lifecycle.isOfflineCopy,
     retryLoad: lifecycle.retryLoad,
     syncStatus: lifecycle.syncStatus,
     syncError: lifecycle.syncError,
