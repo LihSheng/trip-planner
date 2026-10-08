@@ -77,6 +77,30 @@ describe('useTripState', () => {
     expect(result.current.state.places.length).toBe(initialPlaceCount);
   });
 
+  it('cascades stop times using the leg override until the next planned stop', () => {
+    const { result } = renderHook(() => useTripState(false));
+    const first = { ...samplePlace, id: 'cascade-first' };
+    const second = { ...samplePlace, id: 'cascade-second', category: 'Food' as const, latitude: 25.04, longitude: 121.57 };
+    const third = { ...samplePlace, id: 'cascade-third', latitude: 25.1, longitude: 121.6 };
+    act(() => result.current.addDay());
+    const dayId = result.current.state.days[result.current.state.days.length - 1].id;
+    act(() => {
+      [first, second, third].forEach((place) => result.current.addPlace(place));
+      [first, second, third].forEach((place, index) => result.current.move(place.id, dayId, index));
+      result.current.updateDaySchedule(dayId, { travelMode: 'walk' });
+      result.current.updateLegMode(dayId, first.id, second.id, 'car');
+      result.current.updateStopSchedule(dayId, third.id, { startTime: '18:00' });
+      result.current.updateStopSchedule(dayId, first.id, { startTime: '09:00' });
+    });
+
+    const day = result.current.state.days.find((item) => item.id === dayId)!;
+    expect(day.stopSchedules).toEqual({
+      [first.id]: { startTime: '09:00' },
+      [second.id]: { startTime: '10:35', durationMinutes: 60 },
+      [third.id]: { startTime: '18:00' },
+    });
+  });
+
   it('manages days (add, update label, remove, reorder)', () => {
     const { result } = renderHook(() => useTripState(false));
     const initialDayCount = result.current.state.days.length;

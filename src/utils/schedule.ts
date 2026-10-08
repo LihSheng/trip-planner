@@ -62,31 +62,6 @@ export function scheduleFor(day: TripDay, place: Place): StopSchedule {
   };
 }
 
-export function dayWarnings(day: TripDay, places: Place[]) {
-  const warnings = new Map<string, string[]>();
-  let previous: { place: Place; endsAt: number } | null = null;
-
-  for (const place of places) {
-    const schedule = scheduleFor(day, place);
-    const startsAt = toMinutes(schedule.startTime);
-    if (startsAt === null) continue;
-    const duration = schedule.durationMinutes ?? defaultDuration(place.category);
-    const closesAt = toMinutes(place.openingHours?.closesAt);
-    const opensAt = toMinutes(place.openingHours?.opensAt);
-    const placeWarnings: string[] = [];
-    if ((opensAt !== null && startsAt < opensAt) || (closesAt !== null && startsAt + duration > closesAt)) placeWarnings.push('Outside opening hours');
-    if (previous && startsAt < previous.endsAt + estimateTravelMinutes(previous.place, place, day.travelMode)) placeWarnings.push('Insufficient travel time');
-    if (placeWarnings.length) warnings.set(place.id, placeWarnings);
-    previous = { place, endsAt: startsAt + duration };
-  }
-
-  return warnings;
-}
-
-export function dayWarningCount(day: TripDay, places: Place[]) {
-  return [...dayWarnings(day, places).values()].reduce((total, warnings) => total + warnings.length, 0);
-}
-
 export type NextAnchor =
   | { kind: 'leaveBy'; leaveAt: string; arriveBy: string; travelMinutes: number; mode: TravelMode; toPlaceId: string }
   | { kind: 'opensAt'; opensAt: string; placeId: string }

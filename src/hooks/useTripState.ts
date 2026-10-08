@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import type { ClusterRelationship, ContainerId, CurrencyCode, DayExecutionState, DayTask, FlightBooking, Money, PlaceholderKind, Place, StayBooking, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
 import { movePlace } from '../utils/itinerary';
-import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
+import { defaultDuration, toTime } from '../utils/schedule';
+import { projectDay } from '../utils/dayProjection';
 import { markRouteStale, routeLegKey } from '../utils/routing';
 import { applyAiDraft as applyConfirmedAiDraft } from '../utils/applyAiDraft';
 import type { ConfirmedAiDraft } from '../types/aiImport';
@@ -377,27 +378,18 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
   const updateStopSchedule = useCallback((dayId: string, placeId: string, updates: StopSchedule) => {
     if (readOnly) return;
     setState((current) => {
-      const placesById = new Map(current.places.map((place) => [place.id, place]));
       return {
         ...current,
         places: current.places.map((place) => place.id === placeId ? touchPlace(place) : place),
         days: current.days.map((day) => {
           if (day.id !== dayId) return day;
           const stopSchedules = { ...day.stopSchedules, [placeId]: { ...day.stopSchedules?.[placeId], ...updates } };
-          const startIndex = day.placeIds.indexOf(placeId);
-          const firstPlace = placesById.get(placeId);
-          let nextStart = firstPlace && toMinutes(stopSchedules[placeId].startTime);
-          let previousPlace = firstPlace;
-          if (nextStart !== null && nextStart !== undefined && previousPlace && startIndex >= 0) {
-            nextStart += stopSchedules[placeId].durationMinutes ?? defaultDuration(previousPlace.category);
-            for (const nextPlaceId of day.placeIds.slice(startIndex + 1)) {
-              const nextPlace = placesById.get(nextPlaceId);
-              if (!nextPlace) continue;
-              nextStart += estimateTravelMinutes(previousPlace, nextPlace, day.travelMode);
-              if (stopSchedules[nextPlaceId]?.startTime) break;
-              stopSchedules[nextPlaceId] = { ...stopSchedules[nextPlaceId], startTime: toTime(nextStart), durationMinutes: stopSchedules[nextPlaceId]?.durationMinutes ?? defaultDuration(nextPlace.category) };
-              nextStart += stopSchedules[nextPlaceId].durationMinutes ?? defaultDuration(nextPlace.category);
-              previousPlace = nextPlace;
+          const { stops } = projectDay({ ...day, stopSchedules }, current.places, current.locationClusters ?? []);
+          const editedIndex = stops.findIndex((stop) => stop.place.id === placeId);
+          if (editedIndex >= 0 && stops[editedIndex].timing.source === 'planned') {
+            for (const { place, timing } of stops.slice(editedIndex + 1)) {
+              if (timing.source === 'planned') break;
+              stopSchedules[place.id] = { ...stopSchedules[place.id], startTime: toTime(timing.start), durationMinutes: stopSchedules[place.id]?.durationMinutes ?? defaultDuration(place.category) };
             }
           }
           return markRouteStale({ ...day, stopSchedules });

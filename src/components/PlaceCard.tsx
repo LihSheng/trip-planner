@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
@@ -14,7 +15,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconAlertTriangle, IconBed, IconBuildingCommunity, IconBuildingMonument, IconBus, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconLeaf, IconMapPin, IconPalette, IconPencil, IconPlane, IconRobot, IconRoute, IconShoppingBag, IconSun, IconToolsKitchen, IconTrain, IconTrash, IconTree } from '@tabler/icons-react';
+import { IconAlertTriangle, IconBed, IconBuildingCommunity, IconBuildingMonument, IconBus, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconLeaf, IconMapPin, IconPalette, IconPencil, IconPlane, IconRobot, IconShoppingBag, IconSun, IconToolsKitchen, IconTrain, IconTrash, IconTree } from '@tabler/icons-react';
 import type { ClusterRelationship, Place, PlaceCategory, StopSchedule } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
 import { isStayExpired } from '../utils/stay';
@@ -60,8 +61,9 @@ interface PlaceCardProps {
   onDelete?: (place: Place) => void;
   visited?: boolean;
   schedule?: StopSchedule;
-  travelMinutes?: number;
   warnings?: string[];
+  /** Timeline gutter and rail; the whole row then becomes the sortable node so it moves as one unit. */
+  timeline?: ReactNode;
   onScheduleChange?: (updates: StopSchedule) => void;
   onEnableSchedule?: () => void;
   onReplace?: (placeId: string) => void;
@@ -84,8 +86,8 @@ export function PlaceCard({
   onDelete,
   visited = false,
   schedule,
-  travelMinutes,
   warnings = [],
+  timeline,
   onScheduleChange,
   onEnableSchedule,
   onReplace,
@@ -106,10 +108,40 @@ export function PlaceCard({
   const PlaceholderIcon = place.placeholderKind === 'meal' ? IconToolsKitchen : place.placeholderKind === 'coffee' ? IconCoffee : IconSun;
   const CategoryIcon = categoryIcons[place.category];
   const displayName = placeholder ? placeholderLabel : place.name;
+  const sortableStyle = { transform: CSS.Transform.toString(transform), transition };
+  const scheduleEditor = schedule && onScheduleChange ? (
+    <Box
+      mt={2}
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <Group gap={6} wrap="nowrap">
+        <TextInput
+          type="time"
+          size="xs"
+          value={schedule.startTime ?? ''}
+          placeholder="09:00"
+          aria-label={`Start time for ${place.name}`}
+          onChange={(event) => onScheduleChange({ startTime: event.currentTarget.value || undefined })}
+          styles={{ input: { minWidth: 96 } }}
+        />
+        <NumberInput
+          size="xs"
+          min={5}
+          max={720}
+          suffix=" min"
+          value={schedule.durationMinutes ?? ''}
+          aria-label={`Duration for ${place.name}`}
+          onChange={(value) => onScheduleChange({ durationMinutes: typeof value === 'number' ? value : undefined })}
+          styles={{ input: { minWidth: 92 } }}
+        />
+      </Group>
+    </Box>
+  ) : null;
 
-  return (
+  const card = (
     <Paper
-      ref={setNodeRef}
+      ref={timeline ? undefined : setNodeRef}
       withBorder
       radius="md"
       p="sm"
@@ -121,8 +153,7 @@ export function PlaceCard({
       {...(isMobile ? {} : attributes)}
       {...(isMobile ? {} : listeners)}
       style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
+        ...(timeline ? {} : sortableStyle),
         touchAction: dragDisabled ? undefined : isMobile ? 'pan-y' : 'none',
       }}
       onClick={() => onSelect?.(place.id)}
@@ -242,50 +273,27 @@ export function PlaceCard({
           {!placeholder ? <Group gap={5} wrap="nowrap" mt={1}>
             {place.importedWithAi ? <Tooltip label="Imported with AI"><IconRobot size={13} color="var(--mantine-color-violet-6)" /></Tooltip> : null}
           </Group> : null}
-          {schedule && onScheduleChange ? (
-            <Box
-              mt={2}
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => event.stopPropagation()}
-            >
-              {travelMinutes ? (
-                <Group gap={4} mb={4}>
-                  <IconRoute size={13} color="var(--mantine-color-dimmed)" />
-                  <Text size="xs" c="dimmed">~{travelMinutes} min travel</Text>
-                </Group>
-              ) : null}
-              <Group gap={6} wrap="nowrap">
-                <TextInput
-                  type="time"
-                  size="xs"
-                  value={schedule.startTime ?? ''}
-                  placeholder="09:00"
-                  aria-label={`Start time for ${place.name}`}
-                  onChange={(event) => onScheduleChange({ startTime: event.currentTarget.value || undefined })}
-                  styles={{ input: { minWidth: 96 } }}
-                />
-                <NumberInput
-                  size="xs"
-                  min={5}
-                  max={720}
-                  suffix=" min"
-                  value={schedule.durationMinutes ?? ''}
-                  aria-label={`Duration for ${place.name}`}
-                  onChange={(value) => onScheduleChange({ durationMinutes: typeof value === 'number' ? value : undefined })}
-                  styles={{ input: { minWidth: 92 } }}
-                />
-              </Group>
-              {warnings.length ? (
-                <Group gap={4} mt={4}>
-                  <IconAlertTriangle size={14} color="var(--mantine-color-orange-6)" />
-                  <Text size="xs" c="orange" lineClamp={1}>{warnings.join(' · ')}</Text>
-                </Group>
-              ) : null}
-            </Box>
+          {warnings.length ? (
+            <Group gap={4} mt={2}>
+              {warnings.map((warning) => (
+                <Badge key={warning} color="orange" variant="light" size="sm" tt="none" maw="100%" leftSection={<IconAlertTriangle size={12} />}>
+                  {warning}
+                </Badge>
+              ))}
+            </Group>
           ) : null}
+          {isMobile ? null : scheduleEditor}
         </Stack>
       </Group>
+      {isMobile ? scheduleEditor : null}
     </Paper>
+  );
+  if (!timeline) return card;
+  return (
+    <div ref={setNodeRef} className="timeline-stop" style={sortableStyle}>
+      {timeline}
+      {card}
+    </div>
   );
 }
 

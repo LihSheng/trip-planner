@@ -23,11 +23,13 @@ interface TransportLegChipProps {
   routeUrl?: string;
   /** When true, the menu omits the "Day default" and "Open route" entries (used for the day default chip). */
   hideDefaultItem?: boolean;
+  /** Reads "{minutes} min · {mode}" for the planner timeline. */
+  minutesFirst?: boolean;
   onChange: (mode: TravelMode | 'default') => void;
 }
 
 /** Compact transport pill shared by the day summary and the legs between stops. */
-export function TransportLegChip({ mode, dayDefaultMode, isOverride, minutes, context, readOnly = false, routeUrl, hideDefaultItem = false, onChange }: TransportLegChipProps) {
+export function TransportLegChip({ mode, dayDefaultMode, isOverride, minutes, context, readOnly = false, routeUrl, hideDefaultItem = false, minutesFirst = false, onChange }: TransportLegChipProps) {
   const { t } = useI18n();
   const labelFor = (m: TravelMode) => t(MODES.find((entry) => entry.mode === m)!.key).toLowerCase();
   const chip = (
@@ -37,8 +39,9 @@ export function TransportLegChip({ mode, dayDefaultMode, isOverride, minutes, co
       aria-label={t('routeMode')}
     >
       {transportIcon(mode)}
+      {minutesFirst && minutes !== undefined ? <span>{minutes} min ·</span> : null}
       <span>{labelFor(mode)}{isOverride ? ` ${t('fromHere')}` : ''}</span>
-      {minutes !== undefined ? <span>· {minutes} min</span> : null}
+      {!minutesFirst && minutes !== undefined ? <span>· {minutes} min</span> : null}
       {context ? <Text span size="xs" c="dimmed">{context}</Text> : null}
     </UnstyledButton>
   );
