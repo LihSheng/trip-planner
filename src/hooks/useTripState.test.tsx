@@ -132,6 +132,104 @@ describe('useTripState', () => {
     expect(result.current.state.dayTasks?.[0]).toMatchObject({ dayId: nextDayId, text: 'Carry this forward' });
   });
 
+  it('undo after a move between days restores both days', () => {
+    const { result } = renderHook(() => useTripState(false));
+    const [first, second] = result.current.state.days;
+    const firstIds = [...first.placeIds];
+    const secondIds = [...second.placeIds];
+    const moved = firstIds[0];
+
+    act(() => {
+      result.current.markUndoPoint('Moved stop');
+      result.current.move(moved, second.id, 0);
+    });
+    expect(result.current.state.days[1].placeIds[0]).toBe(moved);
+    expect(result.current.undoLabel).toBe('Moved stop');
+
+    let undone = false;
+    act(() => { undone = result.current.undo(); });
+    expect(undone).toBe(true);
+    expect(result.current.state.days[0].placeIds).toEqual(firstIds);
+    expect(result.current.state.days[1].placeIds).toEqual(secondIds);
+    expect(result.current.undoLabel).toBeNull();
+  });
+
+  it('an unrelated edit after the undoable action disarms undo and keeps the edit', async () => {
+    const { result } = renderHook(() => useTripState(false));
+    const [first, second] = result.current.state.days;
+    const moved = first.placeIds[0];
+    act(() => {
+      result.current.markUndoPoint('Moved stop');
+      result.current.move(moved, second.id, 0);
+    });
+    await act(async () => {});
+    const edited = { ...result.current.placesById.get(moved)!, notes: 'Bring cash' };
+    act(() => { result.current.updatePlace(edited); });
+
+    expect(result.current.undoLabel).toBeNull();
+    let undone = true;
+    act(() => { undone = result.current.undo(); });
+    expect(undone).toBe(false);
+    expect(result.current.placesById.get(moved)?.notes).toBe('Bring cash');
+    expect(result.current.state.days[1].placeIds[0]).toBe(moved);
+  });
+
+  it('undo twice is a no-op the second time', () => {
+    const { result } = renderHook(() => useTripState(false));
+    const firstIds = [...result.current.state.days[0].placeIds];
+    act(() => {
+      result.current.markUndoPoint('Moved stop');
+      result.current.move(firstIds[0], 'unscheduled', 0);
+    });
+    act(() => { result.current.undo(); });
+    const afterFirstUndo = result.current.state;
+
+    let undone = true;
+    act(() => { undone = result.current.undo(); });
+    expect(undone).toBe(false);
+    expect(result.current.state).toBe(afterFirstUndo);
+    expect(result.current.state.days[0].placeIds).toEqual(firstIds);
+  });
+
+  it('a lifecycle write after marking disarms undo', () => {
+    const { result } = renderHook(() => useTripState(false));
+    const moved = result.current.state.days[0].placeIds[0];
+    act(() => {
+      result.current.markUndoPoint('Moved stop');
+      result.current.move(moved, 'unscheduled', 0);
+    });
+    act(() => result.current.setState((current) => ({ ...current, tripName: 'Remote rename' })));
+    expect(result.current.undoLabel).toBeNull();
+
+    let undone = true;
+    act(() => { undone = result.current.undo(); });
+    expect(undone).toBe(false);
+    expect(result.current.state.tripName).toBe('Remote rename');
+    expect(result.current.state.unscheduledIds[0]).toBe(moved);
+  });
+
+  it('one undo point covers a group of removePlace calls', () => {
+    const { result } = renderHook(() => useTripState(false));
+    act(() => {
+      result.current.addPlace({ ...samplePlace, id: 'group-a' });
+      result.current.addPlace({ ...samplePlace, id: 'group-b' });
+    });
+    const placeIds = result.current.state.places.map((place) => place.id);
+    const unscheduledIds = [...result.current.state.unscheduledIds];
+
+    act(() => {
+      result.current.markUndoPoint('Place removed');
+      result.current.removePlace('group-a');
+      result.current.removePlace('group-b');
+    });
+    expect(result.current.placesById.has('group-a')).toBe(false);
+    expect(result.current.placesById.has('group-b')).toBe(false);
+
+    act(() => { result.current.undo(); });
+    expect(result.current.state.places.map((place) => place.id)).toEqual(placeIds);
+    expect(result.current.state.unscheduledIds).toEqual(unscheduledIds);
+  });
+
   it('toggles visited place', () => {
     const { result } = renderHook(() => useTripState(false));
     const placeId = result.current.state.places[0].id;

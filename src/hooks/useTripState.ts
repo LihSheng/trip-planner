@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import type { ClusterRelationship, ContainerId, CurrencyCode, DayExecutionState, DayTask, FlightBooking, Money, PlaceholderKind, Place, StayBooking, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
 import { movePlace } from '../utils/itinerary';
 import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
@@ -17,8 +17,48 @@ interface TripActor {
   email?: string;
 }
 
+type UndoPoint = { label: string; before: TripState; sealed: boolean };
+
 export function useTripState(readOnly: boolean, actor?: TripActor) {
-  const [state, setState] = useState<TripState>(() => ensureActivities(ensureItineraryEntries(createInitialState())));
+  const [state, setTripState] = useState<TripState>(() => ensureActivities(ensureItineraryEntries(createInitialState())));
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const undoPoint = useRef<UndoPoint | null>(null);
+  const [undoLabel, setUndoLabel] = useState<string | null>(null);
+
+  const setUndoPoint = useCallback((point: UndoPoint | null) => {
+    undoPoint.current = point;
+    setUndoLabel(point?.label ?? null);
+  }, []);
+
+  // The undoable action is every mutation in the same tick as the mark. Once that tick ends the
+  // point is sealed, and any later mutation disarms it so Undo can never revert an unrelated edit.
+  const markUndoPoint = useCallback((label: string) => {
+    if (readOnly) return;
+    const point: UndoPoint = { label, before: stateRef.current, sealed: false };
+    setUndoPoint(point);
+    queueMicrotask(() => { point.sealed = true; });
+  }, [readOnly, setUndoPoint]);
+
+  const setState = useCallback<Dispatch<SetStateAction<TripState>>>((value) => {
+    if (undoPoint.current?.sealed) setUndoPoint(null);
+    setTripState(value);
+  }, [setUndoPoint]);
+
+  const undo = useCallback(() => {
+    const point = undoPoint.current;
+    if (!point) return false;
+    setUndoPoint(null);
+    setTripState(point.before);
+    return true;
+  }, [setUndoPoint]);
+
+  // Lifecycle writes (hydrate, remote refresh, merge, plan switch) go through this setter.
+  // Undoing across them would revert someone else's change, so they disarm.
+  const setLifecycleState = useCallback<Dispatch<SetStateAction<TripState>>>((value) => {
+    setUndoPoint(null);
+    setTripState(value);
+  }, [setUndoPoint]);
 
   const placesById = useMemo(
     () => new Map(state.places.map((place) => [place.id, place])),
@@ -617,12 +657,14 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
   }, [attributePlace, readOnly]);
 
   const reset = useCallback(() => {
-    if (!readOnly) setState(ensureActivities(ensureItineraryEntries(createInitialState())));
-  }, [readOnly]);
+    if (readOnly) return;
+    setUndoPoint(null);
+    setState(ensureActivities(ensureItineraryEntries(createInitialState())));
+  }, [readOnly, setUndoPoint]);
 
   return {
     state,
-    setState: setState as Dispatch<SetStateAction<TripState>>,
+    setState: setLifecycleState,
     placesById,
     activitiesById,
     addPlace,
@@ -665,5 +707,8 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     updateLegMode,
     applyAiDraft,
     reset,
+    markUndoPoint,
+    undo,
+    undoLabel,
   };
 }
