@@ -10,8 +10,22 @@ const zhRouteTranslations = {
   optimizeRoute: '最佳化路線', refreshRoute: '重新整理路線', routeStale: '路線需要重新整理', routeReady: '路線已更新', routeUnavailable: '找不到路線。請保留此順序或手動選擇交通方式。', routeDemo: '示範模式無法使用路線最佳化，請登入後使用 Google Routes。', dayDefault: '使用當日預設', publicTransport: '大眾運輸', walk: '步行', bike: '自行車', car: '開車', taxi: '計程車', otherTransport: '其他', travelTo: '前往 {name}', routeDuration: '{minutes} 分鐘', routeDistance: '{distance} 公里', routeDetails: '路線詳情', routeLoading: '正在規劃路線…', routeMode: '交通方式', stayAt: '住宿地點', manageTimes: '管理時間', hideTimeManagement: '隱藏時間管理', routeError: '路線更新失敗', plannedStop: '安排停靠點', lunchDinner: '午餐／晚餐 — 尚未決定', coffeeBreak: '咖啡休息 — 尚未決定', freeTime: '自由時間', customStop: '自訂停靠點', choosePlace: '選擇景點', renamePlannedStop: '重新命名停靠點',
 } as const;
 
+const plannerFocusTranslations = {
+  en: {
+    tripDays: 'Trip days', wholeTrip: 'Whole trip', wholeTripSummary: '{days} days · {stops} stops', openDay: 'Open {day}', activity: 'Activity',
+    addToDay: 'Add to {day}', mealOrBreak: 'Meal or break', addFlight: 'Add flight', times: 'Times', checklist: 'Checklist', openTasks: '{count} to-dos',
+    dayOptions: '{day} options', stayingAt: 'Staying at {name}', noStopsYet: 'No stops yet',
+  },
+  'zh-TW': {
+    tripDays: '行程日期', wholeTrip: '整趟行程', wholeTripSummary: '{days} 天 · {stops} 個停靠點', openDay: '開啟{day}', activity: '活動紀錄',
+    addToDay: '加入{day}', mealOrBreak: '用餐或休息', addFlight: '新增航班', times: '時間', checklist: '待辦清單', openTasks: '{count} 項待辦',
+    dayOptions: '{day}選項', stayingAt: '住宿：{name}', noStopsYet: '尚無停靠點',
+  },
+} as const;
+
 const translations = {
   en: {
+    ...plannerFocusTranslations.en,
     language: 'Language', english: 'English', traditionalChinese: '繁中',
     loadingTrip: 'Loading your synchronized trip…', restoringTrip: 'Restoring your trip…', stopsCount: '{count} stops',
     startsSummary: 'Starts {date} · {days} days · {places} places',
@@ -43,6 +57,7 @@ const translations = {
     checkOutDate: '退房日期',
     expenses: '支出',
     ...zhRouteTranslations,
+    ...plannerFocusTranslations['zh-TW'],
   },
 } as const;
 

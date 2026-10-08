@@ -1,21 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  closestCenter,
   closestCorners,
   DndContext,
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
   useSensor,
+  pointerWithin,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { horizontalListSortingStrategy, SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { Button, Group, Modal, ScrollArea, Stack, Text } from '@mantine/core';
-import { IconHistory, IconPlus, IconRoute } from '@tabler/icons-react';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { Box, Button, Group, Modal, Stack, Text } from '@mantine/core';
 import type { ContainerId, PlaceholderKind, Place, StopSchedule, TravelMode, TripState } from '../types';
 import { findContainer, getContainerItems } from '../utils/itinerary';
 import { DayColumn } from './DayColumn';
+import { DayRail, type DaySummary } from './DayRail';
+import { TripOverview } from './TripOverview';
 import { PlaceCardPreview } from './PlaceCard';
 import { UnscheduledColumn } from './UnscheduledColumn';
 import { useI18n } from '../i18n';
@@ -82,7 +86,8 @@ export function PlannerBoard({
   const onRenamePlaceholder = (place: Place, label: string) => updatePlace({ ...place, name: label });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activityOpened, setActivityOpened] = useState(false);
-  const [showTransport, setShowTransport] = useState(false);
+  // null shows the whole-trip overview; a day id shows that day for editing.
+  const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [taskDayId, setTaskDayId] = useState<string | null>(null);
   const [flightDate, setFlightDate] = useState('');
   const [editingFlight, setEditingFlight] = useState<FlightBooking>();
@@ -110,11 +115,15 @@ export function PlannerBoard({
   useEffect(() => {
     if (focusNewDayRef.current && state.days.length > previousDayCountRef.current) {
       const newDay = state.days[state.days.length - 1];
-      document.querySelector(`[data-day-id="${newDay.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      setSelectedDayId(newDay.id);
       focusNewDayRef.current = false;
     }
     previousDayCountRef.current = state.days.length;
   }, [state.days.length]);
+
+  useEffect(() => {
+    if (selectedDayId && !state.days.some((day) => day.id === selectedDayId)) setSelectedDayId(null);
+  }, [selectedDayId, state.days]);
 
   function dayDate(dayIndex: number) {
     const date = addDays(state.startDate, dayIndex);
@@ -157,7 +166,7 @@ export function PlannerBoard({
   }
 
   function getDestination(overId: string): { containerId: ContainerId; index: number } | null {
-    const dayId = overId.startsWith('day:') ? overId.slice(4) : overId;
+    const dayId = overId.startsWith('day:') ? overId.slice(4) : overId.startsWith('overview:') ? overId.slice(9) : overId;
     if (dayId === 'unscheduled' || state.days.some((day) => day.id === dayId)) {
       const containerId = dayId as ContainerId;
       return { containerId, index: getContainerItems(state, containerId).length };
@@ -186,6 +195,16 @@ export function PlannerBoard({
     }
     onMove(place.id, destination.containerId, destination.index);
   }
+
+  // Days can only land on other days in the rail. Places use whatever is under the pointer, so the
+  // rail, overview cards and the open day all work as drop targets; closest corners covers the gaps.
+  const collisionDetection: CollisionDetection = (args) => {
+    if (String(args.active.id).startsWith('day:')) {
+      return closestCenter({ ...args, droppableContainers: args.droppableContainers.filter((container) => String(container.id).startsWith('day:')) });
+    }
+    const underPointer = pointerWithin(args);
+    return underPointer.length ? underPointer : closestCorners(args);
+  };
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id));
@@ -221,110 +240,124 @@ export function PlannerBoard({
     const destination = getDestination(overId);
     if (!destination) return;
     const place = placesById.get(activeId);
-    if (place && requestStayCheckOrMove(place, destination)) return;
+    if (place) {
+      requestStayCheckOrMove(place, destination);
+      return;
+    }
     onMove(activeId, destination.containerId, destination.index);
+  }
+
+  const summaries: Record<string, DaySummary> = Object.fromEntries(state.days.map((day) => [day.id, {
+    stopCount: day.placeIds.length,
+    visitedCount: day.placeIds.filter((id) => visitedPlaceIds.includes(id)).length,
+    openTaskCount: (state.dayTasks ?? []).filter((task) => task.dayId === day.id && !task.completed).length,
+  }]));
+  const lodgingLabels: Record<string, string | undefined> = Object.fromEntries(state.days.map((day, index) => [day.id, lodgingLabelFor(index)]));
+  const selectedDayIndex = state.days.findIndex((day) => day.id === selectedDayId);
+  const selectedDay = selectedDayIndex >= 0 ? state.days[selectedDayIndex] : undefined;
+
+  function lodgingLabelFor(dayIndex: number) {
+    const booking = (state.stayBookings ?? []).find((item) => item.checkInDate <= dayDate(dayIndex) && item.checkOutDate > dayDate(dayIndex));
+    return booking ? placesById.get(booking.placeId)?.name : undefined;
   }
 
   return (
     <DndContext
       sensors={readOnly ? [] : sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetection}
       onDragStart={readOnly ? undefined : handleDragStart}
       onDragCancel={readOnly ? undefined : () => setActiveId(null)}
       onDragEnd={readOnly ? undefined : handleDragEnd}
     >
-      <Stack gap="md" className="planner-board">
-        <Group justify="space-between" align="flex-end">
-          <div>
-            <Text fw={800} size="lg">
-              {t('itinerary')}
-            </Text>
-            <Text c="dimmed" size="sm">
-              {t('itineraryHint')}
-            </Text>
-          </div>
-          {!readOnly ? <Group gap="xs">
-            <Button
-              variant={showTransport ? 'light' : 'default'}
-              color={showTransport ? 'teal' : 'gray'}
-              leftSection={<IconRoute size={17} />}
-              aria-pressed={showTransport}
-              onClick={() => setShowTransport((value) => !value)}
-            >
-              {showTransport ? 'Hide transport' : 'Show transport'}
-            </Button>
-            <Button variant="default" leftSection={<IconHistory size={17} />} onClick={() => setActivityOpened(true)}>Activity</Button>
-            <Button variant="light" color="teal" leftSection={<IconPlus size={17} />} onClick={() => { focusNewDayRef.current = true; onAddDay(); }}>{t('addDay')}</Button>
-          </Group> : null}
-        </Group>
+      <Box className="planner-board planner-focus">
+        <SortableContext items={state.days.map((day) => `day:${day.id}`)} strategy={verticalListSortingStrategy}>
+          <DayRail
+            days={state.days}
+            startDate={state.startDate}
+            summaries={summaries}
+            selectedDayId={selectedDay ? selectedDay.id : null}
+            readOnly={readOnly}
+            onSelect={setSelectedDayId}
+            onAddDay={() => { focusNewDayRef.current = true; onAddDay(); }}
+            onOpenActivity={() => setActivityOpened(true)}
+          />
+        </SortableContext>
 
-        <ScrollArea type="auto" offsetScrollbars className="board-scroll">
-          <Group align="stretch" gap="md" wrap="nowrap" pb="sm">
-            <UnscheduledColumn
-              places={unscheduled}
+        <Box className="planner-focus__main">
+          {selectedDay ? (
+            <DayColumn
+              key={selectedDay.id}
+              day={selectedDay}
+              index={selectedDayIndex}
+              startDate={state.startDate}
+              places={selectedDay.placeIds.flatMap((id) => {
+                const place = placesById.get(id);
+                return place ? [place] : [];
+              })}
               selectedId={selectedId}
+              visitedPlaceIds={visitedPlaceIds}
               onSelect={onSelect}
+              onAddPlace={() => onAddPlaceToDay(selectedDay.id)}
+              onAddPlaceholder={(kind) => onAddPlaceholderToDay(selectedDay.id, kind)}
+              onReplacePlaceholder={onReplacePlaceholder}
+              onRenamePlaceholder={onRenamePlaceholder}
+              onLabelChange={onLabelChange}
+              onRemove={onRequestRemoveDay ?? removeDayDirect}
               onEditActivity={onEditActivity}
-              onDeletePlace={onDeletePlace}
+              onDeletePlace={(place) => removePlannerVisit(place.id, selectedDay.id)}
+              onDayScheduleChange={onDayScheduleChange}
+              onStopScheduleChange={onStopScheduleChange}
+              hotelPlaces={hotelPlaces}
+              tripHotelId={state.hotelPlaceId}
+              onLegModeChange={onLegModeChange}
               clusters={state.locationClusters}
+              tasks={(state.dayTasks ?? []).filter((task) => task.dayId === selectedDay.id)}
+              onOpenTasks={setTaskDayId}
+              bookingCards={bookingCardsFor(dayDate(selectedDayIndex))}
+              lodgingLabel={lodgingLabels[selectedDay.id]}
+              onEditBooking={(card) => {
+                if (card.kind === 'flight') {
+                  setEditingFlight(state.flightBookings?.find((booking) => booking.id === card.sourceId));
+                  setFlightDate(dayDate(selectedDayIndex));
+                } else {
+                  setEditingStay(state.stayBookings?.find((booking) => booking.id === card.sourceId));
+                }
+              }}
+              onAddFlight={() => { setEditingFlight(undefined); setFlightDate(dayDate(selectedDayIndex)); }}
               readOnly={readOnly}
               moveTargets={moveTargets}
               onMoveToPlace={readOnly ? undefined : onMoveToPlace}
             />
-            <SortableContext items={state.days.map((day) => `day:${day.id}`)} strategy={horizontalListSortingStrategy}>
-              {state.days.map((day, index) => (
-                <DayColumn
-                  key={day.id}
-                  day={day}
-                  index={index}
-                  startDate={state.startDate}
-                  places={day.placeIds.flatMap((id) => {
-                    const place = placesById.get(id);
-                    return place ? [place] : [];
-                  })}
-                  selectedId={selectedId}
-                  visitedPlaceIds={visitedPlaceIds}
-                  onSelect={onSelect}
-                  onAddPlace={() => onAddPlaceToDay(day.id)}
-                  onAddPlaceholder={(kind) => onAddPlaceholderToDay(day.id, kind)}
-                  onReplacePlaceholder={onReplacePlaceholder}
-                  onRenamePlaceholder={onRenamePlaceholder}
-                  onLabelChange={onLabelChange}
-                  onRemove={onRequestRemoveDay ?? removeDayDirect}
-                  onEditActivity={onEditActivity}
-                  onDeletePlace={(place) => removePlannerVisit(place.id, day.id)}
-                  onDayScheduleChange={onDayScheduleChange}
-                  onStopScheduleChange={onStopScheduleChange}
-                  hotelPlaces={hotelPlaces}
-                  tripHotelId={state.hotelPlaceId}
-                  onLegModeChange={onLegModeChange}
-                  clusters={state.locationClusters}
-                  tasks={(state.dayTasks ?? []).filter((task) => task.dayId === day.id)}
-                  onOpenTasks={setTaskDayId}
-                  bookingCards={bookingCardsFor(dayDate(index))}
-                  lodgingLabel={(() => {
-                    const booking = (state.stayBookings ?? []).find((item) => item.checkInDate <= dayDate(index) && item.checkOutDate > dayDate(index));
-                    return booking ? placesById.get(booking.placeId)?.name : undefined;
-                  })()}
-                  onEditBooking={(card) => {
-                    if (card.kind === 'flight') {
-                      setEditingFlight(state.flightBookings?.find((booking) => booking.id === card.sourceId));
-                      setFlightDate(dayDate(index));
-                    } else {
-                      setEditingStay(state.stayBookings?.find((booking) => booking.id === card.sourceId));
-                    }
-                  }}
-                  onAddFlight={() => { setEditingFlight(undefined); setFlightDate(dayDate(index)); }}
-                  showTransport={showTransport}
-                  readOnly={readOnly}
-                  moveTargets={moveTargets}
-                  onMoveToPlace={readOnly ? undefined : onMoveToPlace}
-                />
-              ))}
-            </SortableContext>
-          </Group>
-        </ScrollArea>
-      </Stack>
+          ) : (
+            <Stack gap="md">
+              <div>
+                <Text fw={800} size="xl">{state.tripName}</Text>
+                <Text c="dimmed" size="sm">{t('wholeTripSummary', { days: state.days.length, stops: state.days.reduce((total, day) => total + day.placeIds.length, 0) })}</Text>
+              </div>
+              <TripOverview
+                days={state.days}
+                startDate={state.startDate}
+                placesById={placesById}
+                lodgingLabels={lodgingLabels}
+                readOnly={readOnly}
+                onOpenDay={setSelectedDayId}
+              />
+            </Stack>
+          )}
+        </Box>
+
+        <UnscheduledColumn
+          places={unscheduled}
+          selectedId={selectedId}
+          onSelect={onSelect}
+          onEditActivity={onEditActivity}
+          onDeletePlace={onDeletePlace}
+          clusters={state.locationClusters}
+          readOnly={readOnly}
+          moveTargets={moveTargets}
+          onMoveToPlace={readOnly ? undefined : onMoveToPlace}
+        />
+      </Box>
 
       <DragOverlay>{activePlace ? <PlaceCardPreview place={activePlace} /> : null}</DragOverlay>
       <TripActivityDrawer opened={activityOpened} onClose={() => setActivityOpened(false)} events={activityEvents} />

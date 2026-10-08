@@ -20,7 +20,7 @@ import { categoryLabel, useI18n } from '../i18n';
 import { isStayExpired } from '../utils/stay';
 import { isPlaceholder } from '../domain/place';
 
-const categoryColors: Record<PlaceCategory, string> = {
+export const categoryColors: Record<PlaceCategory, string> = {
   Landmark: 'orange',
   Food: 'red',
   Nature: 'green',
@@ -33,7 +33,7 @@ const categoryColors: Record<PlaceCategory, string> = {
   Transit: 'yellow',
 };
 
-const categoryIcons: Record<PlaceCategory, typeof IconTree> = {
+export const categoryIcons: Record<PlaceCategory, typeof IconTree> = {
   Landmark: IconBuildingMonument,
   Food: IconToolsKitchen,
   Nature: IconTree,
@@ -166,6 +166,7 @@ export function PlaceCard({
                     variant="subtle"
                     color="gray"
                     size="sm"
+                    className="place-card__menu"
                     aria-label={t('actionsFor', { name: place.name })}
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => event.stopPropagation()}
@@ -217,13 +218,10 @@ export function PlaceCard({
             <IconMapPin size={13} color="var(--mantine-color-dimmed)" />
             <Tooltip label={place.region} withinPortal openDelay={400} disabled={place.region.length < 14}>
               <Text size="xs" c="dimmed" lineClamp={1}>
-                {place.region}
+                {[place.region, categoryLabel(t, place.category)].filter(Boolean).join(' · ')}
               </Text>
             </Tooltip>
           </Group> : null}
-          {!placeholder ? <Badge color={categoryColors[place.category]} variant="light" size="xs" autoContrast>
-            {categoryLabel(t, place.category)}
-          </Badge> : null}
           {!placeholder && clusterLabel ? (
             <Badge
               color="teal"

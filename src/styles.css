@@ -401,18 +401,6 @@ select {
   box-shadow: 0 12px 36px rgba(23, 48, 44, 0.07);
 }
 
-.board-scroll {
-  margin: 0 -4px;
-}
-
-/* Tablet keeps the planner horizontal, so the scroll content must include all columns. */
-@media (min-width: 48em) and (max-width: 74.99em) {
-  .board-scroll .mantine-ScrollArea-content > .mantine-Group-root {
-    width: max-content;
-    min-width: 100%;
-  }
-}
-
 .map-pin--accommodation svg {
   display: block;
   width: 1rem;
@@ -475,27 +463,6 @@ select {
     flex-direction: column;
   }
 
-  .planner-board > .board-scroll {
-    flex: 1 1 auto;
-    min-height: 0;
-  }
-
-  .board-scroll .mantine-ScrollArea-viewport,
-  .board-scroll .mantine-ScrollArea-content,
-  .board-scroll .mantine-ScrollArea-content > .mantine-Group-root {
-    height: 100%;
-  }
-
-  .board-scroll .mantine-ScrollArea-viewport {
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  .board-scroll .mantine-ScrollArea-content > .mantine-Group-root {
-    width: max-content;
-    min-width: 100%;
-  }
-
   .desktop-workspace .day-column {
     height: 100%;
     min-height: 0;
@@ -527,23 +494,6 @@ select {
   transform: translateY(-2px);
 }
 
-.day-column__completion-slot {
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
-}
-
-.day-column__completion {
-  transition: transform 180ms ease-out, opacity 180ms ease-out;
-}
-
-@starting-style {
-  .day-column__completion {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-}
-
 .day-column__header {
   min-height: 112px;
   padding: 13px;
@@ -560,26 +510,6 @@ select {
 
 .day-column__lodging {
   white-space: nowrap;
-}
-
-.day-column__header--0 {
-  background: linear-gradient(145deg, #e8f8f1, #f5fbf8);
-}
-
-.day-column__header--1 {
-  background: linear-gradient(145deg, #fff3da, #fffaf0);
-}
-
-.day-column__header--2 {
-  background: linear-gradient(145deg, #e8f2ff, #f5f9ff);
-}
-
-.day-column__header--3 {
-  background: linear-gradient(145deg, #f2ebff, #faf7ff);
-}
-
-.day-column__header--4 {
-  background: linear-gradient(145deg, #ffebee, #fff7f8);
 }
 
 .day-column__header--unscheduled {
@@ -661,25 +591,11 @@ select {
   gap: 2px;
 }
 
-.day-column--draggable {
-  cursor: grab;
-  touch-action: none;
-}
-
-.day-column--draggable:active {
-  cursor: grabbing;
-}
-
-.day-column[data-dragging] {
-  opacity: 0.35;
-}
-
 .place-card--draggable {
   cursor: grab;
 }
 
-.place-card__drag-handle,
-.day-column__drag-handle {
+.place-card__drag-handle {
   flex: 0 0 44px;
   width: 44px;
   min-width: 44px;
@@ -1386,23 +1302,6 @@ select {
     min-height: 44px;
   }
 
-  .board-scroll {
-    margin-inline: -10px;
-    padding-inline: 10px;
-  }
-
-  .board-scroll .mantine-ScrollArea-viewport {
-    overflow-x: hidden;
-    scroll-snap-type: none;
-    touch-action: pan-y;
-  }
-
-  .board-scroll .mantine-ScrollArea-content > .mantine-Group-root {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-
   .day-column {
     width: 100%;
     min-width: 0;
@@ -1417,11 +1316,6 @@ select {
   .day-column__body {
     min-height: 0;
     overflow: visible;
-  }
-
-  .day-column--draggable {
-    cursor: default;
-    touch-action: pan-y;
   }
 
   .place-card--draggable {
