@@ -7,11 +7,11 @@ Date: 2026-10-08. Source of scope: `docs/UX_RESEARCH_2026-10.md` section 5.
 1. [x] `how` over the affected subsystems (explainer agent, read-only).
 2. [x] `architect` design sketch. Arena limited to the one item with competing shapes (undo). The other three have one obvious shape; see below.
 3. [x] Throughput checkpoint (this file).
-4. [ ] Delegate code-writing, one subagent per item, each in its own worktree and branch.
-5. [ ] Verify on the matching surface (browser at 375px and 1440px, vitest, typecheck).
-6. [ ] Rebase into small ordered commits.
-7. [ ] `interrogate` only if a design is contested. skip unless step 5 surfaces a disagreement.
-8. [ ] Open four PRs.
+4. [x] Delegate code-writing, one subagent per item, each in its own worktree and branch.
+5. [x] Verify on the matching surface (browser at 375px and 1440px, vitest, typecheck).
+6. [x] Rebase into small ordered commits. Stacked nav -> today -> pwa -> undo because all four add lines to `src/i18n.tsx`.
+7. [x] `interrogate` skipped: no design was contested; delegates converged on the sketch.
+8. [x] PRs 19 (docs), 20 (nav), 21 (today), 22 (pwa), 23 (undo) on LihSheng/trip-planner.
 
 ## Throughput checkpoint
 
@@ -69,6 +69,10 @@ One `WORKSPACE_VIEWS` table in `src/App.tsx` drives both the desktop SegmentedCo
 ### PWA
 
 `public/manifest.webmanifest` with the existing teal theme colour and an SVG icon. A hand-written `public/sw.js` (no new dependency, per the Laziness Protocol) that precaches the built shell on install, serves navigation requests cache-first with network fallback, and caches the last trip JSON response from Supabase under a stable key. `src/main.tsx` registers it in production only. The header shows an offline badge driven by `navigator.onLine` plus the online/offline events. Base path is `./`, so the service worker scope must be registered relative, not at `/`.
+
+## Outcome
+
+One semantic conflict surfaced only at the stack top: the Today and undo branches both added the i18n hook to `TodayModePage.tsx`. Fixed inside the undo commit. Desktop default view was pinned to Map at desktop width after the nav delegate chose Today for both.
 
 ## Delegate model note
 
