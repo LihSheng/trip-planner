@@ -27,6 +27,7 @@ import { addDays } from '../utils/date';
 import { isAccommodation, stayAssignmentStatus, type StayAssignmentStatus } from '../utils/stay';
 
 import { useTrip } from '../context/TripContext';
+import { showUndoableNotification } from '../lib/undoNotification';
 import { TripActivityDrawer } from './TripActivityDrawer';
 import { isPlaceholder } from '../domain/place';
 import { DayTasksModal } from './DayTasksModal';
@@ -79,6 +80,8 @@ export function PlannerBoard({
     saveStayBooking,
     deleteFlightBooking,
     deleteStayBooking,
+    markUndoPoint,
+    undo,
   } = useTrip();
   const { t, locale } = useI18n();
   const zh = locale === 'zh-TW';
@@ -193,7 +196,14 @@ export function PlannerBoard({
         return;
       }
     }
-    onMove(place.id, destination.containerId, destination.index);
+    moveWithUndo(place.id, destination.containerId, destination.index);
+  }
+
+  function moveWithUndo(placeId: string, containerId: ContainerId, index: number) {
+    if (findContainer(state, placeId) === containerId && getContainerItems(state, containerId).indexOf(placeId) === index) return;
+    markUndoPoint(t('movedStop'));
+    onMove(placeId, containerId, index);
+    showUndoableNotification({ title: t('movedStop'), message: t('movedStopMessage', { name: placesById.get(placeId)?.name ?? '' }), onUndo: undo, t });
   }
 
   // Days can only land on other days in the rail. Places use whatever is under the pointer, so the
@@ -244,7 +254,7 @@ export function PlannerBoard({
       requestStayCheckOrMove(place, destination);
       return;
     }
-    onMove(activeId, destination.containerId, destination.index);
+    moveWithUndo(activeId, destination.containerId, destination.index);
   }
 
   const summaries: Record<string, DaySummary> = Object.fromEntries(state.days.map((day) => [day.id, {
@@ -414,7 +424,7 @@ export function PlannerBoard({
             <Button variant="default" onClick={() => setPendingAccommodationAssignment(null)}>Cancel</Button>
             <Button color="orange" onClick={() => {
               if (pendingAccommodationAssignment) {
-                onMove(
+                moveWithUndo(
                   pendingAccommodationAssignment.place.id,
                   pendingAccommodationAssignment.destination.containerId,
                   pendingAccommodationAssignment.destination.index,
