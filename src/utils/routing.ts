@@ -30,3 +30,8 @@ export function isRouteCurrent(day: TripDay) {
 export function modeLabel(mode: RouteLegMode) {
   return mode === 'default' ? 'Use day default' : mode;
 }
+
+// TODO(human): decide which legs count as "exceptions" worth showing when the day is collapsed.
+export function isExceptionLeg(legMode: RouteLegMode, resolvedMode: TravelMode, dayDefaultMode: TravelMode): boolean {
+  return legMode !== 'default';
+}

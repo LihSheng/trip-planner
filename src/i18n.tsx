@@ -15,11 +15,13 @@ const plannerFocusTranslations = {
     tripDays: 'Trip days', wholeTrip: 'Whole trip', wholeTripSummary: '{days} days · {stops} stops', openDay: 'Open {day}', activity: 'Activity',
     addToDay: 'Add to {day}', mealOrBreak: 'Meal or break', addFlight: 'Add flight', times: 'Times', checklist: 'Checklist', openTasks: '{count} to-dos',
     dayOptions: '{day} options', stayingAt: 'Staying at {name}', noStopsYet: 'No stops yet',
+    mostly: 'Mostly', legsSummary: '{legs} legs · {minutes} min travel', showAllLegs: 'Show all legs', hideDefaultLegs: 'Hide default legs', fromHere: 'from here', inArea: 'in area', insideVenue: 'inside venue', nearby: 'nearby',
   },
   'zh-TW': {
     tripDays: '行程日期', wholeTrip: '整趟行程', wholeTripSummary: '{days} 天 · {stops} 個停靠點', openDay: '開啟{day}', activity: '活動紀錄',
     addToDay: '加入{day}', mealOrBreak: '用餐或休息', addFlight: '新增航班', times: '時間', checklist: '待辦清單', openTasks: '{count} 項待辦',
     dayOptions: '{day}選項', stayingAt: '住宿：{name}', noStopsYet: '尚無停靠點',
+    mostly: '主要', legsSummary: '{legs} 段 · 交通 {minutes} 分鐘', showAllLegs: '顯示所有路段', hideDefaultLegs: '隱藏預設路段', fromHere: '從此處起', inArea: '區域內', insideVenue: '場館內', nearby: '鄰近',
   },
 } as const;
 

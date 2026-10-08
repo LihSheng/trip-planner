@@ -15,17 +15,16 @@ import {
   Text,
   TextInput,
   Select,
-  Tooltip,
 } from '@mantine/core';
-import { IconAlertTriangle, IconBed, IconBike, IconBus, IconCar, IconCircleCheckFilled, IconCoffee, IconDots, IconListCheck, IconMapPinPlus, IconPlane, IconPlus, IconRoute, IconSun, IconToolsKitchen, IconTrash, IconWalk } from '@tabler/icons-react';
-import type { DayTask, LocationCluster, PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
+import { IconAlertTriangle, IconBed, IconCircleCheckFilled, IconCoffee, IconDots, IconListCheck, IconMapPinPlus, IconPlane, IconPlus, IconSun, IconToolsKitchen, IconTrash } from '@tabler/icons-react';
+import type { DayTask, LocationCluster, PlaceholderKind, Place, RouteLegMode, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
 import { useI18n } from '../i18n';
 import { dayWarnings, estimateTravelMinutes, scheduleFor } from '../utils/schedule';
-import { routeLegKey } from '../utils/routing';
+import { isExceptionLeg, routeLegKey } from '../utils/routing';
 import { legGoogleMapsUrl } from '../utils/mapPresentation';
-import { transportIcon } from './transportIcons';
+import { TransportLegChip } from './TransportLegChip';
 import { isPlaceholder } from '../domain/place';
 import { clusterForPlace, clusterMember } from '../domain/locationCluster';
 import { BookingCard, type PlannerBookingCard } from './BookingCard';
@@ -107,6 +106,35 @@ export function DayColumn({
   const warningsByPlace = day.timeManagementEnabled ? dayWarnings(day, places) : new Map<string, string[]>();
   const warningCount = [...warningsByPlace.values()].reduce((total, warnings) => total + warnings.length, 0);
   const incompleteTaskCount = tasks.filter((task) => !task.completed).length;
+
+  const dayDefaultMode: TravelMode = day.travelMode ?? 'public';
+  const [showAllLegs, setShowAllLegs] = useState(false);
+  /** Resolve the transport leg between two consecutive stops: mode, minutes and context word. */
+  const legInfo = (place: Place, nextPlace: Place) => {
+    const cluster = clusterForPlace(clusters, place.id);
+    const nextCluster = clusterForPlace(clusters, nextPlace.id);
+    const sameCluster = Boolean(cluster && nextCluster?.id === cluster.id);
+    const connectionMember = cluster && sameCluster ? clusterMember(cluster, nextPlace.id) ?? clusterMember(cluster, place.id) : undefined;
+    const relationship = connectionMember?.relationship === 'nearby' ? 'walkable' : connectionMember?.relationship;
+    const inside = relationship === 'inside';
+    const legMode: RouteLegMode = day.legModeOverrides?.[routeLegKey(place.id, nextPlace.id)] ?? 'default';
+    const mode: TravelMode = inside
+      ? 'walk'
+      : legMode !== 'default'
+        ? legMode
+        : relationship === 'same-area'
+          ? connectionMember?.travelMode ?? dayDefaultMode
+          : relationship === 'walkable'
+            ? 'walk'
+            : dayDefaultMode;
+    const minutes = sameCluster
+      ? connectionMember?.travelMinutes ?? connectionMember?.walkMinutes
+      : !isPlaceholder(place) && !isPlaceholder(nextPlace) ? estimateTravelMinutes(place, nextPlace, mode) : undefined;
+    const context = inside ? t('insideVenue') : relationship === 'same-area' ? t('inArea') : relationship === 'walkable' ? t('nearby') : undefined;
+    return { legMode, mode, minutes, context, inside };
+  };
+  const legCount = Math.max(places.length - 1, 0);
+  const totalLegMinutes = places.slice(1).reduce((total, place, i) => total + (legInfo(places[i], place).minutes ?? 0), 0);
 
   return (
     <Paper
@@ -218,6 +246,23 @@ export function DayColumn({
             ) : null}
           </Group>
         ) : null}
+        {places.length >= 2 ? (
+          <Box className="day-column__transport-summary">
+            <span>{t('mostly')}</span>
+            <TransportLegChip
+              mode={dayDefaultMode}
+              dayDefaultMode={dayDefaultMode}
+              isOverride={false}
+              readOnly={readOnly}
+              hideDefaultItem
+              onChange={(mode) => { if (mode !== 'default') onDayScheduleChange(day.id, { travelMode: mode }); }}
+            />
+            <Text span size="xs" c="dimmed">· {t('legsSummary', { legs: legCount, minutes: totalLegMinutes })}</Text>
+            <Button ml="auto" size="compact-xs" variant="subtle" color="gray" onClick={() => setShowAllLegs((value) => !value)}>
+              {showAllLegs ? t('hideDefaultLegs') : t('showAllLegs')}
+            </Button>
+          </Box>
+        ) : null}
         {day.timeManagementEnabled && warningCount ? (
           <Group gap={4} mt="xs">
             <IconAlertTriangle size={14} color="var(--mantine-color-orange-6)" />
@@ -263,54 +308,24 @@ export function DayColumn({
                 />
                 {places[placeIndex + 1] ? (() => {
                   const nextPlace = places[placeIndex + 1];
-                  const nextCluster = clusterForPlace(clusters, nextPlace.id);
-                  const sameCluster = cluster && nextCluster?.id === cluster.id;
-                  const nextMember = sameCluster ? clusterMember(cluster, nextPlace.id) : undefined;
-                  const connectionMember = sameCluster ? nextMember ?? clusterMember(cluster, place.id) : undefined;
-                  const relationship = connectionMember?.relationship === 'nearby' ? 'walkable' : connectionMember?.relationship;
-                  if (sameCluster && relationship !== 'same-area') {
-                    const inside = relationship === 'inside';
-                    return (
-                      <Group className="route-leg route-leg--cluster" gap={6} justify="center">
-                        <IconWalk size={15} />
-                        <Text size="xs" fw={650}>
-                          {inside ? 'Inside venue · no transport' : `${connectionMember?.travelMinutes ?? connectionMember?.walkMinutes ?? 'Short'} min walk`}
-                        </Text>
-                      </Group>
-                    );
-                  }
-                  const key = routeLegKey(place.id, nextPlace.id);
-                  const mode = day.legModeOverrides?.[key] ?? 'default';
-                  const actualMode = mode === 'default'
-                    ? relationship === 'same-area'
-                      ? connectionMember?.travelMode ?? day.travelMode ?? 'public'
-                      : day.travelMode ?? 'public'
-                    : mode;
-                  const canOpenRoute = !isPlaceholder(place) && !isPlaceholder(nextPlace);
+                  const leg = legInfo(place, nextPlace);
+                  const showChip = showAllLegs || isExceptionLeg(leg.legMode, leg.mode, dayDefaultMode);
                   return (
-                    <Group className={`route-leg${relationship === 'same-area' ? ' route-leg--area' : ''}`} gap="xs" justify="center" wrap="nowrap">
-                      {canOpenRoute ? <Tooltip label={t('openRoute')}><ActionIcon component="a" href={legGoogleMapsUrl(place, nextPlace, actualMode)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon></Tooltip> : <ActionIcon variant="subtle" color="gray" disabled aria-label={t('openRoute')}><IconRoute size={15} /></ActionIcon>}
-                      {relationship === 'same-area' ? (
-                        <Text size="xs" fw={650}>{connectionMember?.travelMinutes ? `${connectionMember.travelMinutes} min within area` : 'Transport within area'}</Text>
-                      ) : null}
-                      {!readOnly ? <Menu position="bottom-end" shadow="md" withinPortal>
-                        <Menu.Target>
-                          <Tooltip label={t('routeMode')}>
-                            <ActionIcon variant="light" color="teal" aria-label={t('routeMode')}>
-                              {transportIcon(actualMode)}
-                            </ActionIcon>
-                          </Tooltip>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                          <Menu.Item leftSection={transportIcon(relationship === 'same-area' ? connectionMember?.travelMode ?? day.travelMode ?? 'public' : day.travelMode ?? 'public')} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'default')}>{relationship === 'same-area' ? 'Area default' : t('dayDefault')}</Menu.Item>
-                          <Menu.Item leftSection={<IconBus size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'public')}>{t('publicTransport')}</Menu.Item>
-                          <Menu.Item leftSection={<IconWalk size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'walk')}>{t('walk')}</Menu.Item>
-                          <Menu.Item leftSection={<IconBike size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'bike')}>{t('bike')}</Menu.Item>
-                          <Menu.Item leftSection={<IconCar size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'car')}>{t('car')}</Menu.Item>
-                          <Menu.Item leftSection={<IconCar size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'taxi')}>{t('taxi')}</Menu.Item>
-                          <Menu.Item leftSection={<IconDots size={16} />} onClick={() => onLegModeChange(day.id, place.id, nextPlace.id, 'other')}>{t('otherTransport')}</Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu> : <Tooltip label={t('routeMode')}><ActionIcon variant="light" color="teal" aria-label={t('routeMode')} disabled>{transportIcon(actualMode)}</ActionIcon></Tooltip>}
+                    <Group className={`route-leg${showChip ? '' : ' route-leg--collapsed'}`} gap="xs" justify="center" wrap="nowrap">
+                      {!showChip ? null : leg.inside ? (
+                        <Text size="xs" c="dimmed">{t('walk').toLowerCase()} · {t('insideVenue')}</Text>
+                      ) : (
+                        <TransportLegChip
+                          mode={leg.mode}
+                          dayDefaultMode={dayDefaultMode}
+                          isOverride={leg.legMode !== 'default'}
+                          minutes={leg.minutes}
+                          context={leg.context}
+                          readOnly={readOnly}
+                          routeUrl={!isPlaceholder(place) && !isPlaceholder(nextPlace) ? legGoogleMapsUrl(place, nextPlace, leg.mode) : undefined}
+                          onChange={(mode) => onLegModeChange(day.id, place.id, nextPlace.id, mode)}
+                        />
+                      )}
                     </Group>
                   );
                 })() : null}
