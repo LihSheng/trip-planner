@@ -6,26 +6,38 @@ export interface OfflineTripCopy {
   state: TripState;
 }
 
-export function offlineTripKey(planId: string) {
-  return `trip-planner:offline:${planId}`;
+const OFFLINE_KEY_PREFIX = 'trip-planner:offline:';
+
+export function offlineTripKey(userId: string, planId: string) {
+  return `${OFFLINE_KEY_PREFIX}${userId}:${planId}`;
 }
 
-export function writeOfflineTrip(planId: string, revision: number, state: TripState) {
+export function writeOfflineTrip(userId: string, planId: string, revision: number, state: TripState) {
   try {
-    window.localStorage.setItem(offlineTripKey(planId), JSON.stringify({ planId, revision, state }));
+    window.localStorage.setItem(offlineTripKey(userId, planId), JSON.stringify({ planId, revision, state }));
   } catch {
     return;
   }
 }
 
-export function readOfflineTrip(planId: string): OfflineTripCopy | null {
+export function readOfflineTrip(userId: string, planId: string): OfflineTripCopy | null {
   try {
-    const stored = window.localStorage.getItem(offlineTripKey(planId));
+    const stored = window.localStorage.getItem(offlineTripKey(userId, planId));
     if (!stored) return null;
     const copy = JSON.parse(stored) as Partial<OfflineTripCopy> | null;
     if (!copy || copy.planId !== planId || typeof copy.revision !== 'number' || !copy.state) return null;
     return copy as OfflineTripCopy;
   } catch {
     return null;
+  }
+}
+
+export function clearOfflineTrips(userId: string) {
+  try {
+    const prefix = `${OFFLINE_KEY_PREFIX}${userId}:`;
+    const keys = Array.from({ length: window.localStorage.length }, (_, index) => window.localStorage.key(index));
+    keys.filter((key): key is string => key?.startsWith(prefix) ?? false).forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    return;
   }
 }

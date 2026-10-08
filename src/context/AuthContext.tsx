@@ -14,6 +14,7 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconCloud, IconInfoCircle, IconMail } from '@tabler/icons-react';
+import { clearOfflineTrips } from '../lib/offlineTrip';
 import { hasSupabaseConfig } from '../lib/supabaseConfig';
 import { LanguageToggle, useI18n } from '../i18n';
 import {
@@ -129,6 +130,7 @@ export function AuthGate({ children, allowGuest = false }: { children: ReactNode
       isDemo: false,
       isAuthenticated: true,
       signOut: async () => {
+        clearOfflineTrips(session.user.id);
         await signOutSession(session.accessToken);
         setSession(null);
         setSent(false);

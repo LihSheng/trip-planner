@@ -186,7 +186,7 @@ export function useTripLifecycle({
         }
         revision.current = latest.revision;
         savedState.current = restored.state;
-        writeOfflineTrip(planId!, latest.revision, restored.state);
+        writeOfflineTrip(user.id, planId!, latest.revision, restored.state);
         setState(restored.state);
         setSyncStatus('saved');
         setSyncError(null);
@@ -208,7 +208,7 @@ export function useTripLifecycle({
       window.clearInterval(interval);
       window.removeEventListener('focus', onFocus);
     };
-  }, [accessToken, applyRestoredTrip, isDemo, isReady, planId, setState, shareToken]);
+  }, [accessToken, applyRestoredTrip, isDemo, isReady, planId, setState, shareToken, user.id]);
 
   // Hydration effect
   useEffect(() => {
@@ -241,7 +241,7 @@ export function useTripLifecycle({
       } catch (reason) {
         if (!active) return;
         const offlinePlanId = shareToken || isDemo || navigator.onLine ? null : requestedPlanId ?? window.localStorage.getItem(selectedPlanStorageKey(user.id));
-        const offlineCopy = offlinePlanId ? readOfflineTrip(offlinePlanId) : null;
+        const offlineCopy = offlinePlanId ? readOfflineTrip(user.id, offlinePlanId) : null;
         if (offlineCopy) {
           const restored = restore(offlineCopy.state);
           revision.current = offlineCopy.revision;
@@ -360,8 +360,8 @@ export function useTripLifecycle({
 
   useEffect(() => {
     if (isDemo || shareToken || !planId || isOfflineCopy || syncStatus !== 'saved' || !savedState.current) return;
-    writeOfflineTrip(planId, revision.current, savedState.current);
-  }, [isDemo, isOfflineCopy, planId, shareToken, syncStatus]);
+    writeOfflineTrip(user.id, planId, revision.current, savedState.current);
+  }, [isDemo, isOfflineCopy, planId, shareToken, syncStatus, user.id]);
 
   const syncNow = useCallback(async () => {
     if (isDemo || !canSave.current || !planId || syncConflicts.length) return;
