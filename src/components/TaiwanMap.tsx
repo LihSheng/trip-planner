@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionIcon,
   Badge,
@@ -12,25 +12,30 @@ import {
   Tooltip,
 } from '@mantine/core';
 import {
+  IconAlertTriangle,
   IconArrowsMaximize,
   IconArrowsMinimize,
   IconCalendar,
-  IconCircleCheck,
-  IconCircleCheckFilled,
-  IconEdit,
-  IconExternalLink,
+  IconFocus2,
+  IconListDetails,
   IconMap,
   IconPlus,
   IconRoute,
+  IconStack2,
   IconTrash,
 } from '@tabler/icons-react';
 import { divIcon, latLngBounds } from 'leaflet';
 import { Circle, CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
-import type { Place, PlaceCategory, TripDay } from '../types';
+import type { LocationCluster, Place, PlaceCategory, RouteLegMode, TravelMode, TripDay } from '../types';
 import type { CurrentLocation } from '../hooks/useCurrentLocation';
 import { formatTripDate } from '../utils/date';
 import { categoryLabel, useI18n } from '../i18n';
-import { googleDirectionsUrl, googleMapsRouteUrl, googleSearchUrl, markerColors } from '../utils/mapPresentation';
+import { ghostPathOptions, googleMapsRouteUrl, legModeColor, legPathOptions, markerColors, timeRange } from '../utils/mapPresentation';
+import { dayLegs } from '../utils/routing';
+import { MapLegChips } from './MapLegChips';
+import { MapPlaceCard } from './MapPlaceCard';
+import { MapStopTimeline } from './MapStopTimeline';
+import { transportIcon } from './transportIcons';
 
 
 const geoapifyMapsApiKey = import.meta.env.VITE_GEOAPIFY_API_KEY as string | undefined;
@@ -43,9 +48,11 @@ interface TaiwanMapProps {
   selectedId: string | null;
   visitedPlaceIds: string[];
   activeView: string;
-  onSelect: (placeId: string) => void;
+  clusters: LocationCluster[];
+  onSelect: (placeId: string | null) => void;
   onToggleVisited?: (placeId: string) => void;
   onEditPlace: (place: Place) => void;
+  onLegModeChange?: (dayId: string, fromPlaceId: string, toPlaceId: string, mode: RouteLegMode) => void;
   onActiveViewChange: (viewId: string) => void;
   onAddDay: () => void;
   onRemoveDay: (dayId: string) => void;
@@ -73,10 +80,14 @@ function MapViewportController({
   activeView,
   visiblePlaces,
   selectedPlace,
+  cardOpen,
+  fitRequest,
 }: {
   activeView: string;
   visiblePlaces: Place[];
   selectedPlace?: Place;
+  cardOpen: boolean;
+  fitRequest: number;
 }) {
   const map = useMap();
   const previousView = useRef(activeView);
@@ -94,41 +105,56 @@ function MapViewportController({
       );
     }
     previousView.current = activeView;
-  }, [activeView, map, visiblePlaces]);
+  }, [activeView, map, visiblePlaces, fitRequest]);
 
   useEffect(() => {
     if (!selectedPlace || viewChanged) return;
     const zoom = Math.max(map.getZoom(), 11);
     const selectedPoint = map.project([selectedPlace.latitude, selectedPlace.longitude], zoom);
-    const mobileOffset = window.matchMedia('(max-width: 74.99em)').matches ? map.getSize().y * 0.18 : 0;
+    const mobileOffset = cardOpen && window.matchMedia('(max-width: 47.99em)').matches
+      ? map.getSize().y * 0.26
+      : window.matchMedia('(max-width: 74.99em)').matches ? map.getSize().y * 0.18 : 0;
     map.flyTo(
       map.unproject(selectedPoint.subtract([0, mobileOffset]), zoom),
       zoom,
       { duration: 0.55 },
     );
-  }, [map, selectedPlace, viewChanged]);
+  }, [map, selectedPlace, viewChanged, cardOpen]);
 
   return null;
 }
+
+const tickHtml = '<span class="map-pin__tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10" /></svg></span>';
 
 function createMarkerIcon({
   color,
   label,
   selected,
   category,
+  visited,
+  ghost,
 }: {
   color: string;
   label: string;
   selected: boolean;
   category: PlaceCategory;
+  visited: boolean;
+  ghost: boolean;
 }) {
+  if (ghost) {
+    return divIcon({
+      className: 'map-pin-wrapper',
+      html: `<div class="map-pin map-pin--ghost" style="--pin-color:${color}"><span>${label}</span></div>`,
+      iconSize: [22, 26],
+      iconAnchor: [11, 26],
+    });
+  }
   const accommodation = category === 'Accommodation';
   return divIcon({
     className: 'map-pin-wrapper',
-    html: `<div class="map-pin${selected ? ' map-pin--selected' : ''}${accommodation ? ' map-pin--accommodation' : ''}" style="--pin-color:${color}"><span>${accommodation ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>' : label}</span></div>`,
+    html: `<div class="map-pin${selected ? ' map-pin--selected' : ''}${accommodation ? ' map-pin--accommodation' : ''}${visited ? ' map-pin--visited' : ''}" style="--pin-color:${color}"><span>${accommodation ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>' : label}</span>${visited ? tickHtml : ''}</div>`,
     iconSize: selected ? [42, 48] : [34, 40],
     iconAnchor: selected ? [21, 48] : [17, 40],
-    popupAnchor: [0, -40],
   });
 }
 
@@ -141,10 +167,6 @@ const PlaceMarker = memo(function PlaceMarker({
   selected,
   visited,
   onSelect,
-  onToggleVisited,
-  onEditPlace,
-  currentLocation,
-  readOnly,
 }: {
   place: Place;
   index: number;
@@ -153,68 +175,23 @@ const PlaceMarker = memo(function PlaceMarker({
   dayByPlaceId: Map<string, number>;
   selected: boolean;
   visited: boolean;
-  onSelect: (placeId: string) => void;
-  onToggleVisited?: (placeId: string) => void;
-  onEditPlace: (place: Place) => void;
-  currentLocation: CurrentLocation | null;
-  readOnly: boolean;
+  onSelect: (placeId: string | null) => void;
 }) {
-  const { t } = useI18n();
   const dayIndex = dayByPlaceId.get(place.id);
   const label = activeDay ? String(index + 1) : activeView === 'unscheduled' ? 'U' : dayIndex === undefined ? 'U' : String(dayIndex + 1);
 
   return <Marker
     position={[place.latitude, place.longitude]}
-    icon={createMarkerIcon({ color: markerColors[place.category], label, selected, category: place.category })}
+    icon={createMarkerIcon({ color: markerColors[place.category], label, selected, category: place.category, visited, ghost: false })}
     eventHandlers={{ click: () => onSelect(place.id) }}
     zIndexOffset={selected ? 1000 : 0}
-  >
-    <Popup>
-      <Stack gap={4} miw={170}>
-        <Group justify="space-between" align="center" gap="xs" wrap="nowrap">
-          <Text fw={700} size="sm" lineClamp={1}>{place.name}</Text>
-          {onToggleVisited ? <Tooltip label={t('markVisited', { name: place.name })}>
-            <ActionIcon
-              variant="subtle"
-              color={visited ? 'teal' : 'gray'}
-              size="sm"
-              aria-label={t('markVisited', { name: place.name })}
-              aria-pressed={visited}
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => { event.stopPropagation(); onToggleVisited(place.id); }}
-            >
-              {visited ? <IconCircleCheckFilled size={18} /> : <IconCircleCheck size={18} />}
-            </ActionIcon>
-          </Tooltip> : null}
-        </Group>
-        <Group gap={6} wrap="nowrap">
-          <Text size="xs" c="dimmed" lineClamp={1}>{place.region}</Text>
-          <Badge color={markerColors[place.category]} variant="light" size="xs">{categoryLabel(t, place.category)}</Badge>
-          {activeDay ? <Badge size="xs">{t('stop', { number: index + 1 })}</Badge> : null}
-        </Group>
-        {place.notes ? <Text size="xs" lineClamp={2}>{place.notes}</Text> : null}
-        <Group justify="flex-end" gap={2} mt={2}>
-          <Tooltip label="Get directions">
-            <ActionIcon component="a" href={googleDirectionsUrl(place, currentLocation)} target="_blank" rel="noopener noreferrer" variant="subtle" color="teal" size="sm" aria-label="Get directions"><IconRoute size={15} /></ActionIcon>
-          </Tooltip>
-          <Tooltip label="Google search">
-            <ActionIcon component="a" href={googleSearchUrl(place)} target="_blank" rel="noopener noreferrer" variant="subtle" color="gray" size="sm" aria-label="Google search"><IconExternalLink size={15} /></ActionIcon>
-          </Tooltip>
-          {!readOnly ? <Tooltip label={t('editPlace')}><ActionIcon variant="subtle" color="gray" size="sm" aria-label={t('editPlace')} onClick={() => onEditPlace(place)}><IconEdit size={15} /></ActionIcon></Tooltip> : null}
-        </Group>
-      </Stack>
-    </Popup>
-  </Marker>;
+  />;
 }, (previous, next) => previous.place === next.place
   && previous.index === next.index
   && previous.activeDay === next.activeDay
   && previous.activeView === next.activeView
   && previous.selected === next.selected
-  && previous.visited === next.visited
-  && previous.currentLocation === next.currentLocation
-  && previous.readOnly === next.readOnly);
-
-
+  && previous.visited === next.visited);
 
 function MapSurface({
   places,
@@ -224,9 +201,11 @@ function MapSurface({
   selectedId,
   visitedPlaceIds = [],
   activeView,
+  clusters,
   onSelect,
   onToggleVisited,
   onEditPlace,
+  onLegModeChange,
   onActiveViewChange,
   onAddDay,
   onRemoveDay,
@@ -239,6 +218,12 @@ function MapSurface({
   const [useOpenStreetMapFallback, setUseOpenStreetMapFallback] = useState(!geoapifyMapsApiKey);
   const [draggedDayId, setDraggedDayId] = useState<string | null>(null);
   const [daySwitcherCollapsed, setDaySwitcherCollapsed] = useState(false);
+  const [showOtherDays, setShowOtherDays] = useState(true);
+  const [showLegend, setShowLegend] = useState(true);
+  const [fitRequest, setFitRequest] = useState(0);
+  // App always keeps a place selected, so closing the card is a local dismissal that a new selection clears.
+  const [dismissedCardId, setDismissedCardId] = useState<string | null>(null);
+  const selectPlace = (placeId: string | null) => { setDismissedCardId(null); onSelect(placeId); };
   const placesById = useMemo(() => new Map(places.map((place) => [place.id, place])), [places]);
   const dayByPlaceId = useMemo(() => {
     const result = new Map<string, number>();
@@ -268,6 +253,30 @@ function MapSurface({
     [activeDay, placesById],
   );
   const selectedPlace = visiblePlaces.find((place) => place.id === selectedId);
+  const cardPlace = selectedPlace && selectedPlace.id !== dismissedCardId ? selectedPlace : undefined;
+  const legs = useMemo(() => (activeDay ? dayLegs(activeDay, placesById, clusters) : []), [activeDay, placesById, clusters]);
+  const totalMinutes = useMemo(() => legs.reduce((sum, leg) => sum + (leg.minutes ?? 0), 0), [legs]);
+  const dayMinutes = useMemo(
+    () => new Map(days.map((day) => [day.id, dayLegs(day, placesById, clusters).reduce((sum, leg) => sum + (leg.minutes ?? 0), 0)])),
+    [days, placesById, clusters],
+  );
+  const ghostDays = useMemo(() => {
+    if (!activeDay || !showOtherDays) return [];
+    return days.flatMap((day, dayIndex) => day.id === activeDay.id ? [] : [{
+      day,
+      dayIndex,
+      places: day.placeIds.flatMap((id) => { const place = placesById.get(id); return place ? [place] : []; }),
+    }]);
+  }, [activeDay, days, placesById, showOtherDays]);
+  const visibleIdSet = useMemo(() => new Set(visiblePlaces.map((place) => place.id)), [visiblePlaces]);
+  const legModes = useMemo(() => [...new Set(legs.map((leg) => leg.mode))], [legs]);
+  const categories = useMemo(() => [...new Set(visiblePlaces.map((place) => place.category))], [visiblePlaces]);
+  const selectedStopIndex = activeDay && selectedPlace ? activeDay.placeIds.indexOf(selectedPlace.id) : -1;
+  const selectedDayIndex = selectedPlace ? dayByPlaceId.get(selectedPlace.id) : undefined;
+  const showTimeline = Boolean(activeDay && routePlaces.length > 0);
+  const modeLabels: Record<TravelMode, string> = {
+    public: t('publicTransport'), walk: t('walk'), bike: t('bike'), car: t('car'), taxi: t('taxi'), other: t('otherTransport'),
+  };
   const routeUrl = googleMapsRouteUrl(routePlaces);
 
   function selectMapView(viewId: string) {
@@ -281,10 +290,10 @@ function MapSurface({
   }
 
   return (
-    <Paper withBorder radius={expanded ? 0 : 'lg'} className={`map-shell${expanded ? ' map-shell--expanded' : ''}`}>
+    <Paper withBorder radius={expanded ? 0 : 'lg'} className={`map-shell${expanded ? ' map-shell--expanded' : ''}${showTimeline ? ' map-shell--with-timeline' : ''}${cardPlace ? ' map-shell--card-open' : ''}`}>
       <MapContainer center={[23.8, 120.95]} zoom={7} minZoom={6} scrollWheelZoom className="taiwan-map">
         <MapSizeController expanded={expanded} />
-        <MapViewportController activeView={activeView} visiblePlaces={visiblePlaces} selectedPlace={selectedPlace} />
+        <MapViewportController activeView={activeView} visiblePlaces={visiblePlaces} selectedPlace={selectedPlace} cardOpen={Boolean(cardPlace)} fitRequest={fitRequest} />
         <TileLayer
           key={useOpenStreetMapFallback ? 'osm-fallback' : 'geoapify-primary'}
           attribution={
@@ -301,10 +310,45 @@ function MapSurface({
           eventHandlers={{ tileerror: () => setUseOpenStreetMapFallback(true) }}
         />
 
-        {routePlaces.length > 1 ? (
-          <Polyline
-            positions={routePlaces.map((place) => [place.latitude, place.longitude] as [number, number])}
-            pathOptions={{ color: '#13a889', weight: 5, opacity: 0.78, dashArray: '10 8', lineCap: 'round' }}
+        {ghostDays.map(({ day, dayIndex, places: dayPlaces }) => (
+          <Fragment key={`ghost-${day.id}`}>
+            {dayPlaces.length > 1 ? (
+              <Polyline
+                positions={dayPlaces.map((place) => [place.latitude, place.longitude] as [number, number])}
+                pathOptions={ghostPathOptions}
+              />
+            ) : null}
+            {dayPlaces.filter((place) => !visibleIdSet.has(place.id)).map((place) => (
+              <Marker
+                key={place.id}
+                position={[place.latitude, place.longitude]}
+                icon={createMarkerIcon({ color: markerColors[place.category], label: String(dayIndex + 1), selected: false, category: place.category, visited: false, ghost: true })}
+                zIndexOffset={-500}
+                interactive
+                eventHandlers={{ click: () => { onActiveViewChange(day.id); selectPlace(place.id); } }}
+              />
+            ))}
+          </Fragment>
+        ))}
+
+        {legs.map((leg) => {
+          const dimmed = selectedId !== null && leg.from.id !== selectedId && leg.to.id !== selectedId;
+          return (
+            <Polyline
+              key={`${leg.from.id}->${leg.to.id}`}
+              positions={[[leg.from.latitude, leg.from.longitude], [leg.to.latitude, leg.to.longitude]]}
+              pathOptions={dimmed ? { ...legPathOptions[leg.mode], opacity: 0.3 } : legPathOptions[leg.mode]}
+            />
+          );
+        })}
+
+        {activeDay ? (
+          <MapLegChips
+            legs={legs}
+            dayDefaultMode={activeDay.travelMode ?? 'public'}
+            readOnly={readOnly || !onLegModeChange}
+            selectedPlaceId={selectedId}
+            onLegModeChange={(from, to, mode) => onLegModeChange?.(activeDay.id, from, to, mode)}
           />
         ) : null}
 
@@ -322,7 +366,7 @@ function MapSurface({
               pathOptions={{ color: '#ffffff', fillColor: '#228be6', fillOpacity: 1, weight: 3 }}
             >
               <Popup>
-                <Text size="sm" fw={700}>Your live location</Text>
+                <Text size="sm" fw={700}>{t('liveLocation')}</Text>
               </Popup>
             </CircleMarker>
           </>
@@ -337,11 +381,7 @@ function MapSurface({
           dayByPlaceId={dayByPlaceId}
           selected={place.id === selectedId}
           visited={visitedPlaceIds.includes(place.id)}
-          onSelect={onSelect}
-          onToggleVisited={onToggleVisited}
-          onEditPlace={onEditPlace}
-          currentLocation={currentLocation}
-          readOnly={readOnly}
+          onSelect={selectPlace}
         />)}
       </MapContainer>
 
@@ -399,7 +439,8 @@ function MapSurface({
                 }}
                 onDragEnd={() => setDraggedDayId(null)}
               >
-                {t('day', { number: index + 1 })}
+                <span>{t('day', { number: index + 1 })}</span>
+                {day.placeIds.length >= 2 ? <span className="map-day-switcher__sub">{transportIcon(day.travelMode ?? 'public')} {dayMinutes.get(day.id) ?? 0}m</span> : null}
               </Button>
             ) : null))}
             {!readOnly && !daySwitcherCollapsed ? <Tooltip label={t('addItineraryDay')}>
@@ -452,6 +493,13 @@ function MapSurface({
               ? `${formatTripDate(startDate, activeDayIndex)} · ${t('stopsCount', { count: routePlaces.length })}`
               : t('visiblePlaces', { count: visiblePlaces.length })}
           </Text>
+          {activeDay ? (
+            <div className="map-route-summary__stats">
+              <div><span>{routePlaces.length}</span><small>{t('stopsLabel')}</small></div>
+              <div><span>{totalMinutes}</span><small>{t('minTravelLabel')}</small></div>
+            </div>
+          ) : null}
+          {activeDay?.routeStale ? <div className="map-route-summary__stale"><IconAlertTriangle size={14} />{t('routeStaleShort')}</div> : null}
         </Stack>
         {routeUrl ? (
           <Button
@@ -466,19 +514,67 @@ function MapSurface({
         ) : null}
       </Box>
 
-      <Tooltip label={expanded ? t('exitFullScreen') : t('fullScreenMap')}>
-        <ActionIcon
-          className="map-expand-button"
-          size="lg"
-          radius="xl"
-          variant="white"
-          color="teal"
-          aria-label={expanded ? t('exitFullScreen') : t('openFullScreenMap')}
-          onClick={onToggleExpanded}
-        >
-          {expanded ? <IconArrowsMinimize size={18} /> : <IconArrowsMaximize size={18} />}
-        </ActionIcon>
-      </Tooltip>
+      <Box className="map-control-rail" role="group" aria-label={t('mapControls')}>
+        <Tooltip label={expanded ? t('exitFullScreen') : t('fullScreenMap')}>
+          <ActionIcon size="lg" radius="xl" variant="white" color="teal" aria-label={expanded ? t('exitFullScreen') : t('openFullScreenMap')} onClick={onToggleExpanded}>
+            {expanded ? <IconArrowsMinimize size={18} /> : <IconArrowsMaximize size={18} />}
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label={t('fitStops')}>
+          <ActionIcon size="lg" radius="xl" variant="white" color="teal" aria-label={t('fitStops')} onClick={() => setFitRequest((value) => value + 1)}>
+            <IconFocus2 size={18} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label={t(showOtherDays ? 'hideOtherDays' : 'showOtherDays')}>
+          <ActionIcon size="lg" radius="xl" variant="white" color="teal" aria-label={t(showOtherDays ? 'hideOtherDays' : 'showOtherDays')} aria-pressed={showOtherDays} onClick={() => setShowOtherDays((value) => !value)}>
+            <IconStack2 size={18} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label={t('toggleLegend')}>
+          <ActionIcon size="lg" radius="xl" variant="white" color="teal" aria-label={t('toggleLegend')} aria-pressed={showLegend} onClick={() => setShowLegend((value) => !value)}>
+            <IconListDetails size={18} />
+          </ActionIcon>
+        </Tooltip>
+      </Box>
+
+      {showLegend && (categories.length > 0 || legModes.length > 0) ? (
+        <Box className="map-legend">
+          {categories.map((category) => (
+            <div key={category}><span className="map-legend__swatch" style={{ background: markerColors[category] }} />{categoryLabel(t, category)}</div>
+          ))}
+          {activeDay ? legModes.map((mode) => (
+            <div key={mode}><span className="map-legend__swatch" style={{ background: legModeColor[mode] }} />{modeLabels[mode]}</div>
+          )) : null}
+        </Box>
+      ) : null}
+
+      {showTimeline && activeDay ? (
+        <MapStopTimeline
+          day={activeDay}
+          places={routePlaces}
+          legs={legs}
+          selectedId={selectedId}
+          visitedPlaceIds={visitedPlaceIds}
+          onSelect={selectPlace}
+        />
+      ) : null}
+
+      {cardPlace ? (
+        <MapPlaceCard
+          place={cardPlace}
+          stopNumber={selectedStopIndex >= 0 ? selectedStopIndex + 1 : undefined}
+          dayNumber={selectedStopIndex < 0 && selectedDayIndex !== undefined ? selectedDayIndex + 1 : undefined}
+          isUnscheduled={unscheduledIds.includes(cardPlace.id)}
+          timeLabel={activeDay && activeDay.stopSchedules?.[cardPlace.id]?.startTime ? timeRange(activeDay, cardPlace.id) : undefined}
+          visited={visitedPlaceIds.includes(cardPlace.id)}
+          nextLeg={legs.find((leg) => leg.from.id === cardPlace.id)}
+          currentLocation={currentLocation}
+          readOnly={readOnly}
+          onClose={() => setDismissedCardId(cardPlace.id)}
+          onToggleVisited={onToggleVisited ? () => onToggleVisited(cardPlace.id) : undefined}
+          onEditPlace={() => onEditPlace(cardPlace)}
+        />
+      ) : null}
 
       {!visiblePlaces.length ? (
         <Box className="map-empty-state">

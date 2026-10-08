@@ -313,9 +313,11 @@ export default function App() {
         selectedId={selectedId}
         visitedPlaceIds={planner.state.visitedPlaceIds ?? []}
         activeView={activeMapView}
+        clusters={planner.state.locationClusters ?? []}
         onSelect={setSelectedId}
         onToggleVisited={planner.isReadOnly ? undefined : planner.toggleVisited}
         onEditPlace={openEditPlace}
+        onLegModeChange={planner.isReadOnly ? undefined : planner.updateLegMode}
         onActiveViewChange={handleMapViewChange}
         onAddDay={planner.addDay}
         onRemoveDay={setDayDeleteTarget}

@@ -17,12 +17,12 @@ import {
   Select,
 } from '@mantine/core';
 import { IconAlertTriangle, IconBed, IconCircleCheckFilled, IconCoffee, IconDots, IconListCheck, IconMapPinPlus, IconPlane, IconPlus, IconSun, IconToolsKitchen, IconTrash } from '@tabler/icons-react';
-import type { DayTask, LocationCluster, PlaceholderKind, Place, RouteLegMode, StopSchedule, TravelMode, TripDay } from '../types';
+import type { DayTask, LocationCluster, PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
 import { useI18n } from '../i18n';
 import { dayWarnings, estimateTravelMinutes, scheduleFor } from '../utils/schedule';
-import { isExceptionLeg, routeLegKey } from '../utils/routing';
+import { isExceptionLeg, resolveLeg } from '../utils/routing';
 import { legGoogleMapsUrl } from '../utils/mapPresentation';
 import { TransportLegChip } from './TransportLegChip';
 import { isPlaceholder } from '../domain/place';
@@ -109,32 +109,9 @@ export function DayColumn({
 
   const dayDefaultMode: TravelMode = day.travelMode ?? 'public';
   const [showAllLegs, setShowAllLegs] = useState(false);
-  /** Resolve the transport leg between two consecutive stops: mode, minutes and context word. */
-  const legInfo = (place: Place, nextPlace: Place) => {
-    const cluster = clusterForPlace(clusters, place.id);
-    const nextCluster = clusterForPlace(clusters, nextPlace.id);
-    const sameCluster = Boolean(cluster && nextCluster?.id === cluster.id);
-    const connectionMember = cluster && sameCluster ? clusterMember(cluster, nextPlace.id) ?? clusterMember(cluster, place.id) : undefined;
-    const relationship = connectionMember?.relationship === 'nearby' ? 'walkable' : connectionMember?.relationship;
-    const inside = relationship === 'inside';
-    const legMode: RouteLegMode = day.legModeOverrides?.[routeLegKey(place.id, nextPlace.id)] ?? 'default';
-    const mode: TravelMode = inside
-      ? 'walk'
-      : legMode !== 'default'
-        ? legMode
-        : relationship === 'same-area'
-          ? connectionMember?.travelMode ?? dayDefaultMode
-          : relationship === 'walkable'
-            ? 'walk'
-            : dayDefaultMode;
-    const minutes = sameCluster
-      ? connectionMember?.travelMinutes ?? connectionMember?.walkMinutes
-      : !isPlaceholder(place) && !isPlaceholder(nextPlace) ? estimateTravelMinutes(place, nextPlace, mode) : undefined;
-    const context = inside ? t('insideVenue') : relationship === 'same-area' ? t('inArea') : relationship === 'walkable' ? t('nearby') : undefined;
-    return { legMode, mode, minutes, context, inside };
-  };
-  const legCount = Math.max(places.length - 1, 0);
-  const totalLegMinutes = places.slice(1).reduce((total, place, i) => total + (legInfo(places[i], place).minutes ?? 0), 0);
+  const legs = places.slice(1).map((place, i) => resolveLeg(day, clusters, places[i], place));
+  const legCount = legs.length;
+  const totalLegMinutes = legs.reduce((total, leg) => total + (leg.minutes ?? 0), 0);
 
   return (
     <Paper
@@ -308,7 +285,8 @@ export function DayColumn({
                 />
                 {places[placeIndex + 1] ? (() => {
                   const nextPlace = places[placeIndex + 1];
-                  const leg = legInfo(place, nextPlace);
+                  const leg = resolveLeg(day, clusters, place, nextPlace);
+                  const context = leg.relationship === 'inside' ? t('insideVenue') : leg.relationship === 'same-area' ? t('inArea') : leg.relationship === 'walkable' ? t('nearby') : undefined;
                   const showChip = showAllLegs || isExceptionLeg(leg.legMode, leg.mode, dayDefaultMode);
                   return (
                     <Group className={`route-leg${showChip ? '' : ' route-leg--collapsed'}`} gap="xs" justify="center" wrap="nowrap">
@@ -320,7 +298,7 @@ export function DayColumn({
                           dayDefaultMode={dayDefaultMode}
                           isOverride={leg.legMode !== 'default'}
                           minutes={leg.minutes}
-                          context={leg.context}
+                          context={context}
                           readOnly={readOnly}
                           routeUrl={!isPlaceholder(place) && !isPlaceholder(nextPlace) ? legGoogleMapsUrl(place, nextPlace, leg.mode) : undefined}
                           onChange={(mode) => onLegModeChange(day.id, place.id, nextPlace.id, mode)}

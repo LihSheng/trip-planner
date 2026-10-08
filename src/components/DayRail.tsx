@@ -16,7 +16,6 @@ export interface DaySummary {
 
 type Translate = ReturnType<typeof useI18n>['t'];
 
-// TODO(human): decide what each day row in the rail says under its title.
 function daySubtitle(t: Translate, dateLabel: string, summary: DaySummary): string {
   return dateLabel;
 }
