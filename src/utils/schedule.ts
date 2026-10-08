@@ -1,5 +1,6 @@
 import type { Place, PlaceCategory, StopSchedule, TravelMode, TripDay } from '../types';
 import { isPlaceholder } from '../domain/place';
+import { effectiveLegMode } from './routing';
 
 const DEFAULT_DURATIONS: Record<PlaceCategory, number> = {
   Landmark: 90,
@@ -84,4 +85,28 @@ export function dayWarnings(day: TripDay, places: Place[]) {
 
 export function dayWarningCount(day: TripDay, places: Place[]) {
   return [...dayWarnings(day, places).values()].reduce((total, warnings) => total + warnings.length, 0);
+}
+
+export type NextAnchor =
+  | { kind: 'leaveBy'; leaveAt: string; arriveBy: string; travelMinutes: number; mode: TravelMode; toPlaceId: string }
+  | { kind: 'opensAt'; opensAt: string; placeId: string }
+  | { kind: 'none' };
+
+export function nextAnchor(day: TripDay, orderedPlaces: Place[], currentPlaceId: string | null, nextPlaceId: string | null): NextAnchor {
+  const next = orderedPlaces.find((place) => place.id === nextPlaceId);
+  if (!next) return { kind: 'none' };
+  const current = orderedPlaces.find((place) => place.id === currentPlaceId);
+  const schedule = scheduleFor(day, next);
+  const closesAt = toMinutes(next.openingHours?.closesAt);
+  const arriveMinutes = toMinutes(schedule.startTime)
+    ?? (closesAt !== null ? closesAt - (schedule.durationMinutes ?? defaultDuration(next.category)) : null);
+
+  if (arriveMinutes === null) {
+    const opensAt = next.openingHours?.opensAt;
+    return !current && toMinutes(opensAt) !== null ? { kind: 'opensAt', opensAt: opensAt!, placeId: next.id } : { kind: 'none' };
+  }
+
+  const mode = current ? effectiveLegMode(day, current.id, next.id) : day.travelMode ?? 'public';
+  const travelMinutes = current ? estimateTravelMinutes(current, next, mode) : 0;
+  return { kind: 'leaveBy', leaveAt: toTime(arriveMinutes - travelMinutes), arriveBy: toTime(arriveMinutes), travelMinutes, mode, toPlaceId: next.id };
 }
