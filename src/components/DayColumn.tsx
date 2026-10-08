@@ -21,8 +21,9 @@ import type { DayTask, LocationCluster, PlaceholderKind, Place, StopSchedule, Tr
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
 import { useI18n } from '../i18n';
-import { dayWarnings, estimateTravelMinutes, scheduleFor } from '../utils/schedule';
-import { isExceptionLeg, resolveLeg } from '../utils/routing';
+import { scheduleFor } from '../utils/schedule';
+import { projectDay, type ScheduleWarning } from '../utils/dayProjection';
+import { isExceptionLeg } from '../utils/routing';
 import { legGoogleMapsUrl } from '../utils/mapPresentation';
 import { TransportLegChip } from './TransportLegChip';
 import { isPlaceholder } from '../domain/place';
@@ -103,13 +104,15 @@ export function DayColumn({
   const dayName = t('day', { number: index + 1 });
   const visitedCount = places.filter((place) => visitedPlaceIds.includes(place.id)).length;
   const allPlacesVisited = places.length > 0 && visitedCount === places.length;
-  const warningsByPlace = day.timeManagementEnabled ? dayWarnings(day, places) : new Map<string, string[]>();
+  const projection = projectDay(day, places, clusters);
+  const warningText = (warning: ScheduleWarning) => warning.kind === 'outsideHours' ? t('outsideOpeningHours') : t('shortTravelBy', { minutes: warning.shortByMinutes });
+  const warningsByPlace = new Map(day.timeManagementEnabled ? projection.stops.map((stop) => [stop.place.id, stop.warnings.map(warningText)]) : []);
   const warningCount = [...warningsByPlace.values()].reduce((total, warnings) => total + warnings.length, 0);
   const incompleteTaskCount = tasks.filter((task) => !task.completed).length;
 
   const dayDefaultMode: TravelMode = day.travelMode ?? 'public';
   const [showAllLegs, setShowAllLegs] = useState(false);
-  const legs = places.slice(1).map((place, i) => resolveLeg(day, clusters, places[i], place));
+  const legs = projection.legs;
   const legCount = legs.length;
   const totalLegMinutes = legs.reduce((total, leg) => total + (leg.minutes ?? 0), 0);
 
@@ -276,7 +279,7 @@ export function DayColumn({
                   onReplace={!readOnly && isPlaceholder(place) ? onReplacePlaceholder : undefined}
                   onRename={!readOnly && isPlaceholder(place) ? (target) => { setRenameTarget(target); setRenameLabel(target.name === target.placeholderKind ? '' : target.name); } : undefined}
                   schedule={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] ? scheduleFor(day, place) : undefined}
-                  travelMinutes={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 && !isPlaceholder(place) && !isPlaceholder(places[placeIndex - 1]) ? estimateTravelMinutes(places[placeIndex - 1], place, day.travelMode) : undefined}
+                  travelMinutes={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 ? legs[placeIndex - 1]?.minutes : undefined}
                   warnings={readOnly ? undefined : warningsByPlace.get(place.id)}
                   onScheduleChange={!readOnly && day.timeManagementEnabled ? (updates) => onStopScheduleChange(day.id, place.id, updates) : undefined}
                   onEnableSchedule={!readOnly && day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
@@ -285,7 +288,7 @@ export function DayColumn({
                 />
                 {places[placeIndex + 1] ? (() => {
                   const nextPlace = places[placeIndex + 1];
-                  const leg = resolveLeg(day, clusters, place, nextPlace);
+                  const leg = legs[placeIndex];
                   const context = leg.relationship === 'inside' ? t('insideVenue') : leg.relationship === 'same-area' ? t('inArea') : leg.relationship === 'walkable' ? t('nearby') : undefined;
                   const showChip = showAllLegs || isExceptionLeg(leg.legMode, leg.mode, dayDefaultMode);
                   return (

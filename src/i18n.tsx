@@ -17,6 +17,7 @@ const plannerFocusTranslations = {
     dayOptions: '{day} options', stayingAt: 'Staying at {name}', noStopsYet: 'No stops yet',
     mostly: 'Mostly', legsSummary: '{legs} legs · {minutes} min travel', showAllLegs: 'Show all legs', hideDefaultLegs: 'Hide default legs', fromHere: 'from here', inArea: 'in area', insideVenue: 'inside venue', nearby: 'nearby',
     minTravel: '{minutes} min travel', stopsLabel: 'stops', minTravelLabel: 'min travel', markVisitedShort: 'Mark visited', visitedShort: 'Visited', kmDistance: '{km} km', routeStaleShort: 'Route is stale after changes', fitStops: 'Fit stops in view', showOtherDays: 'Show other days', hideOtherDays: 'Hide other days', toggleLegend: 'Toggle legend', nextStop: 'Next: {name}', closeCard: 'Close', getDirections: 'Get directions', googleSearch: 'Google search', noFixedTime: 'No fixed time', stopTimeline: 'Stop timeline', liveLocation: 'Your live location', mapControls: 'Map controls', defaultMode: 'default {mode}',
+    outsideOpeningHours: 'Outside opening hours', shortTravelBy: '{minutes} min short for travel', legMinutes: '{minutes} min',
   },
   'zh-TW': {
     tripDays: '行程日期', wholeTrip: '整趟行程', wholeTripSummary: '{days} 天 · {stops} 個停靠點', openDay: '開啟{day}', activity: '活動紀錄',
@@ -24,6 +25,7 @@ const plannerFocusTranslations = {
     dayOptions: '{day}選項', stayingAt: '住宿：{name}', noStopsYet: '尚無停靠點',
     mostly: '主要', legsSummary: '{legs} 段 · 交通 {minutes} 分鐘', showAllLegs: '顯示所有路段', hideDefaultLegs: '隱藏預設路段', fromHere: '從此處起', inArea: '區域內', insideVenue: '場館內', nearby: '鄰近',
     minTravel: '交通 {minutes} 分鐘', stopsLabel: '停靠點', minTravelLabel: '分鐘交通', markVisitedShort: '標記已造訪', visitedShort: '已造訪', kmDistance: '{km} 公里', routeStaleShort: '變更後路線已過期', fitStops: '縮放至所有停靠點', showOtherDays: '顯示其他日期', hideOtherDays: '隱藏其他日期', toggleLegend: '切換圖例', nextStop: '下一站：{name}', closeCard: '關閉', getDirections: '取得路線', googleSearch: 'Google 搜尋', noFixedTime: '未設定時間', stopTimeline: '停靠點時間軸', liveLocation: '你的即時位置', mapControls: '地圖控制', defaultMode: '預設{mode}',
+    outsideOpeningHours: '超出營業時間', shortTravelBy: '交通時間不足 {minutes} 分鐘', legMinutes: '{minutes} 分鐘',
   },
 } as const;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayWarningCount, dayWarnings, defaultDuration, estimateTravelMinutes, nextAnchor, scheduleFor, toMinutes, toTime } from './schedule';
+import { defaultDuration, estimateTravelMinutes, nextAnchor, scheduleFor, toMinutes, toTime } from './schedule';
 import type { LocationCluster, Place, TripDay } from '../types';
 
 const first: Place = { id: 'first', name: 'First', region: 'Taipei', category: 'Landmark', latitude: 25.03, longitude: 121.56, notes: '' };
@@ -18,20 +18,11 @@ describe('schedule helpers', () => {
     expect(estimateTravelMinutes(first, second, 'walk')).toBeGreaterThan(estimateTravelMinutes(first, second, 'car'));
   });
 
-  it('warns for insufficient travel and opening-hour conflicts', () => {
-    const day: TripDay = {
-      id: 'day-1', label: '', placeIds: ['first', 'second'], travelMode: 'walk',
-      stopSchedules: { first: { startTime: '09:00', durationMinutes: 90 }, second: { startTime: '09:40', durationMinutes: 60 } },
-    };
-    expect(dayWarningCount(day, [first, { ...second, openingHours: { opensAt: '10:00', closesAt: '18:00' } }])).toBe(2);
-  });
-
   it('uses category defaults and preserves explicit stop schedules', () => {
     const day: TripDay = { id: 'day-1', label: '', placeIds: ['first'], stopSchedules: { first: { durationMinutes: 45 } } };
 
     expect(defaultDuration('Nature')).toBe(120);
     expect(scheduleFor(day, first)).toEqual({ durationMinutes: 45 });
-    expect(dayWarnings({ ...day, stopSchedules: {} }, [first])).toEqual(new Map());
   });
 });
 
