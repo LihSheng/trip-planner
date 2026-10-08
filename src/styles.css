@@ -812,6 +812,11 @@ select {
   padding: 8px 0 28px;
 }
 
+.today-anchor {
+  margin: 0 4px 12px;
+  color: var(--mantine-color-teal-8);
+}
+
 .today-header {
   display: flex;
   align-items: flex-start;
