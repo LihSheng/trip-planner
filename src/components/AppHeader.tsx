@@ -34,12 +34,14 @@ import {
   IconSparkles,
   IconSettings,
   IconUsers,
+  IconWifiOff,
 } from '@tabler/icons-react';
 import { isPlaceholder } from '../domain/place';
 import { useAuth } from '../context/AuthContext';
 import { useTrip } from '../context/TripContext';
 import type { CurrentLocationState } from '../hooks/useCurrentLocation';
 import { exportTripExcel, exportTripMarkdown } from '../utils/exportTrip';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useI18n } from '../i18n';
 
 interface AppHeaderProps {
@@ -72,6 +74,7 @@ export function AppHeader({
     syncStatus,
     syncError,
     isReadOnly: readOnly,
+    isOfflineCopy,
     isOwner,
     switchPlan: onSwitchPlan,
     createPlan: onCreatePlan,
@@ -79,6 +82,7 @@ export function AppHeader({
   } = useTrip();
   const { user, isDemo, isAuthenticated, requestMagicLink } = useAuth();
   const { t } = useI18n();
+  const online = useOnlineStatus();
   const [exporting, setExporting] = useState<'excel' | 'markdown' | null>(null);
   const [signInOpened, setSignInOpened] = useState(false);
   const [signInEmail, setSignInEmail] = useState('');
@@ -203,6 +207,11 @@ export function AppHeader({
               {t({ loading: 'loading', saving: 'saving', saved: 'saved', error: 'syncFailed' }[syncStatus] as 'loading' | 'saving' | 'saved' | 'syncFailed')}
             </Badge>
           </Tooltip>
+          {!online || isOfflineCopy ? (
+            <Tooltip label={isOfflineCopy ? t('offlineCopy') : t('offline')}>
+              <Badge variant="light" color="orange" leftSection={<IconWifiOff size={13} />}>{t('offline')}</Badge>
+            </Tooltip>
+          ) : null}
           {!readOnly ? <Button
             color="teal"
             leftSection={<IconPlus size={17} />}
