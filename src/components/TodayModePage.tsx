@@ -10,6 +10,7 @@ import { addDays } from '../utils/date';
 import { ExpenseSheet } from './ExpenseSheet';
 import { getTwdExchangeRate } from '../lib/exchangeRates';
 import { useTrip } from '../context/TripContext';
+import { showUndoableNotification } from '../lib/undoNotification';
 import type { CurrentLocationState } from '../hooks/useCurrentLocation';
 import { navigationUrl, placeStatus, timeRange } from '../utils/mapPresentation';
 import { nextAnchor, toMinutes } from '../utils/schedule';
@@ -36,7 +37,7 @@ interface TodayModePageProps {
 }
 
 export function TodayModePage({ location }: TodayModePageProps) {
-  const { state, placesById, isReadOnly: readOnly, updateExecution: onUpdateExecution, updatePlace: onUpdatePlace, addExpense: onAddExpense, toggleDayTask, deleteDayTask, moveDayTask, toggleVisited } = useTrip();
+  const { state, placesById, isReadOnly: readOnly, updateExecution: onUpdateExecution, updatePlace: onUpdatePlace, addExpense: onAddExpense, toggleDayTask, deleteDayTask, moveDayTask, toggleVisited, markUndoPoint, undo } = useTrip();
   const sessionKey = `trip-planner:today-day:${state.tripName}`;
   const visitedPlaceIds = state.visitedPlaceIds ?? [];
   const [activeDayId, setActiveDayId] = useState(() => sessionStorage.getItem(sessionKey) ?? '');
@@ -106,8 +107,15 @@ export function TodayModePage({ location }: TodayModePageProps) {
   }, [state.displayCurrency]);
 
   function update(placeId: string, status: StopExecutionStatus) {
+    if (status === 'skipped' || status === 'completed') {
+      const title = t(status === 'skipped' ? 'stopSkipped' : 'stopCompleted');
+      markUndoPoint(title);
+      onUpdateExecution(activeDay.id, placeId, status);
+      showUndoableNotification({ color: status === 'skipped' ? 'orange' : 'teal', title, message: t('stopStatusSaved'), onUndo: undo, t });
+      return;
+    }
     onUpdateExecution(activeDay.id, placeId, status);
-    notifications.show({ color: status === 'skipped' ? 'orange' : 'teal', title: labels[status], message: 'Today’s stop status was saved.', withCloseButton: true });
+    notifications.show({ color: 'teal', title: labels[status], message: 'Today’s stop status was saved.', withCloseButton: true });
   }
 
   function openNavigation(place: Place) {
@@ -159,7 +167,11 @@ export function TodayModePage({ location }: TodayModePageProps) {
                   overdue
                   readOnly={readOnly}
                   onToggle={() => toggleDayTask(task.id)}
-                  onMove={() => moveDayTask(task.id, activeDay.id)}
+                  onMove={() => {
+                    markUndoPoint(t('taskMoved'));
+                    moveDayTask(task.id, activeDay.id);
+                    showUndoableNotification({ title: t('taskMoved'), message: t('taskMovedMessage', { text: task.text }), onUndo: undo, t });
+                  }}
                   onDelete={() => deleteDayTask(task.id)}
                 />
               ))}
