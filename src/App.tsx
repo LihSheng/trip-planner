@@ -23,6 +23,7 @@ import {
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
+import { showUndoableNotification } from './lib/undoNotification';
 import {
   IconCalendarEvent,
   IconChevronLeft,
@@ -219,6 +220,7 @@ export default function App() {
   function handleDeletePlace() {
     if (planner.isReadOnly) return;
     if (!deleteTarget) return;
+    planner.markUndoPoint(t('placeRemoved'));
     if (deleteCluster) {
       if (clusterDeleteMode === 'replace') {
         if (!replacementAnchorId) return;
@@ -236,7 +238,7 @@ export default function App() {
       planner.removePlace(deleteTarget.id);
     }
     if (selectedId === deleteTarget.id) setSelectedId(null);
-    notifications.show({ color: 'red', title: t('placeRemoved'), message: t('placeDeleted', { name: deleteTarget.name }) });
+    showUndoableNotification({ color: 'red', title: t('placeRemoved'), message: t('placeDeleted', { name: deleteTarget.name }), onUndo: planner.undo, t });
     setDeleteTarget(undefined);
   }
 
@@ -258,11 +260,14 @@ export default function App() {
   function handleDeleteDay() {
     if (planner.isReadOnly) return;
     if (!dayToDelete) return;
+    planner.markUndoPoint(t('dayRemoved'));
     planner.removeDay(dayToDelete.id);
-    notifications.show({
+    showUndoableNotification({
       color: 'orange',
       title: t('dayRemoved'),
       message: t('stopsMoved', { count: dayToDelete.placeIds.length }),
+      onUndo: planner.undo,
+      t,
     });
     setDayDeleteTarget(null);
   }
