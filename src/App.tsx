@@ -59,26 +59,30 @@ const TaiwanMap = lazy(() =>
   import('./components/TaiwanMap').then((module) => ({ default: module.TaiwanMap })),
 );
 
+const WORKSPACE_VIEWS = [
+  { value: 'today', icon: IconSun, labelKey: 'today' },
+  { value: 'map', icon: IconMap, labelKey: 'map' },
+  { value: 'places', icon: IconList, labelKey: 'places' },
+  { value: 'planner', icon: IconCalendarEvent, labelKey: 'planner' },
+  { value: 'expenses', icon: IconReceipt, labelKey: 'expenses' },
+] as const;
+
+type WorkspaceView = (typeof WORKSPACE_VIEWS)[number]['value'];
+
 export default function App() {
   const planner = useTrip();
   const { user, signOut } = useAuth();
   const { t } = useI18n();
   const location = useCurrentLocation();
-  const mobileViews = [
-    { label: 'Today', value: 'today' },
-    { label: t('map'), value: 'map' },
-    { label: t('places'), value: 'places' },
-    { label: t('planner'), value: 'planner' },
-    { label: t('expenses'), value: 'expenses' },
-  ];
   const theme = useMantineTheme();
   const isDesktop = useMediaQuery(`(min-width: ${theme.breakpoints.lg})`);
   const [selectedId, setSelectedId] = useState<string | null>(planner.state.places[0]?.id ?? null);
   const [activeMapView, setActiveMapView] = useState('all');
-  const [desktopWorkspace, setDesktopWorkspace] = useState('map');
-  const [mapPanelTab, setMapPanelTab] = useState<string | null>('details');
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(() =>
+    window.matchMedia(`(min-width: ${theme.breakpoints.lg})`).matches ? 'map' : 'today',
+  );
+  const mapPanelTab = workspaceView === 'places' ? 'places' : 'details';
   const [mapPanelCollapsed, setMapPanelCollapsed] = useState(false);
-  const [mobileView, setMobileView] = useState('today');
   const [editingPlace, setEditingPlace] = useState<Place | undefined>();
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
   const [addPlaceDayId, setAddPlaceDayId] = useState<string | null>(null);
@@ -336,8 +340,7 @@ export default function App() {
         onSelect={(placeId) => {
           setSelectedId(placeId);
           setActiveMapView('all');
-          setMapPanelTab('details');
-          setMobileView('map');
+          setWorkspaceView('map');
         }}
         onAdd={openAddPlace}
         onEdit={openEditPlace}
@@ -365,6 +368,12 @@ export default function App() {
       onDeletePlace={setDeleteTarget}
     />
   );
+
+  const desktopView = workspaceView === 'places' ? 'map' : workspaceView;
+  const selectDesktopView = (view: WorkspaceView) => {
+    setWorkspaceView(view);
+    if (view === 'places') setMapPanelCollapsed(false);
+  };
 
   const mapWorkspace = (
     <Box className={`map-workspace${mapPanelCollapsed ? ' map-workspace--panel-collapsed' : ''}`}>
@@ -397,7 +406,7 @@ export default function App() {
               <IconChevronRight size={19} />
             </ActionIcon>
           </Tooltip>
-          <Tabs value={mapPanelTab} onChange={setMapPanelTab} keepMounted={false}>
+          <Tabs value={mapPanelTab} onChange={(value) => setWorkspaceView(value === 'places' ? 'places' : 'map')} keepMounted={false}>
             <Tabs.List grow>
               <Tabs.Tab value="details" leftSection={<IconInfoCircle size={15} />}>
                 {t('details')}
@@ -461,54 +470,25 @@ export default function App() {
                   </Text>
                 </div>
                 <SegmentedControl
-                  value={desktopWorkspace}
-                  onChange={setDesktopWorkspace}
-                  data={[
-                    {
-                      value: 'today',
-                      label: (
-                        <Box className="workspace-tab-label">
-                          <IconSun size={15} />
-                          <span>Today</span>
-                        </Box>
-                      ),
-                    },
-                    {
-                      value: 'map',
-                      label: (
-                        <Box className="workspace-tab-label">
-                          <IconMap size={15} />
-                          <span>{t('map')}</span>
-                        </Box>
-                      ),
-                    },
-                    {
-                      value: 'planner',
-                      label: (
-                        <Box className="workspace-tab-label">
-                          <IconCalendarEvent size={15} />
-                          <span>{t('planner')}</span>
-                        </Box>
-                      ),
-                    },
-                    {
-                      value: 'expenses',
-                      label: (
-                        <Box className="workspace-tab-label">
-                          <IconReceipt size={15} />
-                          <span>{t('expenses')}</span>
-                        </Box>
-                      ),
-                    },
-                  ]}
+                  value={workspaceView}
+                  onChange={(value) => selectDesktopView(value as WorkspaceView)}
+                  data={WORKSPACE_VIEWS.map((item) => ({
+                    value: item.value,
+                    label: (
+                      <Box className="workspace-tab-label">
+                        <item.icon size={15} />
+                        <span>{t(item.labelKey)}</span>
+                      </Box>
+                    ),
+                  }))}
                 />
               </Group>
-              {desktopWorkspace === 'map' ? mapWorkspace : desktopWorkspace === 'today' ? todayPanel : desktopWorkspace === 'expenses' ? <ExpensesPage /> : plannerPanel}
+              {desktopView === 'map' ? mapWorkspace : desktopView === 'today' ? todayPanel : desktopView === 'expenses' ? <ExpensesPage /> : plannerPanel}
             </Stack>
           ) : (
             <Stack gap="md" className="mobile-workspace">
-              {mobileView === 'today' ? todayPanel : null}
-              {mobileView === 'map' ? (
+              {workspaceView === 'today' ? todayPanel : null}
+              {workspaceView === 'map' ? (
                 <Stack gap="sm">
                   {map}
                   <Box className="mobile-place-details">
@@ -516,9 +496,9 @@ export default function App() {
                   </Box>
                 </Stack>
               ) : null}
-              {mobileView === 'places' ? placesPanel : null}
-              {mobileView === 'planner' ? plannerPanel : null}
-              {mobileView === 'expenses' ? <ExpensesPage /> : null}
+              {workspaceView === 'places' ? placesPanel : null}
+              {workspaceView === 'planner' ? plannerPanel : null}
+              {workspaceView === 'expenses' ? <ExpensesPage /> : null}
             </Stack>
           )}
         </Container>
@@ -529,18 +509,17 @@ export default function App() {
         onClose={() => setAiImportOpened(false)}
         onApply={(draft) => {
           planner.applyAiDraft(draft);
-          setDesktopWorkspace('planner');
-          setMobileView('planner');
+          setWorkspaceView('planner');
           notifications.show({ color: 'teal', title: 'Import complete', message: 'Your reviewed places were added to the itinerary.' });
         }}
       />
 
       {!isDesktop ? (
         <Box component="nav" className="mobile-bottom-nav" aria-label={t('navigation')}>
-          {mobileViews.map((item) => {
-            const active = mobileView === item.value;
-            const Icon =
-              item.value === 'today' ? IconSun : item.value === 'map' ? IconMap : item.value === 'places' ? IconList : item.value === 'expenses' ? IconReceipt : IconCalendarEvent;
+          {WORKSPACE_VIEWS.map((item) => {
+            const active = workspaceView === item.value;
+            const Icon = item.icon;
+            const label = t(item.labelKey);
             return (
               <Button
                 key={item.value}
@@ -550,13 +529,13 @@ export default function App() {
                 data-active={active || undefined}
                 onClick={() => {
                   setSettingsOpened(false);
-                  setMobileView(item.value);
+                  setWorkspaceView(item.value);
                 }}
-                aria-label={item.label}
+                aria-label={label}
                 aria-current={active ? 'page' : undefined}
               >
                 <Icon size={21} stroke={active ? 2.5 : 1.8} />
-                <span>{item.label}</span>
+                <span>{label}</span>
               </Button>
             );
           })}
