@@ -12,6 +12,12 @@ import { getTwdExchangeRate } from '../lib/exchangeRates';
 import { useTrip } from '../context/TripContext';
 import type { CurrentLocationState } from '../hooks/useCurrentLocation';
 import { navigationUrl, placeStatus, timeRange } from '../utils/mapPresentation';
+import { nextAnchor, toMinutes } from '../utils/schedule';
+import { transportIcon } from './transportIcons';
+import { useI18n } from '../i18n';
+import type { TravelMode } from '../types';
+
+const MODE_LABEL_KEYS = { public: 'publicTransport', walk: 'walk', bike: 'bike', car: 'car', taxi: 'taxi', other: 'otherTransport' } as const satisfies Record<TravelMode, string>;
 
 const labels: Record<StopExecutionStatus, string> = {
   upcoming: 'Up next', current: 'Current stop', completed: 'Completed', skipped: 'Skipped', rescheduled: 'Rescheduled',
@@ -39,6 +45,13 @@ export function TodayModePage({ location }: TodayModePageProps) {
   const [expenseOpened, setExpenseOpened] = useState(false);
   const [displayRate, setDisplayRate] = useState<number | null>(null);
   const [completedTasksOpen, setCompletedTasksOpen] = useState(false);
+  const { t } = useI18n();
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const activeDay = useMemo(() => {
     const selected = state.days.find((day) => day.id === activeDayId);
@@ -64,6 +77,9 @@ export function TodayModePage({ location }: TodayModePageProps) {
   const stops = activeDay.placeIds.map((id) => placesById.get(id)).filter((place): place is Place => Boolean(place));
   const current = stops.find((place) => placeStatus(activeDay, execution, place.id) === 'current');
   const next = stops.find((place) => place.id !== current?.id && placeStatus(activeDay, execution, place.id) === 'upcoming');
+  const anchor = nextAnchor(activeDay, stops, current?.id ?? null, next?.id ?? null);
+  const anchorPlace = anchor.kind === 'leaveBy' ? placesById.get(anchor.toPlaceId) : anchor.kind === 'opensAt' ? placesById.get(anchor.placeId) : undefined;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const complete = stops.length > 0 && stops.every((place) => ['completed', 'skipped', 'rescheduled'].includes(placeStatus(activeDay, execution, place.id)));
   const detail = detailId ? placesById.get(detailId) : undefined;
   const dayExpenses = (state.expenses ?? []).filter((expense) => expense.dayId === activeDay.id);
@@ -166,6 +182,21 @@ export function TodayModePage({ location }: TodayModePageProps) {
             </>
           ) : null}
         </Paper>
+      ) : null}
+
+      {anchor.kind !== 'none' && anchorPlace ? (
+        <Group className="today-anchor" gap="xs" wrap="nowrap" role="status">
+          {anchor.kind === 'leaveBy' ? transportIcon(anchor.mode) : <IconClock size={16} />}
+          <Text fw={700} size="sm">
+            {anchor.kind === 'opensAt'
+              ? t('todayOpensAt', { place: anchorPlace.name, time: anchor.opensAt })
+              : nowMinutes > (toMinutes(anchor.leaveAt) ?? 0)
+                ? t('todayLeaveNow', { place: anchorPlace.name, arriveBy: anchor.arriveBy })
+                : anchor.travelMinutes === 0
+                  ? t('todayLeaveByNoTravel', { place: anchorPlace.name, arriveBy: anchor.arriveBy })
+                  : t('todayLeaveBy', { leaveAt: anchor.leaveAt, place: anchorPlace.name, arriveBy: anchor.arriveBy, mode: t(MODE_LABEL_KEYS[anchor.mode]), minutes: anchor.travelMinutes })}
+          </Text>
+        </Group>
       ) : null}
 
       {current ? <StopCard place={current} day={activeDay} status="current" visited={visitedPlaceIds.includes(current.id)} readOnly={readOnly} onVisitedChange={toggleVisited} onDetail={() => setDetailId(current.id)} onNavigate={() => openNavigation(current)} onUpdate={update} /> : null}
