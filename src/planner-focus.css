@@ -358,7 +358,14 @@
   }
 
   .day-column--focus .day-column__body {
+    --timeline-gutter: 44px;
+    --timeline-rail: 12px;
+    --timeline-gap: 6px;
     padding: 12px 14px 16px;
+  }
+
+  .timeline-stop__start {
+    font-size: 13px;
   }
 
   .planner-focus > .day-column--unscheduled {
