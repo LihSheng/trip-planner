@@ -69,14 +69,19 @@ describe('projectDay', () => {
     expect(times(projection)[1]).toBe('second 10:35-11:35 estimated');
   });
 
-  it('adds nothing for legs touching a placeholder', () => {
+  it('estimates the leg after a placeholder from the last real place, and adds nothing into one', () => {
     const projection = projectDay(day({ placeIds: ['first', 'lunch', 'second'] }), [first, lunch, second], []);
-    expect(projection.legs.map((leg) => leg.minutes)).toEqual([undefined, undefined]);
+    expect(projection.legs.map((leg) => leg.minutes)).toEqual([undefined, 23]);
     expect(times(projection)).toEqual([
       'first 09:00-10:30 estimated',
       'lunch 10:30-11:30 estimated',
-      'second 11:30-12:30 estimated',
+      'second 11:53-12:53 estimated',
     ]);
+  });
+
+  it('adds nothing after a placeholder that has no real place before it', () => {
+    const projection = projectDay(day({ placeIds: ['lunch', 'first'] }), [lunch, first], []);
+    expect(projection.legs.map((leg) => leg.minutes)).toEqual([undefined]);
   });
 
   it('warns with the exact shortfall when a planned stop leaves too little travel time', () => {
