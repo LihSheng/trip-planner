@@ -37,12 +37,16 @@ Date: 2026-10-08. Source of scope: `docs/UX_RESEARCH_2026-10.md` section 5.
 Data shape (chosen before logic, per model-the-domain):
 
 ```ts
-type Undoable = { label: string; before: TripState };
-// state machine: idle -> armed(label, before) -> idle (on undo, on next undoable commit, or on remote merge)
+type UndoPoint = { label: string; before: TripState; sealed: boolean };
+// state machine: idle -> armed(open) -> armed(sealed) -> idle
+// open -> sealed: a microtask queued by markUndoPoint, so the undoable group is exactly the
+//   mutations dispatched in the same tick as the mark (a cluster delete, an auto-advance).
+// sealed -> idle: undo(), any later mutation, any lifecycle write, or a new mark.
 ```
 
 Invariants:
-- A remote merge (`mergeTripState`) disarms undo. Undoing across a collaborator's change would silently revert their work.
+- Any mutation after the sealed point disarms it. A whole-state snapshot would otherwise revert an unrelated edit made during the toast window (a note, an expense), which is silent data loss.
+- Lifecycle writes (hydrate, remote refresh, merge, plan switch) disarm it. Undoing across a collaborator's change would silently revert their work.
 - `undo()` is idempotent: second call is a no-op because the slot is cleared.
 - The restored state passes through the same persistence effect as any other change, so the cloud copy follows.
 
@@ -68,7 +72,13 @@ One `WORKSPACE_VIEWS` table in `src/App.tsx` drives both the desktop SegmentedCo
 
 ### PWA
 
-`public/manifest.webmanifest` with the existing teal theme colour and an SVG icon. A hand-written `public/sw.js` (no new dependency, per the Laziness Protocol) that precaches the built shell on install, serves navigation requests cache-first with network fallback, and caches the last trip JSON response from Supabase under a stable key. `src/main.tsx` registers it in production only. The header shows an offline badge driven by `navigator.onLine` plus the online/offline events. Base path is `./`, so the service worker scope must be registered relative, not at `/`.
+`public/manifest.webmanifest` with the existing teal theme colour and PNG icons. A hand-written `public/sw.js` (no new dependency, per the Laziness Protocol). `src/main.tsx` registers it in production only. Base path is `./`, so the service worker scope must be registered relative, not at `/`.
+
+Three constraints the first sketch missed, raised in review and folded into the design:
+
+- **Precache the hashed bundles, not just the HTML.** The worker registers after `load`, so on a first visit the JS and CSS were fetched before it controlled the page. At install the worker fetches the scope HTML, extracts the same-origin script and stylesheet URLs, and adds them to the cache with the HTML, manifest and icons. Navigations stay network-first with cache fallback; same-scope GETs are cache-first. Cross-origin requests, including Supabase, never enter the worker.
+- **The offline copy must be reachable without the network.** The trip is not cached as a Supabase response. `lib/offlineTrip.ts` stores the last saved `TripState` with its revision in `localStorage`. Cloud bootstrap (`acceptTripInvitations`, `listTripPlans`) fails offline before any trip fetch, so hydration falls back to that copy read-only when the load fails and `navigator.onLine` is false. Session restore must also survive offline: a network failure keeps the stored session and builds the user from the identity it already holds, while an auth rejection still clears it.
+- **Scope the copy per user and purge on sign-out.** The key is `trip-planner:offline:<userId>:<planId>` and sign-out removes every key for that user, so a shared browser never shows the previous traveller's itinerary.
 
 ## Outcome
 
