@@ -22,7 +22,7 @@ User supplies text or URL
         ↓
 Supabase Edge Function authenticates and normalizes input
         ↓
-OpenCode Zen extracts a structured itinerary proposal
+Anthropic extracts a structured itinerary proposal
         ↓
 Application code validates and resolves locations
         ↓
@@ -38,7 +38,7 @@ The initial implementation uses:
 - React, TypeScript, Mantine, and the existing Trip Planner UI;
 - Supabase Auth and Row Level Security;
 - one Supabase Edge Function named `ai-itinerary-import`;
-- OpenCode Zen through its direct OpenAI-compatible API;
+- Anthropic Claude through the official `@anthropic-ai/sdk`;
 - Geoapify for place resolution;
 - the existing `TripState` JSONB persistence model.
 
@@ -295,7 +295,7 @@ After confirmation:
 │ 1. Authenticate Supabase JWT                         │
 │ 2. Enforce quota and validate request                │
 │ 3. Normalize pasted text or safely fetch public URL  │
-│ 4. Call OpenCode Zen provider adapter                │
+│ 4. Call Anthropic Claude (structured outputs)        │
 │ 5. Validate structured draft                         │
 │ 6. Resolve candidates through Geoapify               │
 │ 7. Deduplicate against compact existing-trip input   │
@@ -404,7 +404,7 @@ Authorization: Bearer <Supabase user access token>
 Content-Type: application/json
 ```
 
-The frontend must never contain `OPENCODE_ZEN_API_KEY` or a Supabase service-role key.
+The frontend must never contain `ANTHROPIC_API_KEY` or a Supabase service-role key.
 
 ## 8.4 Hook state
 
@@ -445,7 +445,7 @@ supabase/functions/
     ├── aiImportSchemas.ts
     ├── auth.ts
     ├── geoapify.ts
-    ├── openCodeZen.ts
+    ├── anthropic.ts
     ├── rateLimit.ts
     └── urlSecurity.ts
 ```
@@ -453,10 +453,8 @@ supabase/functions/
 ## 9.2 Environment secrets
 
 ```text
-OPENCODE_ZEN_API_KEY=<secret>
-OPENCODE_ZEN_MODEL=deepseek-v4-flash-free
-NVIDIA_NIM_API_KEY=<secret>
-NVIDIA_NIM_MODEL=deepseek-ai/deepseek-v4-flash
+ANTHROPIC_API_KEY=<secret>
+ANTHROPIC_MODEL=claude-opus-5-5
 GEOAPIFY_API_KEY=<secret>
 AI_IMPORT_DAILY_LIMIT=20
 AI_IMPORT_MAX_TEXT_LENGTH=30000
@@ -465,9 +463,8 @@ AI_IMPORT_ALLOWED_URL_HOSTS=google.com,goo.gl
 ```
 
 These values are deployed through Supabase secrets and are not exposed as Vite variables.
-For migration, the function also accepts the existing `OPENCODE_GO_API_KEY` secret name.
-NVIDIA NIM is an optional fallback. It is attempted only when the OpenCode Zen
-request fails or times out.
+`ANTHROPIC_MODEL` is optional and defaults to `claude-opus-5-5`. When `ANTHROPIC_API_KEY`
+is missing, the function fails before reserving quota.
 
 ## 9.3 Request contract
 
@@ -502,7 +499,7 @@ interface AiImportResponse {
   days: AiDraftDay[];
   unscheduled: AiResolvedPlace[];
   warnings: string[];
-  provider: 'opencode-go';
+  provider: 'anthropic' | 'google-maps';
   model: string;
 }
 ```
@@ -532,7 +529,7 @@ The function does not use a service-role key to bypass trip authorization.
 
 For the POC, enforce a rolling 24-hour per-user quota, default `20` successful or attempted AI imports.
 
-Rate limiting protects OpenCode Zen, not only Supabase invocations.
+Rate limiting protects Anthropic, not only Supabase invocations.
 
 Recommended behaviour:
 
@@ -580,28 +577,29 @@ If useful content cannot be extracted, return:
 
 This fallback is expected for many social-media links.
 
-### Step 6: OpenCode Zen request
+### Step 6: Anthropic request
 
 Use a provider adapter so the rest of the application is not coupled to one model vendor.
 
 Default POC configuration:
 
 ```text
-Provider: OpenCode Zen
-Model: deepseek-v4-flash-free
-Endpoint: https://opencode.ai/zen/v1/chat/completions
+Provider: Anthropic (official SDK, npm:@anthropic-ai/sdk)
+Model: claude-opus-5-5 (override with ANTHROPIC_MODEL)
+Effort: medium
+Output: structured outputs (output_config.format, JSON schema)
+Refusals: server-side fallbacks: "default"
 ```
 
 Request principles:
 
-- low temperature;
 - bounded output tokens;
 - one system instruction;
 - one normalized source payload;
 - compact existing-trip context;
-- structured JSON response;
+- structured JSON response enforced by a JSON schema, then re-validated by `parseModelDraft`;
 - no tools, shell, file access, or arbitrary agent loop;
-- one provider retry only for transient network or `5xx` errors;
+- one SDK retry only for transient network, `429`, or `5xx` errors;
 - no retry on authentication, quota, validation, or safety errors.
 
 The source and compact existing-place context are serialized as values inside one JSON user message. Instructions remain in the system message.
@@ -810,16 +808,16 @@ As of 2026-07-20, Supabase documents:
 Architecture consequences:
 
 1. One user import should normally equal one Edge Function invocation.
-2. OpenCode and Geoapify calls made inside that function do not create additional Supabase function invocations.
+2. Anthropic and Geoapify calls made inside that function do not create additional Supabase function invocations.
 3. The function must use asynchronous network I/O and lightweight parsing.
 4. Do not use browser automation, image processing, or CPU-heavy scraping.
 5. Keep retries bounded.
-6. Add per-user rate limiting because the OpenCode Zen free-model capacity may be reached before the Supabase invocation quota in a POC.
+6. Add per-user rate limiting because Anthropic token spend can become the main cost before the Supabase invocation quota does.
 7. Monitor usage in the Supabase organization usage dashboard.
 
-## 14. OpenCode Zen constraints
+## 14. Anthropic constraints
 
-OpenCode Zen provides direct OpenAI-compatible API access. Free-model availability and capacity may change.
+Anthropic usage is billed per token and subject to the account's rate limits.
 
 Design requirements:
 
@@ -829,7 +827,7 @@ Design requirements:
 - handle `401`, `403`, `429`, `5xx`, and malformed output separately;
 - do not promise unlimited imports;
 - show a user-friendly capacity error when the provider quota is exhausted;
-- allow future replacement with another OpenAI-compatible provider without changing UI or `TripState` logic.
+- allow future replacement of the model without changing UI or `TripState` logic.
 
 Suggested interface:
 
@@ -898,7 +896,7 @@ Do not log:
 
 ## 17. Security requirements
 
-1. OpenCode Zen and server Geoapify keys remain in Supabase secrets.
+1. Anthropic and server Geoapify keys remain in Supabase secrets.
 2. The frontend uses only the Supabase publishable key and user JWT.
 3. Public share visitors cannot invoke imports.
 4. URL fetching has SSRF protection and redirect revalidation.
@@ -958,7 +956,7 @@ These are product targets, not provider guarantees.
 
 ## 19.2 Integration tests
 
-Mock OpenCode Zen and Geoapify:
+Mock Anthropic and Geoapify:
 
 1. paste text with explicit day and time;
 2. paste text with no time information;
@@ -1003,7 +1001,7 @@ Required deployment steps:
 6. deploy frontend after the function is available;
 7. verify Free-plan usage dashboard and logs.
 
-A future CI workflow may deploy Edge Functions only when files under `supabase/functions/**` change. The workflow must use a Supabase access token stored as a GitHub Actions secret and must never expose the OpenCode Zen API key.
+A future CI workflow may deploy Edge Functions only when files under `supabase/functions/**` change. The workflow must use a Supabase access token stored as a GitHub Actions secret and must never expose the Anthropic API key.
 
 ## 21. Rollout phases
 
@@ -1013,7 +1011,7 @@ Include:
 
 - authenticated users only;
 - pasted text;
-- OpenCode Zen extraction;
+- Anthropic extraction;
 - strict validation;
 - Geoapify resolution;
 - mandatory review;
@@ -1052,7 +1050,7 @@ The feature is complete for Phase 1 when:
 - [ ] a public read-only visitor cannot see or invoke the action;
 - [ ] demo mode cannot consume AI quota;
 - [ ] pasted text produces a validated draft through the Edge Function;
-- [ ] OpenCode Zen credentials are absent from browser bundles;
+- [ ] Anthropic credentials are absent from browser bundles;
 - [ ] the model output contains no authoritative coordinates;
 - [ ] Geoapify resolves or flags every included candidate;
 - [ ] users can include, exclude, edit, reorder, and reassign suggestions;
@@ -1071,7 +1069,7 @@ The feature is complete for Phase 1 when:
 2. Add `applyAiDraft()` to `useTripPlanner` with unit tests.
 3. Add Edge Function request and response schemas.
 4. Implement JWT verification and rate limiting.
-5. Implement OpenCode Zen provider adapter.
+5. Implement the Anthropic provider adapter.
 6. Implement model validation and one repair attempt.
 7. Implement Geoapify resolution and duplicate matching.
 8. Add frontend API repository and hook.
@@ -1084,9 +1082,9 @@ The feature is complete for Phase 1 when:
 
 ## 24. Architectural decision
 
-Use **Supabase Edge Function + OpenCode Zen direct API + Geoapify place resolution + mandatory user review + existing TripState autosave**.
+Use **Supabase Edge Function + Anthropic API + Geoapify place resolution + mandatory user review + existing TripState autosave**.
 
-Do not use an OpenCode CLI process, `opencode serve`, or a general autonomous agent for this feature. The product requirement is structured content import, and the safest architecture is:
+Do not use a CLI process or a general autonomous agent for this feature. The product requirement is structured content import, and the safest architecture is:
 
 ```text
 AI extracts and proposes
@@ -1100,4 +1098,4 @@ Current application applies and saves
 - Supabase Edge Function pricing: https://supabase.com/docs/guides/functions/pricing
 - Supabase Edge Function limits: https://supabase.com/docs/guides/functions/limits
 - Supabase invocation usage: https://supabase.com/docs/guides/platform/manage-your-usage/edge-function-invocations
-- OpenCode Zen API and model availability: https://opencode.ai/docs/zen/
+- Anthropic structured outputs: https://platform.claude.com/docs/en/build-with-claude/structured-outputs

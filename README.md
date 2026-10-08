@@ -70,12 +70,12 @@ The interface supports English and Traditional Chinese.
 Select **Import with AI** in the header, then paste travel notes, an approved public itinerary link, or a Google Maps short link such as `https://maps.app.goo.gl/...`.
 
 - Google Maps links resolve the place name and coordinates directly, then create a reviewable scheduled card under **Imported places**.
-- Text and public itinerary links use the configured GPT-5.6/provider model to propose places, notes, timing hints, and day groupings.
+- Text and public itinerary links use Anthropic Claude (`claude-opus-5-5` by default) to propose places, notes, timing hints, and day groupings.
 - The Supabase Edge Function authenticates the user, enforces quota, validates model JSON, and resolves locations with Geoapify.
 - Nothing is added until the traveller reviews and confirms the draft. Existing itinerary data is preserved.
 - The model never writes directly to the persisted trip; confirmed imports apply through the existing `TripState` update flow.
 
-The import Edge Function requires an authenticated account and the provider/Geoapify secrets described in [the AI import specification](docs/AI_ITINERARY_IMPORT_SPEC.md).
+The import Edge Function requires an authenticated account and the `ANTHROPIC_API_KEY`/Geoapify secrets described in [the AI import specification](docs/AI_ITINERARY_IMPORT_SPEC.md).
 
 URL import defaults to `google.com,goo.gl`. Approve additional trusted domains with the Edge Function secret `AI_IMPORT_ALLOWED_URL_HOSTS` as a comma-separated list. Keep this list narrow; paste text from unapproved pages instead.
 
