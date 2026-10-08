@@ -18,6 +18,7 @@ import { clearOfflineTrips } from '../lib/offlineTrip';
 import { hasSupabaseConfig } from '../lib/supabaseConfig';
 import { LanguageToggle, useI18n } from '../i18n';
 import {
+  AuthNetworkError,
   refreshAuthSession,
   restoreSession,
   sendMagicLink,
@@ -31,6 +32,7 @@ interface AuthContextValue {
   accessToken: string;
   isDemo: boolean;
   isAuthenticated: boolean;
+  isOfflineSession: boolean;
   signOut: () => Promise<void>;
   requestMagicLink: (email: string) => Promise<void>;
 }
@@ -86,18 +88,31 @@ export function AuthGate({ children, allowGuest = false }: { children: ReactNode
   useEffect(() => {
     if (!session) return;
 
-    const refreshInMs = Math.max(session.expiresAt * 1000 - Date.now() - 60_000, 1_000);
-    const timeout = window.setTimeout(() => {
+    let active = true;
+    const refresh = () => {
       refreshAuthSession(session.refreshToken)
-        .then(setSession)
-        .catch(() => {
+        .then((refreshed) => {
+          if (active) setSession(refreshed);
+        })
+        .catch((reason: unknown) => {
+          if (!active) return;
+          if (reason instanceof AuthNetworkError) {
+            window.addEventListener('online', refresh, { once: true });
+            return;
+          }
           void signOutSession(session.accessToken);
           setSession(null);
           setError('Your session expired. Request a new sign-in link to continue.');
         });
-    }, refreshInMs);
+    };
+    const refreshInMs = session.isOffline ? 0 : Math.max(session.expiresAt * 1000 - Date.now() - 60_000, 1_000);
+    const timeout = window.setTimeout(refresh, refreshInMs);
 
-    return () => window.clearTimeout(timeout);
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+      window.removeEventListener('online', refresh);
+    };
   }, [demoMode, session]);
 
   const contextValue = useMemo<AuthContextValue | null>(() => {
@@ -107,6 +122,7 @@ export function AuthGate({ children, allowGuest = false }: { children: ReactNode
         accessToken: '',
         isDemo: true,
         isAuthenticated: false,
+        isOfflineSession: false,
         signOut: async () => {
           setDemoMode(false);
           setSent(false);
@@ -120,6 +136,7 @@ export function AuthGate({ children, allowGuest = false }: { children: ReactNode
         accessToken: '',
         isDemo: true,
         isAuthenticated: false,
+        isOfflineSession: false,
         signOut: async () => undefined,
         requestMagicLink: sendMagicLink,
       } : null;
@@ -129,6 +146,7 @@ export function AuthGate({ children, allowGuest = false }: { children: ReactNode
       accessToken: session.accessToken,
       isDemo: false,
       isAuthenticated: true,
+      isOfflineSession: Boolean(session.isOffline),
       signOut: async () => {
         clearOfflineTrips(session.user.id);
         await signOutSession(session.accessToken);

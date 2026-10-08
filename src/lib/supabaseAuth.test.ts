@@ -31,6 +31,30 @@ describe('Supabase auth client', () => {
     expect(localStorage.getItem(sessionKey)).toBeNull();
   });
 
+  it('keeps the stored session and its cached identity when the network is unreachable', async () => {
+    const accessToken = `header.${btoa(JSON.stringify({ sub: 'user-1', email: 'me@example.com' })).replace(/=+$/, '')}.signature`;
+    const stored = JSON.stringify({ accessToken, refreshToken: 'refresh', expiresAt: 1 });
+    localStorage.setItem(sessionKey, stored);
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(restoreSession()).resolves.toMatchObject({
+      accessToken,
+      refreshToken: 'refresh',
+      user: { id: 'user-1', email: 'me@example.com' },
+      isOffline: true,
+    });
+    expect(localStorage.getItem(sessionKey)).toBe(stored);
+  });
+
+  it('clears the stored session when the server rejects it', async () => {
+    const accessToken = `header.${btoa(JSON.stringify({ sub: 'user-1' })).replace(/=+$/, '')}.signature`;
+    localStorage.setItem(sessionKey, JSON.stringify({ accessToken, refreshToken: 'refresh', expiresAt: 1 }));
+    fetchMock.mockResolvedValue(new Response(null, { status: 401 }));
+
+    await expect(restoreSession()).resolves.toBeNull();
+    expect(localStorage.getItem(sessionKey)).toBeNull();
+  });
+
   it('processes redirect sessions and sends authentication requests', async () => {
     history.replaceState({}, '', '/#access_token=redirect&refresh_token=refresh&expires_at=4000000000');
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ id: 'redirect-user' }), { status: 200 }));

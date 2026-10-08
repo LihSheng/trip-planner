@@ -14,7 +14,10 @@ export interface AuthSession {
   refreshToken: string;
   expiresAt: number;
   user: AuthUser;
+  isOffline?: boolean;
 }
+
+export class AuthNetworkError extends Error {}
 
 interface StoredSession {
   accessToken: string;
@@ -28,6 +31,25 @@ interface AuthSessionResponse {
   expires_in: number;
   expires_at?: number;
   user: AuthUser;
+}
+
+async function authFetch(input: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (reason) {
+    throw new AuthNetworkError(reason instanceof Error ? reason.message : 'Network request failed');
+  }
+}
+
+function userFromAccessToken(accessToken: string): AuthUser | null {
+  try {
+    const payload = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const claims = JSON.parse(atob(payload.padEnd(Math.ceil(payload.length / 4) * 4, '='))) as { sub?: unknown; email?: unknown };
+    if (typeof claims.sub !== 'string') return null;
+    return { id: claims.sub, ...(typeof claims.email === 'string' ? { email: claims.email } : {}) };
+  } catch {
+    return null;
+  }
 }
 
 function authHeaders(accessToken?: string): HeadersInit {
@@ -82,7 +104,7 @@ function sessionFromResponse(response: AuthSessionResponse): AuthSession {
 }
 
 async function fetchUser(accessToken: string): Promise<AuthUser> {
-  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+  const response = await authFetch(`${supabaseUrl}/auth/v1/user`, {
     headers: authHeaders(accessToken),
   });
 
@@ -91,7 +113,7 @@ async function fetchUser(accessToken: string): Promise<AuthUser> {
 }
 
 export async function refreshAuthSession(refreshToken: string): Promise<AuthSession> {
-  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+  const response = await authFetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ refresh_token: refreshToken }),
@@ -149,7 +171,9 @@ async function performSessionRestore(): Promise<AuthSession | null> {
   } catch {
     try {
       return await refreshAuthSession(stored.refreshToken);
-    } catch {
+    } catch (reason) {
+      const cachedUser = reason instanceof AuthNetworkError ? userFromAccessToken(stored.accessToken) : null;
+      if (cachedUser) return { ...stored, user: cachedUser, isOffline: true };
       clearStoredSession();
       return null;
     }
