@@ -78,7 +78,9 @@ export default function App() {
   const isDesktop = useMediaQuery(`(min-width: ${theme.breakpoints.lg})`);
   const [selectedId, setSelectedId] = useState<string | null>(planner.state.places[0]?.id ?? null);
   const [activeMapView, setActiveMapView] = useState('all');
-  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('today');
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(() =>
+    window.matchMedia(`(min-width: ${theme.breakpoints.lg})`).matches ? 'map' : 'today',
+  );
   const [mapPanelTab, setMapPanelTab] = useState<string | null>('details');
   const [mapPanelCollapsed, setMapPanelCollapsed] = useState(false);
   const [editingPlace, setEditingPlace] = useState<Place | undefined>();
