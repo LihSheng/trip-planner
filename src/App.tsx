@@ -81,7 +81,7 @@ export default function App() {
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(() =>
     window.matchMedia(`(min-width: ${theme.breakpoints.lg})`).matches ? 'map' : 'today',
   );
-  const [mapPanelTab, setMapPanelTab] = useState<string | null>('details');
+  const mapPanelTab = workspaceView === 'places' ? 'places' : 'details';
   const [mapPanelCollapsed, setMapPanelCollapsed] = useState(false);
   const [editingPlace, setEditingPlace] = useState<Place | undefined>();
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
@@ -340,7 +340,6 @@ export default function App() {
         onSelect={(placeId) => {
           setSelectedId(placeId);
           setActiveMapView('all');
-          setMapPanelTab('details');
           setWorkspaceView('map');
         }}
         onAdd={openAddPlace}
@@ -371,15 +370,9 @@ export default function App() {
   );
 
   const desktopView = workspaceView === 'places' ? 'map' : workspaceView;
-  const desktopWorkspaceValue = desktopView === 'map' && mapPanelTab === 'places' ? 'places' : desktopView;
   const selectDesktopView = (view: WorkspaceView) => {
     setWorkspaceView(view);
-    if (view === 'places') {
-      setMapPanelTab('places');
-      setMapPanelCollapsed(false);
-    } else if (view === 'map') {
-      setMapPanelTab('details');
-    }
+    if (view === 'places') setMapPanelCollapsed(false);
   };
 
   const mapWorkspace = (
@@ -413,7 +406,7 @@ export default function App() {
               <IconChevronRight size={19} />
             </ActionIcon>
           </Tooltip>
-          <Tabs value={mapPanelTab} onChange={setMapPanelTab} keepMounted={false}>
+          <Tabs value={mapPanelTab} onChange={(value) => setWorkspaceView(value === 'places' ? 'places' : 'map')} keepMounted={false}>
             <Tabs.List grow>
               <Tabs.Tab value="details" leftSection={<IconInfoCircle size={15} />}>
                 {t('details')}
@@ -477,7 +470,7 @@ export default function App() {
                   </Text>
                 </div>
                 <SegmentedControl
-                  value={desktopWorkspaceValue}
+                  value={workspaceView}
                   onChange={(value) => selectDesktopView(value as WorkspaceView)}
                   data={WORKSPACE_VIEWS.map((item) => ({
                     value: item.value,
