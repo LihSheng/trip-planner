@@ -15,6 +15,7 @@ import {
 import { createBlankTripState, createInitialState } from '../data/seed';
 import { mergeTripStatesWithConflicts, type TripConflict, type TripConflictChoice } from '../domain/mergeTripState';
 import { normalizeTripState, restoreTripState, type RestoredTrip } from '../domain/tripRestoration';
+import { readOfflineTrip, writeOfflineTrip } from '../lib/offlineTrip';
 
 const LEGACY_STORAGE_KEY = 'taiwan-trip-planner:v1';
 const DEMO_STORAGE_KEY = 'taiwan-trip-planner:demo:v1';
@@ -126,6 +127,7 @@ export function useTripLifecycle({
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncConflicts, setSyncConflicts] = useState<TripConflict[]>([]);
+  const [isOfflineCopy, setIsOfflineCopy] = useState(false);
   const saveSequence = useRef(0);
   const revision = useRef(0);
   const savedState = useRef<TripState | null>(null);
@@ -184,6 +186,7 @@ export function useTripLifecycle({
         }
         revision.current = latest.revision;
         savedState.current = restored.state;
+        writeOfflineTrip(user.id, planId!, latest.revision, restored.state);
         setState(restored.state);
         setSyncStatus('saved');
         setSyncError(null);
@@ -205,7 +208,7 @@ export function useTripLifecycle({
       window.clearInterval(interval);
       window.removeEventListener('focus', onFocus);
     };
-  }, [accessToken, applyRestoredTrip, isDemo, isReady, planId, setState, shareToken]);
+  }, [accessToken, applyRestoredTrip, isDemo, isReady, planId, setState, shareToken, user.id]);
 
   // Hydration effect
   useEffect(() => {
@@ -221,6 +224,7 @@ export function useTripLifecycle({
     pendingConflict.current = null;
     conflictChoices.current = {};
     setSyncConflicts([]);
+    setIsOfflineCopy(false);
 
     async function hydrate() {
       try {
@@ -236,6 +240,15 @@ export function useTripLifecycle({
         applyRestoredTrip(loaded.trip, Boolean(shareToken) || loaded.trip.readOnly);
       } catch (reason) {
         if (!active) return;
+        const offlinePlanId = shareToken || isDemo || navigator.onLine ? null : requestedPlanId ?? window.localStorage.getItem(selectedPlanStorageKey(user.id));
+        const offlineCopy = offlinePlanId ? readOfflineTrip(user.id, offlinePlanId) : null;
+        if (offlineCopy) {
+          const restored = restore(offlineCopy.state);
+          revision.current = offlineCopy.revision;
+          applyRestoredTrip(restored, true);
+          setIsOfflineCopy(true);
+          return;
+        }
         setLoadBlocked(true);
         canSave.current = false;
         setForcedReadOnly(true);
@@ -345,6 +358,11 @@ export function useTripLifecycle({
     return () => window.clearTimeout(timeout);
   }, [accessToken, beginConflictResolution, isDemo, isReady, planId, refreshActivity, state, syncConflicts.length, user.id]);
 
+  useEffect(() => {
+    if (isDemo || shareToken || !planId || isOfflineCopy || syncStatus !== 'saved' || !savedState.current) return;
+    writeOfflineTrip(user.id, planId, revision.current, savedState.current);
+  }, [isDemo, isOfflineCopy, planId, shareToken, syncStatus, user.id]);
+
   const syncNow = useCallback(async () => {
     if (isDemo || !canSave.current || !planId || syncConflicts.length) return;
 
@@ -434,6 +452,7 @@ export function useTripLifecycle({
     activePlan,
     isReady,
     loadBlocked,
+    isOfflineCopy,
     retryLoad,
     syncStatus,
     syncError,

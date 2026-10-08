@@ -97,6 +97,14 @@ function SharedTripRoute({ token }: { token: string }) {
   return <TripProvider requestedPlanId={destination === 'personal' ? undefined : destination}><App /></TripProvider>;
 }
 
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('./sw.js', { scope: './' }).catch((reason: unknown) => {
+      console.warn('Service worker registration failed', reason);
+    });
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="light">
