@@ -1240,16 +1240,17 @@ select {
     gap: 2px;
   }
 
+  .mobile-bottom-nav__item {
+    padding-inline: 2px;
+  }
+
   .mobile-bottom-nav__item .mantine-Button-label {
-    display: inline-flex;
-  }
-
-  .mobile-bottom-nav__item .mantine-Button-inner {
-    gap: 0;
-  }
-
-  .mobile-bottom-nav__item .mantine-Button-label > span {
-    display: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 10px;
+    white-space: nowrap;
   }
 
   .mobile-bottom-nav__item[data-active] {
