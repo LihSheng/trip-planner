@@ -34,6 +34,8 @@ vi.mock('../context/TripContext', () => ({
     placesById: new Map(tripState.places.map((place) => [place.id, place])),
     isReadOnly: false,
     move,
+    markUndoPoint: vi.fn(),
+    undo: vi.fn(),
     activityEvents: [],
   }),
 }));
