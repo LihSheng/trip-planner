@@ -14,7 +14,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconAlertTriangle, IconBed, IconBuildingCommunity, IconBuildingMonument, IconBus, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconLeaf, IconMapPin, IconPalette, IconPencil, IconPlane, IconRobot, IconRoute, IconShoppingBag, IconSun, IconToolsKitchen, IconTrain, IconTrash, IconTree } from '@tabler/icons-react';
+import { IconAlertTriangle, IconBed, IconCalendarOff, IconSparkles, IconBuildingCommunity, IconBuildingMonument, IconBus, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconLeaf, IconMapPin, IconPalette, IconPencil, IconPlane, IconRobot, IconRoute, IconShoppingBag, IconSun, IconToolsKitchen, IconTrain, IconTrash, IconTree } from '@tabler/icons-react';
 import type { ClusterRelationship, Place, PlaceCategory, StopSchedule } from '../types';
 import { categoryLabel, useI18n } from '../i18n';
 import { isStayExpired } from '../utils/stay';
@@ -68,6 +68,10 @@ interface PlaceCardProps {
   onRename?: (place: Place) => void;
   clusterLabel?: string;
   clusterRelationship?: ClusterRelationship | 'anchor';
+  tripDayIds?: string[];
+  flexibleDayIds?: string[];
+  flexibleWindowPassed?: boolean;
+  onFlexibleWindowChange?: (dayIds: string[]) => void;
 }
 
 export function PlaceCard({
@@ -92,6 +96,10 @@ export function PlaceCard({
   onRename,
   clusterLabel,
   clusterRelationship,
+  tripDayIds = [],
+  flexibleDayIds = [],
+  flexibleWindowPassed = false,
+  onFlexibleWindowChange,
 }: PlaceCardProps) {
   const { t } = useI18n();
   const isMobile = useMediaQuery('(max-width: 47.99em)');
@@ -159,7 +167,7 @@ export function PlaceCard({
                 {displayName}
               </Text>
             </Tooltip>
-            {(onEdit || onDelete || onEnableSchedule || onReplace || onRename) && (
+            {(onEdit || onDelete || onEnableSchedule || onReplace || onRename || onFlexibleWindowChange) && (
               <Menu position="bottom-end" withinPortal shadow="md">
                 <Menu.Target>
                   <ActionIcon
@@ -189,6 +197,13 @@ export function PlaceCard({
                     <Menu.Item leftSection={<IconClock size={15} />} onClick={onEnableSchedule}>
                       Add time
                     </Menu.Item>
+                  ) : null}
+                  {onFlexibleWindowChange ? (
+                    flexibleDayIds.length ? (
+                      <Menu.Item leftSection={<IconCalendarOff size={15} />} onClick={() => onFlexibleWindowChange([])}>{t('notFlexible')}</Menu.Item>
+                    ) : (
+                      <Menu.Item leftSection={<IconSparkles size={15} />} onClick={() => onFlexibleWindowChange(tripDayIds)}>{t('makeFlexible')}</Menu.Item>
+                    )
                   ) : null}
                   {onMoveTo && moveTargets && currentContainerId ? (
                     <>
@@ -242,6 +257,41 @@ export function PlaceCard({
           {!placeholder ? <Group gap={5} wrap="nowrap" mt={1}>
             {place.importedWithAi ? <Tooltip label="Imported with AI"><IconRobot size={13} color="var(--mantine-color-violet-6)" /></Tooltip> : null}
           </Group> : null}
+          {flexibleDayIds.length ? (
+            <Box
+              mt={2}
+              onPointerDown={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Group gap={4} role="group" aria-label={t('flexibleDays')}>
+                {tripDayIds.map((dayId, index) => {
+                  const included = flexibleDayIds.includes(dayId);
+                  return (
+                    <ActionIcon
+                      key={dayId}
+                      size={26}
+                      radius="xl"
+                      color="violet"
+                      variant={included ? 'filled' : 'default'}
+                      aria-pressed={included}
+                      aria-label={t('day', { number: index + 1 })}
+                      disabled={!onFlexibleWindowChange}
+                      onClick={() => onFlexibleWindowChange?.(included ? flexibleDayIds.filter((id) => id !== dayId) : [...flexibleDayIds, dayId])}
+                    >
+                      <Text component="span" size="xs" fw={700}>{index + 1}</Text>
+                    </ActionIcon>
+                  );
+                })}
+              </Group>
+              {flexibleWindowPassed ? (
+                <Group gap={4} mt={4}>
+                  <IconAlertTriangle size={14} color="var(--mantine-color-orange-6)" />
+                  <Text size="xs" c="orange">{t('windowPassed')}</Text>
+                </Group>
+              ) : null}
+            </Box>
+          ) : null}
           {schedule && onScheduleChange ? (
             <Box
               mt={2}

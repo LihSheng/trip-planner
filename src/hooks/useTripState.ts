@@ -11,6 +11,8 @@ import { isAccommodation } from '../utils/stay';
 import { ensureItineraryEntries } from '../domain/itinerary';
 import { isPlaceholder } from '../domain/place';
 import { assignPlaceToCluster, clusterForPlace, clusterPlaceIds, removePlacesFromClusters } from '../domain/locationCluster';
+import { normalizeFlexibleWindows, setFlexibleWindow as withFlexibleWindow } from '../domain/flexibleWindows';
+import { placeStatus } from '../utils/mapPresentation';
 
 interface TripActor {
   id: string;
@@ -18,6 +20,10 @@ interface TripActor {
 }
 
 type UndoPoint = { label: string; before: TripState; sealed: boolean };
+
+function withNormalizedWindows(value: SetStateAction<TripState>): SetStateAction<TripState> {
+  return (current) => normalizeFlexibleWindows(typeof value === 'function' ? value(current) : value);
+}
 
 export function useTripState(readOnly: boolean, actor?: TripActor) {
   const [state, setTripState] = useState<TripState>(() => ensureActivities(ensureItineraryEntries(createInitialState())));
@@ -42,7 +48,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
 
   const setState = useCallback<Dispatch<SetStateAction<TripState>>>((value) => {
     if (undoPoint.current?.sealed) setUndoPoint(null);
-    setTripState(value);
+    setTripState(withNormalizedWindows(value));
   }, [setUndoPoint]);
 
   const undo = useCallback(() => {
@@ -57,7 +63,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
   // Undoing across them would revert someone else's change, so they disarm.
   const setLifecycleState = useCallback<Dispatch<SetStateAction<TripState>>>((value) => {
     setUndoPoint(null);
-    setTripState(value);
+    setTripState(withNormalizedWindows(value));
   }, [setUndoPoint]);
 
   const placesById = useMemo(
@@ -590,6 +596,22 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     [readOnly],
   );
 
+  const setFlexibleWindow = useCallback((placeId: string, dayIds: string[]) => {
+    if (readOnly) return;
+    setState((current) => withFlexibleWindow(current, placeId, dayIds));
+  }, [readOnly]);
+
+  const scheduleFlexibleToday = useCallback((placeId: string, dayId: string) => {
+    if (readOnly) return;
+    const current = stateRef.current;
+    const day = current.days.find((item) => item.id === dayId);
+    if (!day || !current.unscheduledIds.includes(placeId)) return;
+    const execution = current.executionByDay?.[dayId];
+    const anchorId = day.placeIds.find((id) => placeStatus(day, execution, id) === 'current')
+      ?? day.placeIds.find((id) => placeStatus(day, execution, id) === 'upcoming');
+    move(placeId, dayId, anchorId ? day.placeIds.indexOf(anchorId) + 1 : day.placeIds.length);
+  }, [move, readOnly]);
+
   const setPlaceCluster = useCallback((placeId: string, targetPlaceId?: string, relationship: ClusterRelationship = 'walkable', travelMinutes?: number, travelMode?: TravelMode) => {
     if (readOnly) return;
     setState((current) => assignPlaceToCluster(
@@ -699,6 +721,8 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     deleteFlightBooking,
     updateBudget,
     move,
+    setFlexibleWindow,
+    scheduleFlexibleToday,
     setPlaceCluster,
     renameLocationCluster,
     ungroupLocationCluster,

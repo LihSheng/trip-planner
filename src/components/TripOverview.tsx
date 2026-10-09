@@ -8,18 +8,20 @@ import { useI18n } from '../i18n';
 import { formatTripDate } from '../utils/date';
 import { isPlaceholder } from '../domain/place';
 import { categoryIcons } from './PlaceCard';
+import { FlexibleDayBadge } from './FlexibleDayBadge';
 
 interface TripOverviewProps {
   days: TripDay[];
   startDate: string;
   placesById: Map<string, Place>;
   lodgingLabels: Record<string, string | undefined>;
+  flexiblePlacesByDay?: Record<string, Place[]>;
   readOnly?: boolean;
   onOpenDay: (dayId: string) => void;
 }
 
 /** Read-only summary of every day; editing happens after opening a day. */
-export function TripOverview({ days, startDate, placesById, lodgingLabels, readOnly = false, onOpenDay }: TripOverviewProps) {
+export function TripOverview({ days, startDate, placesById, lodgingLabels, flexiblePlacesByDay = {}, readOnly = false, onOpenDay }: TripOverviewProps) {
   return (
     <div className="trip-overview">
       {days.map((day, index) => (
@@ -33,6 +35,7 @@ export function TripOverview({ days, startDate, placesById, lodgingLabels, readO
             return place ? [place] : [];
           })}
           lodgingLabel={lodgingLabels[day.id]}
+          flexiblePlaces={flexiblePlacesByDay[day.id] ?? []}
           readOnly={readOnly}
           onOpenDay={onOpenDay}
         />
@@ -47,11 +50,12 @@ interface OverviewDayCardProps {
   dateLabel: string;
   places: Place[];
   lodgingLabel?: string;
+  flexiblePlaces: Place[];
   readOnly: boolean;
   onOpenDay: (dayId: string) => void;
 }
 
-function OverviewDayCard({ day, index, dateLabel, places, lodgingLabel, readOnly, onOpenDay }: OverviewDayCardProps) {
+function OverviewDayCard({ day, index, dateLabel, places, lodgingLabel, flexiblePlaces, readOnly, onOpenDay }: OverviewDayCardProps) {
   const { t } = useI18n();
   // Separate id prefix: the rail already registers `day:<id>` and dnd-kit ids must be unique.
   // Places can still drop onto the card; dragging the card itself reorders days.
@@ -91,6 +95,7 @@ function OverviewDayCard({ day, index, dateLabel, places, lodgingLabel, readOnly
           <Text fw={700} size="sm" lineClamp={1}>{day.label.trim() || dayName}</Text>
           <Text size="xs" c="dimmed" lineClamp={1}>{lodgingLabel ? `${dateLabel} · ${lodgingLabel}` : dateLabel}</Text>
         </Box>
+        <FlexibleDayBadge places={flexiblePlaces} />
         <IconChevronRight size={16} color="var(--mantine-color-dimmed)" />
       </UnstyledButton>
       <Stack gap={2} className="trip-overview__stops">

@@ -242,6 +242,8 @@ export interface TripState {
    */
   activities?: Activity[];
   unscheduledIds: string[];
+  /** Candidate days for unscheduled places the traveller will fit in when free. Keyed by placeId. */
+  flexibleWindows?: Record<string, string[]>;
   visitedPlaceIds: string[];
   days: TripDay[];
   hotelPlaceId?: string;

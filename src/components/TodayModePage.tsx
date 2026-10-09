@@ -6,7 +6,7 @@ import {
   IconArrowRight, IconFileText, IconListCheck, IconMapPin, IconPlayerSkipForward, IconReceipt, IconRoute, IconTrash,
 } from '@tabler/icons-react';
 import type { DayTask, Place, StopExecutionStatus, TripDay } from '../types';
-import { addDays } from '../utils/date';
+import { defaultTodayDay, localDateKey, tripDayDate as dayDate } from '../utils/date';
 import { ExpenseSheet } from './ExpenseSheet';
 import { getTwdExchangeRate } from '../lib/exchangeRates';
 import { useTrip } from '../context/TripContext';
@@ -15,7 +15,8 @@ import type { CurrentLocationState } from '../hooks/useCurrentLocation';
 import { navigationUrl, placeStatus, timeRange } from '../utils/mapPresentation';
 import { nextAnchor, toMinutes } from '../utils/schedule';
 import { transportIcon } from './transportIcons';
-import { useI18n } from '../i18n';
+import { categoryLabel, useI18n } from '../i18n';
+import { flexibleDaysFor, flexiblePlacesForDay, remainingWindowDays } from '../domain/flexibleWindows';
 import type { TravelMode } from '../types';
 
 const MODE_LABEL_KEYS = { public: 'publicTransport', walk: 'walk', bike: 'bike', car: 'car', taxi: 'taxi', other: 'otherTransport' } as const satisfies Record<TravelMode, string>;
@@ -23,10 +24,6 @@ const MODE_LABEL_KEYS = { public: 'publicTransport', walk: 'walk', bike: 'bike',
 const labels: Record<StopExecutionStatus, string> = {
   upcoming: 'Up next', current: 'Current stop', completed: 'Completed', skipped: 'Skipped', rescheduled: 'Rescheduled',
 };
-
-function dayDate(startDate: string, index: number) {
-  return addDays(startDate, index).toISOString().slice(0, 10);
-}
 
 function dateLabel(value: string) {
   return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(`${value}T12:00:00`));
@@ -37,7 +34,7 @@ interface TodayModePageProps {
 }
 
 export function TodayModePage({ location }: TodayModePageProps) {
-  const { state, placesById, isReadOnly: readOnly, updateExecution: onUpdateExecution, updatePlace: onUpdatePlace, addExpense: onAddExpense, toggleDayTask, deleteDayTask, moveDayTask, toggleVisited, markUndoPoint, undo } = useTrip();
+  const { state, placesById, isReadOnly: readOnly, updateExecution: onUpdateExecution, updatePlace: onUpdatePlace, addExpense: onAddExpense, toggleDayTask, deleteDayTask, moveDayTask, toggleVisited, markUndoPoint, undo, setFlexibleWindow, scheduleFlexibleToday } = useTrip();
   const sessionKey = `trip-planner:today-day:${state.tripName}`;
   const visitedPlaceIds = state.visitedPlaceIds ?? [];
   const [activeDayId, setActiveDayId] = useState(() => sessionStorage.getItem(sessionKey) ?? '');
@@ -56,14 +53,7 @@ export function TodayModePage({ location }: TodayModePageProps) {
 
   const activeDay = useMemo(() => {
     const selected = state.days.find((day) => day.id === activeDayId);
-    if (selected) return selected;
-    const today = new Date().toISOString().slice(0, 10);
-    const byDate = state.days.find((_, index) => dayDate(state.startDate, index) === today);
-    const incomplete = state.days.find((day) => day.placeIds.some((id) => {
-      const status = state.executionByDay?.[day.id]?.stopStates[id]?.status;
-      return status !== 'completed' && status !== 'skipped' && status !== 'rescheduled';
-    }));
-    return byDate ?? incomplete ?? state.days[0];
+    return selected ?? defaultTodayDay(state);
   }, [activeDayId, state.days, state.executionByDay, state.startDate]);
 
   useEffect(() => {
@@ -81,7 +71,7 @@ export function TodayModePage({ location }: TodayModePageProps) {
   const anchor = nextAnchor(activeDay, state.locationClusters ?? [], stops, current?.id ?? null, next?.id ?? null);
   const anchorPlace = anchor.kind === 'leaveBy' ? placesById.get(anchor.toPlaceId) : anchor.kind === 'opensAt' ? placesById.get(anchor.placeId) : undefined;
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const viewingToday = dayDate(state.startDate, state.days.indexOf(activeDay)) === now.toISOString().slice(0, 10);
+  const viewingToday = dayDate(state.startDate, state.days.indexOf(activeDay)) === localDateKey(now);
   const complete = stops.length > 0 && stops.every((place) => ['completed', 'skipped', 'rescheduled'].includes(placeStatus(activeDay, execution, place.id)));
   const detail = detailId ? placesById.get(detailId) : undefined;
   const dayExpenses = (state.expenses ?? []).filter((expense) => expense.dayId === activeDay.id);
@@ -93,6 +83,7 @@ export function TodayModePage({ location }: TodayModePageProps) {
   const completedTasks = tasks.filter((task) => task.dayId === activeDay.id && task.completed).sort((a, b) => a.sortOrder - b.sortOrder);
   const priorDayIds = new Set(state.days.slice(0, activeDayIndex).map((day) => day.id));
   const overdueTasks = tasks.filter((task) => priorDayIds.has(task.dayId) && !task.completed).sort((a, b) => a.sortOrder - b.sortOrder);
+  const flexiblePlaces = flexiblePlacesForDay(state, activeDay.id);
 
   useEffect(() => {
     setNoteDraft(detail?.notes ?? '');
@@ -116,6 +107,20 @@ export function TodayModePage({ location }: TodayModePageProps) {
     }
     onUpdateExecution(activeDay.id, placeId, status);
     notifications.show({ color: 'teal', title: labels[status], message: 'Today’s stop status was saved.', withCloseButton: true });
+  }
+
+  function goNow(place: Place) {
+    const title = t('flexibleAddedToday');
+    markUndoPoint(title);
+    scheduleFlexibleToday(place.id, activeDay.id);
+    showUndoableNotification({ title, message: t('flexibleAddedTodayMessage', { name: place.name }), onUndo: undo, t });
+  }
+
+  function notToday(place: Place) {
+    const title = t('notToday');
+    markUndoPoint(title);
+    setFlexibleWindow(place.id, flexibleDaysFor(state, place.id).filter((dayId) => dayId !== activeDay.id));
+    showUndoableNotification({ color: 'gray', title, message: t('flexibleNotTodayMessage', { name: place.name }), onUndo: undo, t });
   }
 
   function openNavigation(place: Place) {
@@ -214,6 +219,16 @@ export function TodayModePage({ location }: TodayModePageProps) {
 
       {current ? <StopCard place={current} day={activeDay} status="current" visited={visitedPlaceIds.includes(current.id)} readOnly={readOnly} onVisitedChange={toggleVisited} onDetail={() => setDetailId(current.id)} onNavigate={() => openNavigation(current)} onUpdate={update} /> : null}
       {next ? <StopCard place={next} day={activeDay} status="upcoming" visited={visitedPlaceIds.includes(next.id)} readOnly={readOnly} onVisitedChange={toggleVisited} onDetail={() => setDetailId(next.id)} onNavigate={() => openNavigation(next)} onUpdate={update} /> : null}
+      {flexiblePlaces.map((place) => (
+        <FlexibleCard
+          key={place.id}
+          place={place}
+          remainingDays={remainingWindowDays(state, place.id, activeDay.id).length}
+          readOnly={readOnly}
+          onGoNow={() => goNow(place)}
+          onNotToday={() => notToday(place)}
+        />
+      ))}
 
       <Paper className="today-timeline" radius="xl">
         <Group justify="space-between" mb="xs"><Title order={2}>Day timeline</Title><Text size="sm" c="dimmed">{stops.length} stops</Text></Group>
@@ -264,6 +279,30 @@ function TodayTaskRow({ task, dayLabel, overdue = false, readOnly, onToggle, onM
 function StopCard({ place, day, status, visited, readOnly, onVisitedChange, onDetail, onNavigate, onUpdate }: { place: Place; day: TripDay; status: StopExecutionStatus; visited: boolean; readOnly: boolean; onVisitedChange: (placeId: string) => void; onDetail: () => void; onNavigate: () => void; onUpdate: (id: string, status: StopExecutionStatus) => void }) {
   const current = status === 'current';
   return <Paper className={`today-stop-card today-stop-card--${status}`} radius="xl"><Group justify="space-between" align="flex-start"><Group gap="xs"><Badge color="teal" variant="light">{current ? 'CURRENT STOP' : 'UP NEXT'}</Badge>{!readOnly ? <Checkbox checked={visited} onChange={() => onVisitedChange(place.id)} aria-label={`Mark ${place.name} as visited`} /> : null}</Group>{!readOnly ? <Menu shadow="md" position="bottom-end"><Menu.Target><ActionIcon variant="subtle" color="gray" aria-label={`More actions for ${place.name}`}><IconDots size={22} /></ActionIcon></Menu.Target><Menu.Dropdown><Menu.Item leftSection={<IconFileText size={16} />} onClick={onDetail}>View notes</Menu.Item><Menu.Item leftSection={<IconPlayerSkipForward size={16} />} onClick={() => onUpdate(place.id, 'skipped')}>Skip stop</Menu.Item><Menu.Item leftSection={<IconClock size={16} />} onClick={() => onUpdate(place.id, 'current')}>Make current</Menu.Item></Menu.Dropdown></Menu> : null}</Group><Title order={2}>{place.name}</Title><Text c="teal" fw={650}>{place.category}</Text><Stack gap="xs" mt="sm"><Group gap="xs"><IconClock size={19} /><Text>{timeRange(day, place.id)}</Text></Group><Group gap="xs" align="flex-start"><IconMapPin size={19} /><Text>{place.region || 'Location available offline'}</Text></Group></Stack><Group grow mt="lg"><Button onClick={onNavigate} leftSection={<IconRoute size={18} />}>Open navigation</Button>{!readOnly ? <Button variant="outline" color="teal" leftSection={<IconCheck size={18} />} onClick={() => onUpdate(place.id, current ? 'completed' : 'current')}>{current ? 'Mark complete' : 'Mark arrived'}</Button> : null}</Group></Paper>;
+}
+
+function FlexibleCard({ place, remainingDays, readOnly, onGoNow, onNotToday }: { place: Place; remainingDays: number; readOnly: boolean; onGoNow: () => void; onNotToday: () => void }) {
+  const { t } = useI18n();
+  return (
+    <Paper className="today-stop-card" radius="xl">
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <Text fw={800} size="lg">{t('flexibleFitsToday', { name: place.name })}</Text>
+        {remainingDays === 1
+          ? <Badge color="orange" variant="light" style={{ flexShrink: 0 }}>{t('lastChance')}</Badge>
+          : <Badge color="violet" variant="light" style={{ flexShrink: 0 }}>{t('daysLeft', { count: remainingDays })}</Badge>}
+      </Group>
+      <Text c="dimmed" size="sm" mt={4}>{[place.region, categoryLabel(t, place.category)].filter(Boolean).join(' · ')}</Text>
+      {place.openingHours ? (
+        <Group gap="xs" mt="xs"><IconClock size={17} /><Text size="sm">{t('openingHoursRange', { opensAt: place.openingHours.opensAt, closesAt: place.openingHours.closesAt })}</Text></Group>
+      ) : null}
+      {!readOnly ? (
+        <Group grow mt="md">
+          <Button color="violet" leftSection={<IconArrowRight size={18} />} onClick={onGoNow}>{t('goNow')}</Button>
+          <Button variant="default" onClick={onNotToday}>{t('notToday')}</Button>
+        </Group>
+      ) : null}
+    </Paper>
+  );
 }
 
 function TimelineRow({ place, day, status, visited, onClick }: { place: Place; day: TripDay; status: StopExecutionStatus; visited: boolean; onClick: () => void }) {
