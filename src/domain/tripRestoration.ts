@@ -2,6 +2,7 @@ import type { TripState } from '../types';
 import { ensureActivities } from './activity';
 import { normalizeDayTasks } from './dayTask';
 import { normalizeExpenseState } from './expenses';
+import { normalizeFlexibleWindows } from './flexibleWindows';
 import { ensureItineraryEntries } from './itinerary';
 import { normalizeLocationClusters } from './locationCluster';
 import { normalizePlace } from './place';
@@ -49,10 +50,10 @@ export function normalizeTripState(state: TripState): TripState {
     displayCurrency: state.displayCurrency ?? 'MYR',
   };
 
-  return normalizeExpenseState(ensureActivities(ensureItineraryEntries({
+  return normalizeFlexibleWindows(normalizeExpenseState(ensureActivities(ensureItineraryEntries({
     ...normalized,
     locationClusters: normalizeLocationClusters(normalized),
-  })));
+  }))));
 }
 
 export function restoreTripState(value: unknown): TripRestoration {
