@@ -1,4 +1,6 @@
-import { useDroppable } from '@dnd-kit/core';
+import type { PointerEventHandler, TouchEventHandler } from 'react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Box, Paper, Stack, Text, UnstyledButton } from '@mantine/core';
 import { IconChevronRight, IconCoffee, IconSun, IconToolsKitchen } from '@tabler/icons-react';
 import type { Place, TripDay } from '../types';
@@ -52,7 +54,12 @@ interface OverviewDayCardProps {
 function OverviewDayCard({ day, index, dateLabel, places, lodgingLabel, readOnly, onOpenDay }: OverviewDayCardProps) {
   const { t } = useI18n();
   // Separate id prefix: the rail already registers `day:<id>` and dnd-kit ids must be unique.
-  const { setNodeRef, isOver } = useDroppable({ id: `overview:${day.id}`, disabled: readOnly });
+  // Places can still drop onto the card; dragging the card itself reorders days.
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
+    id: `overview:${day.id}`,
+    data: { type: 'day', dayId: day.id },
+    disabled: readOnly,
+  });
   const dayName = t('day', { number: index + 1 });
 
   function stopName(place: Place) {
@@ -61,7 +68,23 @@ function OverviewDayCard({ day, index, dateLabel, places, lodgingLabel, readOnly
   }
 
   return (
-    <Paper ref={setNodeRef} withBorder radius="md" className="trip-overview__day" data-over={isOver || undefined}>
+    <Paper
+      ref={setNodeRef}
+      withBorder
+      radius="md"
+      className="trip-overview__day"
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      data-over={(isOver && !isDragging) || undefined}
+      data-dragging={isDragging || undefined}
+      data-draggable={!readOnly || undefined}
+      aria-roledescription={attributes['aria-roledescription']}
+      // Mouse and pen drag after a short move; touch goes to the TouchSensor's press-and-hold so swipes
+      // keep scrolling. No keyboard listener: Enter on the header keeps opening the day.
+      onPointerDown={(event) => {
+        if (event.pointerType !== 'touch') (listeners?.onPointerDown as PointerEventHandler<HTMLDivElement> | undefined)?.(event);
+      }}
+      onTouchStart={listeners?.onTouchStart as TouchEventHandler<HTMLDivElement> | undefined}
+    >
       <UnstyledButton className="trip-overview__header" onClick={() => onOpenDay(day.id)} aria-label={t('openDay', { day: dayName })}>
         <span className="day-rail__badge">{index + 1}</span>
         <Box style={{ flex: 1, minWidth: 0 }}>

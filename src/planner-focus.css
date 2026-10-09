@@ -226,6 +226,21 @@
   transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
+.trip-overview__day[data-draggable] {
+  touch-action: manipulation;
+  /* Press-and-hold starts a drag, so keep the long-press callout and text selection out of the way. */
+  -webkit-touch-callout: none;
+  user-select: none;
+  cursor: grab;
+}
+
+.trip-overview__day[data-dragging] {
+  position: relative;
+  z-index: 2;
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
 .trip-overview__day[data-over] {
   border-color: var(--mantine-color-teal-5);
   box-shadow: 0 0 0 3px rgba(43, 200, 166, 0.15);
