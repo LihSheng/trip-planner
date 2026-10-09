@@ -24,13 +24,14 @@ import { TripOverview } from './TripOverview';
 import { PlaceCardPreview } from './PlaceCard';
 import { UnscheduledColumn } from './UnscheduledColumn';
 import { useI18n } from '../i18n';
-import { addDays } from '../utils/date';
+import { addDays, defaultTodayDay } from '../utils/date';
 import { isAccommodation, stayAssignmentStatus, type StayAssignmentStatus } from '../utils/stay';
 
 import { useTrip } from '../context/TripContext';
 import { showUndoableNotification } from '../lib/undoNotification';
 import { TripActivityDrawer } from './TripActivityDrawer';
 import { isPlaceholder } from '../domain/place';
+import { flexibleDaysFor, flexiblePlacesForDay, remainingWindowDays } from '../domain/flexibleWindows';
 import { DayTasksModal } from './DayTasksModal';
 import { FlightBookingModal, StayBookingModal } from './BookingModals';
 import type { FlightBooking, StayBooking } from '../types';
@@ -74,6 +75,7 @@ export function PlannerBoard({
     updatePlace,
     removePlannerVisit,
     move: onMove,
+    setFlexibleWindow,
     updateDayLabel: onLabelChange,
     removeDay: removeDayDirect,
     reorderDays: onReorderDays,
@@ -126,6 +128,13 @@ export function PlannerBoard({
     return place ? [place] : [];
   });
   const hotelPlaces = state.places.filter((place) => isAccommodation(place) && !place.assignmentOf);
+  const todayDayId = defaultTodayDay(state)?.id;
+  const flexibleWindows = Object.fromEntries(state.unscheduledIds.flatMap((placeId) => {
+    const dayIds = flexibleDaysFor(state, placeId);
+    if (!dayIds.length) return [];
+    return [[placeId, { dayIds, passed: Boolean(todayDayId) && remainingWindowDays(state, placeId, todayDayId).length === 0 }]];
+  }));
+  const flexiblePlacesByDay = Object.fromEntries(state.days.map((day) => [day.id, flexiblePlacesForDay(state, day.id)]));
 
   useEffect(() => {
     if (focusNewDayRef.current && state.days.length > previousDayCountRef.current) {
@@ -342,6 +351,7 @@ export function PlannerBoard({
               onOpenTasks={setTaskDayId}
               bookingCards={bookingCardsFor(dayDate(selectedDayIndex))}
               lodgingLabel={lodgingLabels[selectedDay.id]}
+              flexiblePlaces={flexiblePlacesByDay[selectedDay.id]}
               onEditBooking={(card) => {
                 if (card.kind === 'flight') {
                   setEditingFlight(state.flightBookings?.find((booking) => booking.id === card.sourceId));
@@ -367,6 +377,7 @@ export function PlannerBoard({
                   startDate={state.startDate}
                   placesById={placesById}
                   lodgingLabels={lodgingLabels}
+                  flexiblePlacesByDay={flexiblePlacesByDay}
                   readOnly={readOnly}
                   onOpenDay={setSelectedDayId}
                 />
@@ -385,6 +396,9 @@ export function PlannerBoard({
           readOnly={readOnly}
           moveTargets={moveTargets}
           onMoveToPlace={readOnly ? undefined : onMoveToPlace}
+          tripDayIds={state.days.map((day) => day.id)}
+          flexibleWindows={flexibleWindows}
+          onFlexibleWindowChange={readOnly ? undefined : setFlexibleWindow}
         />
       </Box>
 

@@ -6,7 +6,7 @@ import {
   IconArrowRight, IconFileText, IconListCheck, IconMapPin, IconPlayerSkipForward, IconReceipt, IconRoute, IconTrash,
 } from '@tabler/icons-react';
 import type { DayTask, Place, StopExecutionStatus, TripDay } from '../types';
-import { addDays } from '../utils/date';
+import { defaultTodayDay, tripDayDate as dayDate } from '../utils/date';
 import { ExpenseSheet } from './ExpenseSheet';
 import { getTwdExchangeRate } from '../lib/exchangeRates';
 import { useTrip } from '../context/TripContext';
@@ -23,10 +23,6 @@ const MODE_LABEL_KEYS = { public: 'publicTransport', walk: 'walk', bike: 'bike',
 const labels: Record<StopExecutionStatus, string> = {
   upcoming: 'Up next', current: 'Current stop', completed: 'Completed', skipped: 'Skipped', rescheduled: 'Rescheduled',
 };
-
-function dayDate(startDate: string, index: number) {
-  return addDays(startDate, index).toISOString().slice(0, 10);
-}
 
 function dateLabel(value: string) {
   return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(`${value}T12:00:00`));
@@ -56,14 +52,7 @@ export function TodayModePage({ location }: TodayModePageProps) {
 
   const activeDay = useMemo(() => {
     const selected = state.days.find((day) => day.id === activeDayId);
-    if (selected) return selected;
-    const today = new Date().toISOString().slice(0, 10);
-    const byDate = state.days.find((_, index) => dayDate(state.startDate, index) === today);
-    const incomplete = state.days.find((day) => day.placeIds.some((id) => {
-      const status = state.executionByDay?.[day.id]?.stopStates[id]?.status;
-      return status !== 'completed' && status !== 'skipped' && status !== 'rescheduled';
-    }));
-    return byDate ?? incomplete ?? state.days[0];
+    return selected ?? defaultTodayDay(state);
   }, [activeDayId, state.days, state.executionByDay, state.startDate]);
 
   useEffect(() => {

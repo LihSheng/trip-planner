@@ -28,6 +28,7 @@ import { TransportLegChip } from './TransportLegChip';
 import { isPlaceholder } from '../domain/place';
 import { clusterForPlace, clusterMember } from '../domain/locationCluster';
 import { BookingCard, type PlannerBookingCard } from './BookingCard';
+import { FlexibleDayBadge } from './FlexibleDayBadge';
 
 interface DayColumnProps {
   readOnly?: boolean;
@@ -58,6 +59,7 @@ interface DayColumnProps {
   onEditBooking?: (card: PlannerBookingCard) => void;
   onAddFlight?: () => void;
   lodgingLabel?: string;
+  flexiblePlaces?: Place[];
   moveTargets?: { id: string; label: string }[];
   onMoveToPlace?: (placeId: string, containerId: string) => void;
 }
@@ -92,6 +94,7 @@ export function DayColumn({
   onEditBooking,
   onAddFlight,
   lodgingLabel,
+  flexiblePlaces = [],
   moveTargets,
   onMoveToPlace,
 }: DayColumnProps) {
@@ -156,6 +159,7 @@ export function DayColumn({
               >
                 {incompleteTaskCount ? t('openTasks', { count: incompleteTaskCount }) : t('checklist')}
               </Button>
+              <FlexibleDayBadge places={flexiblePlaces} />
               {allPlacesVisited ? (
                 <Badge variant="light" color="teal" tt="none" leftSection={<IconCircleCheckFilled size={12} />}>
                   {t('allStopsVisited')}

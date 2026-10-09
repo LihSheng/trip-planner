@@ -9,6 +9,7 @@ import { PlaceCard } from './PlaceCard';
 import { categoryLabel, useI18n } from '../i18n';
 import { isAccommodation } from '../utils/stay';
 import { clusterForPlace, clusterMember } from '../domain/locationCluster';
+import { isPlaceholder } from '../domain/place';
 
 interface UnscheduledColumnProps {
   places: Place[];
@@ -20,6 +21,9 @@ interface UnscheduledColumnProps {
   clusters?: LocationCluster[];
   moveTargets?: { id: string; label: string }[];
   onMoveToPlace?: (placeId: string, containerId: string) => void;
+  tripDayIds?: string[];
+  flexibleWindows?: Record<string, { dayIds: string[]; passed: boolean }>;
+  onFlexibleWindowChange?: (placeId: string, dayIds: string[]) => void;
 }
 
 export function UnscheduledColumn({
@@ -32,6 +36,9 @@ export function UnscheduledColumn({
   clusters = [],
   moveTargets,
   onMoveToPlace,
+  tripDayIds,
+  flexibleWindows = {},
+  onFlexibleWindowChange,
 }: UnscheduledColumnProps) {
   const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
@@ -116,6 +123,10 @@ export function UnscheduledColumn({
                   if (!cluster) return undefined;
                   return clusterMember(cluster, place.id)?.relationship ?? 'anchor';
                 })()}
+                tripDayIds={tripDayIds}
+                flexibleDayIds={flexibleWindows[place.id]?.dayIds}
+                flexibleWindowPassed={flexibleWindows[place.id]?.passed}
+                onFlexibleWindowChange={readOnly || !onFlexibleWindowChange || isPlaceholder(place) ? undefined : (dayIds) => onFlexibleWindowChange(place.id, dayIds)}
               />
             ))}
           </SortableContext>
