@@ -6,7 +6,7 @@ import {
   IconArrowRight, IconFileText, IconListCheck, IconMapPin, IconPlayerSkipForward, IconReceipt, IconRoute, IconTrash,
 } from '@tabler/icons-react';
 import type { DayTask, Place, StopExecutionStatus, TripDay } from '../types';
-import { defaultTodayDay, tripDayDate as dayDate } from '../utils/date';
+import { defaultTodayDay, localDateKey, tripDayDate as dayDate } from '../utils/date';
 import { ExpenseSheet } from './ExpenseSheet';
 import { getTwdExchangeRate } from '../lib/exchangeRates';
 import { useTrip } from '../context/TripContext';
@@ -71,7 +71,7 @@ export function TodayModePage({ location }: TodayModePageProps) {
   const anchor = nextAnchor(activeDay, state.locationClusters ?? [], stops, current?.id ?? null, next?.id ?? null);
   const anchorPlace = anchor.kind === 'leaveBy' ? placesById.get(anchor.toPlaceId) : anchor.kind === 'opensAt' ? placesById.get(anchor.placeId) : undefined;
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const viewingToday = dayDate(state.startDate, state.days.indexOf(activeDay)) === now.toISOString().slice(0, 10);
+  const viewingToday = dayDate(state.startDate, state.days.indexOf(activeDay)) === localDateKey(now);
   const complete = stops.length > 0 && stops.every((place) => ['completed', 'skipped', 'rescheduled'].includes(placeStatus(activeDay, execution, place.id)));
   const detail = detailId ? placesById.get(detailId) : undefined;
   const dayExpenses = (state.expenses ?? []).filter((expense) => expense.dayId === activeDay.id);

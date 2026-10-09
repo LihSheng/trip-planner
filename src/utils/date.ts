@@ -12,12 +12,16 @@ export function addDays(dateString: string, offset: number): Date {
   return date;
 }
 
+export function localDateKey(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 export function tripDayDate(startDate: string, index: number): string {
-  return addDays(startDate, index).toISOString().slice(0, 10);
+  return localDateKey(addDays(startDate, index));
 }
 
 /** The day Today mode opens on: the calendar match, else the first day with stops left, else day one. */
-export function defaultTodayDay(state: TripState, today = new Date().toISOString().slice(0, 10)) {
+export function defaultTodayDay(state: TripState, today = localDateKey()) {
   const byDate = state.days.find((_, index) => tripDayDate(state.startDate, index) === today);
   const incomplete = state.days.find((day) => day.placeIds.some((id) => {
     const status = state.executionByDay?.[day.id]?.stopStates[id]?.status;
