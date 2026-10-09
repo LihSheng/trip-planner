@@ -200,14 +200,18 @@
 
 /* Card menus appear on hover or focus where a pointer can hover; touch screens keep them visible. */
 @media (hover: hover) {
-  .place-card .place-card__menu {
+  .place-card .place-card__menu,
+  .place-card-row .place-card__menu {
     opacity: 0;
     transition: opacity 120ms ease;
   }
 
   .place-card:hover .place-card__menu,
   .place-card:focus-within .place-card__menu,
-  .place-card .place-card__menu[aria-expanded='true'] {
+  .place-card .place-card__menu[aria-expanded='true'],
+  .place-card-row:hover .place-card__menu,
+  .place-card-row:focus-within .place-card__menu,
+  .place-card-row .place-card__menu[aria-expanded='true'] {
     opacity: 1;
   }
 }

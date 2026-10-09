@@ -115,13 +115,166 @@ export function PlaceCard({
   const CategoryIcon = categoryIcons[place.category];
   const displayName = placeholder ? placeholderLabel : place.name;
 
+  const menu = onEdit || onDelete || onEnableSchedule || onReplace || onRename || onFlexibleWindowChange ? (
+    <Menu position="bottom-end" withinPortal shadow="md">
+      <Menu.Target>
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          size="sm"
+          className="place-card__menu"
+          aria-label={t('actionsFor', { name: place.name })}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <IconDotsVertical size={16} />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
+        {onRename ? <Menu.Item leftSection={<IconPencil size={15} />} onClick={() => onRename(place)}>{t('renamePlannedStop')}</Menu.Item> : null}
+        {onReplace ? (
+          <Menu.Item leftSection={<IconMapPin size={15} />} onClick={() => onReplace(place.id)}>
+            {t('choosePlace')}
+          </Menu.Item>
+        ) : onEdit ? (
+          <Menu.Item leftSection={<IconEdit size={15} />} onClick={() => onEdit(place)}>
+            {editLabel}
+          </Menu.Item>
+        ) : null}
+        {onEnableSchedule && !schedule ? (
+          <Menu.Item leftSection={<IconClock size={15} />} onClick={onEnableSchedule}>
+            Add time
+          </Menu.Item>
+        ) : null}
+        {onFlexibleWindowChange ? (
+          flexibleDayIds.length ? (
+            <Menu.Item leftSection={<IconCalendarOff size={15} />} onClick={() => onFlexibleWindowChange([])}>{t('notFlexible')}</Menu.Item>
+          ) : (
+            <Menu.Item leftSection={<IconSparkles size={15} />} onClick={() => onFlexibleWindowChange(tripDayIds)}>{t('makeFlexible')}</Menu.Item>
+          )
+        ) : null}
+        {onMoveTo && moveTargets && currentContainerId ? (
+          <>
+            <Menu.Divider />
+            <Menu.Label>{t('moveToDay')}</Menu.Label>
+            {moveTargets.filter((target) => target.id !== currentContainerId).map((target) => (
+              <Menu.Item key={target.id} onClick={() => onMoveTo(target.id)}>
+                {target.label}
+              </Menu.Item>
+            ))}
+          </>
+        ) : null}
+        {onDelete && (
+          <Menu.Item
+            color="red"
+            leftSection={<IconTrash size={15} />}
+            onClick={() => onDelete(place)}
+          >
+            {t('deletePlace')}
+          </Menu.Item>
+        )}
+      </Menu.Dropdown>
+    </Menu>
+  ) : null;
+  const flexiblePills = flexibleDayIds.length ? (
+    <Box
+      mt={2}
+      onPointerDown={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <Group gap={4} role="group" aria-label={t('flexibleDays')}>
+        {tripDayIds.map((dayId, index) => {
+          const included = flexibleDayIds.includes(dayId);
+          return (
+            <ActionIcon
+              key={dayId}
+              size={26}
+              radius="xl"
+              color="violet"
+              variant={included ? 'filled' : 'default'}
+              aria-pressed={included}
+              aria-label={t('day', { number: index + 1 })}
+              disabled={!onFlexibleWindowChange}
+              onClick={() => onFlexibleWindowChange?.(included ? flexibleDayIds.filter((id) => id !== dayId) : [...flexibleDayIds, dayId])}
+            >
+              <Text component="span" size="xs" fw={700}>{index + 1}</Text>
+            </ActionIcon>
+          );
+        })}
+      </Group>
+      {flexibleWindowPassed ? (
+        <Group gap={4} mt={4}>
+          <IconAlertTriangle size={14} color="var(--mantine-color-orange-6)" />
+          <Text size="xs" c="orange">{t('windowPassed')}</Text>
+        </Group>
+      ) : null}
+    </Box>
+  ) : null;
+  const clusterText = clusterRelationship === 'anchor'
+    ? clusterLabel
+    : clusterRelationship === 'inside'
+      ? `Inside ${clusterLabel}`
+      : clusterRelationship === 'same-area'
+        ? `In ${clusterLabel}`
+        : `Walkable from ${clusterLabel}`;
+
+  if (unscheduled) {
+    const Icon = placeholder ? PlaceholderIcon : CategoryIcon;
+    const details = placeholder ? '' : [place.region, categoryLabel(t, place.category)].filter(Boolean).join(' · ');
+    return (
+      <Box
+        ref={setNodeRef}
+        className={`place-card-row${dragDisabled ? '' : ' place-card--draggable'}`}
+        data-selected={selected || undefined}
+        data-dragging={isDragging || undefined}
+        data-expired={stayExpired || undefined}
+        {...(isMobile ? {} : attributes)}
+        {...(isMobile ? {} : listeners)}
+        style={{
+          transform: CSS.Transform.toString(transform),
+          transition,
+          touchAction: dragDisabled ? undefined : isMobile ? 'pan-y' : 'none',
+        }}
+        onClick={() => onSelect?.(place.id)}
+      >
+        <div className="place-card-row__main">
+          <Icon size={15} className={`place-card__icon place-card__icon--${placeholder ? 'placeholder' : place.category.toLowerCase()}`} />
+          <Tooltip label={details ? `${displayName} · ${details}` : displayName} withinPortal openDelay={400}>
+            <Text component="span" size="sm" fw={600} lineClamp={1} className="place-card-row__name">{displayName}</Text>
+          </Tooltip>
+          {!placeholder && place.region ? <Text component="span" size="xs" c="dimmed" truncate className="place-card-row__region">{place.region}</Text> : null}
+          {place.importedWithAi ? <Tooltip label="Imported with AI"><IconRobot size={13} color="var(--mantine-color-violet-6)" className="place-card-row__ai" /></Tooltip> : null}
+          {menu}
+          {isMobile && !dragDisabled ? (
+            <ActionIcon
+              ref={setActivatorNodeRef}
+              {...attributes}
+              {...listeners}
+              variant="subtle"
+              color="gray"
+              size="sm"
+              className="place-card-row__grip"
+              aria-label={`Move ${place.name}`}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <IconGripVertical size={15} />
+            </ActionIcon>
+          ) : null}
+        </div>
+        {!placeholder && clusterLabel ? <Text size="xs" c="dimmed" lineClamp={1} className="place-card-row__sub">{clusterText}</Text> : null}
+        {flexiblePills ? <div className="place-card-row__sub">{flexiblePills}</div> : null}
+      </Box>
+    );
+  }
+
   return (
     <Paper
       ref={setNodeRef}
       withBorder
       radius="md"
       p="sm"
-      className={`place-card place-card--tint-${place.category.toLowerCase()}${dragDisabled ? '' : ' place-card--draggable'}${placeholder ? ' place-card--placeholder' : ''}${unscheduled ? ' place-card--unscheduled' : ''}`}
+      className={`place-card place-card--tint-${place.category.toLowerCase()}${dragDisabled ? '' : ' place-card--draggable'}${placeholder ? ' place-card--placeholder' : ''}`}
       data-selected={selected || undefined}
       data-dragging={isDragging || undefined}
       data-visited={visited || undefined}
@@ -167,67 +320,7 @@ export function PlaceCard({
                 {displayName}
               </Text>
             </Tooltip>
-            {(onEdit || onDelete || onEnableSchedule || onReplace || onRename || onFlexibleWindowChange) && (
-              <Menu position="bottom-end" withinPortal shadow="md">
-                <Menu.Target>
-                  <ActionIcon
-                    variant="subtle"
-                    color="gray"
-                    size="sm"
-                    className="place-card__menu"
-                    aria-label={t('actionsFor', { name: place.name })}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <IconDotsVertical size={16} />
-                  </ActionIcon>
-                </Menu.Target>
-                <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
-                  {onRename ? <Menu.Item leftSection={<IconPencil size={15} />} onClick={() => onRename(place)}>{t('renamePlannedStop')}</Menu.Item> : null}
-                  {onReplace ? (
-                    <Menu.Item leftSection={<IconMapPin size={15} />} onClick={() => onReplace(place.id)}>
-                      {t('choosePlace')}
-                    </Menu.Item>
-                  ) : onEdit ? (
-                    <Menu.Item leftSection={<IconEdit size={15} />} onClick={() => onEdit(place)}>
-                      {editLabel}
-                    </Menu.Item>
-                  ) : null}
-                  {onEnableSchedule && !schedule ? (
-                    <Menu.Item leftSection={<IconClock size={15} />} onClick={onEnableSchedule}>
-                      Add time
-                    </Menu.Item>
-                  ) : null}
-                  {onFlexibleWindowChange ? (
-                    flexibleDayIds.length ? (
-                      <Menu.Item leftSection={<IconCalendarOff size={15} />} onClick={() => onFlexibleWindowChange([])}>{t('notFlexible')}</Menu.Item>
-                    ) : (
-                      <Menu.Item leftSection={<IconSparkles size={15} />} onClick={() => onFlexibleWindowChange(tripDayIds)}>{t('makeFlexible')}</Menu.Item>
-                    )
-                  ) : null}
-                  {onMoveTo && moveTargets && currentContainerId ? (
-                    <>
-                      <Menu.Divider />
-                      <Menu.Label>{t('moveToDay')}</Menu.Label>
-                      {moveTargets.filter((target) => target.id !== currentContainerId).map((target) => (
-                        <Menu.Item key={target.id} onClick={() => onMoveTo(target.id)}>
-                          {target.label}
-                        </Menu.Item>
-                      ))}
-                    </>
-                  ) : null}
-                  {onDelete && (
-                    <Menu.Item
-                      color="red"
-                      leftSection={<IconTrash size={15} />}
-                      onClick={() => onDelete(place)}
-                    >
-                      {t('deletePlace')}
-                    </Menu.Item>
-                  )}
-                </Menu.Dropdown>
-              </Menu>
-            )}
+            {menu}
           </Group>
           {!placeholder ? <Group gap={5} wrap="nowrap">
             <IconMapPin size={13} color="var(--mantine-color-dimmed)" />
@@ -245,53 +338,13 @@ export function PlaceCard({
               leftSection={<IconBuildingCommunity size={11} />}
               className="place-card__cluster-badge"
             >
-              {clusterRelationship === 'anchor'
-                ? clusterLabel
-                : clusterRelationship === 'inside'
-                  ? `Inside ${clusterLabel}`
-                  : clusterRelationship === 'same-area'
-                    ? `In ${clusterLabel}`
-                    : `Walkable from ${clusterLabel}`}
+              {clusterText}
             </Badge>
           ) : null}
           {!placeholder ? <Group gap={5} wrap="nowrap" mt={1}>
             {place.importedWithAi ? <Tooltip label="Imported with AI"><IconRobot size={13} color="var(--mantine-color-violet-6)" /></Tooltip> : null}
           </Group> : null}
-          {flexibleDayIds.length ? (
-            <Box
-              mt={2}
-              onPointerDown={(event) => event.stopPropagation()}
-              onKeyDown={(event) => event.stopPropagation()}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <Group gap={4} role="group" aria-label={t('flexibleDays')}>
-                {tripDayIds.map((dayId, index) => {
-                  const included = flexibleDayIds.includes(dayId);
-                  return (
-                    <ActionIcon
-                      key={dayId}
-                      size={26}
-                      radius="xl"
-                      color="violet"
-                      variant={included ? 'filled' : 'default'}
-                      aria-pressed={included}
-                      aria-label={t('day', { number: index + 1 })}
-                      disabled={!onFlexibleWindowChange}
-                      onClick={() => onFlexibleWindowChange?.(included ? flexibleDayIds.filter((id) => id !== dayId) : [...flexibleDayIds, dayId])}
-                    >
-                      <Text component="span" size="xs" fw={700}>{index + 1}</Text>
-                    </ActionIcon>
-                  );
-                })}
-              </Group>
-              {flexibleWindowPassed ? (
-                <Group gap={4} mt={4}>
-                  <IconAlertTriangle size={14} color="var(--mantine-color-orange-6)" />
-                  <Text size="xs" c="orange">{t('windowPassed')}</Text>
-                </Group>
-              ) : null}
-            </Box>
-          ) : null}
+          {flexiblePills}
           {schedule && onScheduleChange ? (
             <Box
               mt={2}
