@@ -586,14 +586,14 @@ select {
   gap: 8px;
 }
 
-/* The name shrinks far faster than the region, so it truncates first and the region only gives way once the name is short. */
 .place-card-row__name {
-  flex: 0 100 auto;
-  min-width: 4rem;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
+/* Zero basis: the region only takes space the full name leaves over, so it truncates before the name does. */
 .place-card-row__region {
-  flex: 0 1 auto;
+  flex: 1 1 0;
   min-width: 0;
 }
 
@@ -608,7 +608,16 @@ select {
 }
 
 .place-card-row__grip {
+  position: relative;
+  overflow: visible;
   touch-action: none;
+}
+
+/* Grows the 22px grip to a 44px-tall touch target without changing the row height; the left side stays inside the 8px gap so the menu button keeps its full hit area. */
+.place-card-row__grip::after {
+  content: '';
+  position: absolute;
+  inset: -11px -11px -11px -4px;
 }
 
 /* Indent under the name: 15px icon + 8px gap. */
