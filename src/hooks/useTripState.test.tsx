@@ -302,4 +302,16 @@ describe('useTripState', () => {
     expect(result.current.state.unscheduledIds).not.toContain(accommodation.id);
     expect(result.current.state.days[0].placeIds.some((id) => id.startsWith('stay-'))).toBe(false);
   });
+
+  it('schedules a flexible place after the current stop and drops its window', () => {
+    const { result } = renderHook(() => useTripState(false));
+    act(() => result.current.setFlexibleWindow('alishan', ['day-2', 'day-3']));
+    expect(result.current.state.flexibleWindows).toEqual({ alishan: ['day-2', 'day-3'] });
+
+    act(() => result.current.scheduleFlexibleToday('alishan', 'day-2'));
+
+    expect(result.current.state.days[1].placeIds).toEqual(['shifen', 'alishan', 'jiufen']);
+    expect(result.current.state.unscheduledIds).not.toContain('alishan');
+    expect(result.current.state.flexibleWindows).toBeUndefined();
+  });
 });

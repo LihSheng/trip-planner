@@ -69,6 +69,8 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
     deleteFlightBooking: tripState.deleteFlightBooking,
     updateBudget: tripState.updateBudget,
     move: tripState.move,
+    setFlexibleWindow: tripState.setFlexibleWindow,
+    scheduleFlexibleToday: tripState.scheduleFlexibleToday,
     setPlaceCluster: tripState.setPlaceCluster,
     renameLocationCluster: tripState.renameLocationCluster,
     ungroupLocationCluster: tripState.ungroupLocationCluster,
