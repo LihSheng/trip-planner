@@ -101,70 +101,75 @@ export function UnscheduledColumn({
       </Box>
 
       <Collapse className="day-column__collapse" expanded={!collapsed}>
-        <Stack gap="xs" p="sm" className="day-column__body">
-          <SortableContext items={normalPlaces.map((place) => place.id)} strategy={verticalListSortingStrategy}>
-            {normalPlaces.map((place) => (
-              <PlaceCard
-                key={place.id}
-                place={place}
-                selected={selectedId === place.id}
-                dragDisabled={readOnly}
-                unscheduled
-                currentContainerId="unscheduled"
-                moveTargets={moveTargets}
-                onMoveTo={onMoveToPlace ? (containerId) => onMoveToPlace(place.id, containerId) : undefined}
-                onSelect={onSelect}
-                onEdit={readOnly ? undefined : onEditActivity}
-                editLabel="Edit plan & schedule"
-                onDelete={readOnly ? undefined : onDeletePlace}
-                clusterLabel={clusterForPlace(clusters, place.id)?.name}
-                clusterRelationship={(() => {
-                  const cluster = clusterForPlace(clusters, place.id);
-                  if (!cluster) return undefined;
-                  return clusterMember(cluster, place.id)?.relationship ?? 'anchor';
-                })()}
-                tripDayIds={tripDayIds}
-                flexibleDayIds={flexibleWindows[place.id]?.dayIds}
-                flexibleWindowPassed={flexibleWindows[place.id]?.passed}
-                onFlexibleWindowChange={readOnly || !onFlexibleWindowChange || isPlaceholder(place) ? undefined : (dayIds) => onFlexibleWindowChange(place.id, dayIds)}
-              />
-            ))}
-          </SortableContext>
-          {normalPlaces.length > 0 && accommodations.length > 0 ? <Divider label={categoryLabel(t, 'Accommodation')} labelPosition="center" /> : null}
-          {accommodations.length > 0 ? (
-            <SortableContext items={accommodations.map((place) => place.id)} strategy={verticalListSortingStrategy}>
-              {accommodations.map((place) => (
-                <PlaceCard
-                  key={place.id}
-                  place={place}
-                  selected={selectedId === place.id}
-                  dragDisabled={readOnly}
-                  unscheduled
-                  currentContainerId="unscheduled"
-                  moveTargets={moveTargets}
-                  onMoveTo={onMoveToPlace ? (containerId) => onMoveToPlace(place.id, containerId) : undefined}
-                  onSelect={onSelect}
-                  onEdit={readOnly ? undefined : onEditActivity}
-                  editLabel="Edit plan & schedule"
-                  onDelete={readOnly ? undefined : onDeletePlace}
-                  clusterLabel={clusterForPlace(clusters, place.id)?.name}
-                  clusterRelationship={(() => {
-                    const cluster = clusterForPlace(clusters, place.id);
-                    if (!cluster) return undefined;
-                    return clusterMember(cluster, place.id)?.relationship ?? 'anchor';
-                  })()}
-                />
-              ))}
-            </SortableContext>
-          ) : null}
-          {places.length === 0 ? (
+        <Box p="sm" className="day-column__body">
+          {places.length ? (
+            <Paper withBorder radius="md" className="unscheduled-list">
+              <Stack gap={2}>
+                <SortableContext items={normalPlaces.map((place) => place.id)} strategy={verticalListSortingStrategy}>
+                  {normalPlaces.map((place) => (
+                    <PlaceCard
+                      key={place.id}
+                      place={place}
+                      selected={selectedId === place.id}
+                      dragDisabled={readOnly}
+                      unscheduled
+                      currentContainerId="unscheduled"
+                      moveTargets={moveTargets}
+                      onMoveTo={onMoveToPlace ? (containerId) => onMoveToPlace(place.id, containerId) : undefined}
+                      onSelect={onSelect}
+                      onEdit={readOnly ? undefined : onEditActivity}
+                      editLabel="Edit plan & schedule"
+                      onDelete={readOnly ? undefined : onDeletePlace}
+                      clusterLabel={clusterForPlace(clusters, place.id)?.name}
+                      clusterRelationship={(() => {
+                        const cluster = clusterForPlace(clusters, place.id);
+                        if (!cluster) return undefined;
+                        return clusterMember(cluster, place.id)?.relationship ?? 'anchor';
+                      })()}
+                      tripDayIds={tripDayIds}
+                      flexibleDayIds={flexibleWindows[place.id]?.dayIds}
+                      flexibleWindowPassed={flexibleWindows[place.id]?.passed}
+                      onFlexibleWindowChange={readOnly || !onFlexibleWindowChange || isPlaceholder(place) ? undefined : (dayIds) => onFlexibleWindowChange(place.id, dayIds)}
+                    />
+                  ))}
+                </SortableContext>
+                {normalPlaces.length > 0 && accommodations.length > 0 ? <Divider label={categoryLabel(t, 'Accommodation')} labelPosition="center" /> : null}
+                {accommodations.length > 0 ? (
+                  <SortableContext items={accommodations.map((place) => place.id)} strategy={verticalListSortingStrategy}>
+                    {accommodations.map((place) => (
+                      <PlaceCard
+                        key={place.id}
+                        place={place}
+                        selected={selectedId === place.id}
+                        dragDisabled={readOnly}
+                        unscheduled
+                        currentContainerId="unscheduled"
+                        moveTargets={moveTargets}
+                        onMoveTo={onMoveToPlace ? (containerId) => onMoveToPlace(place.id, containerId) : undefined}
+                        onSelect={onSelect}
+                        onEdit={readOnly ? undefined : onEditActivity}
+                        editLabel="Edit plan & schedule"
+                        onDelete={readOnly ? undefined : onDeletePlace}
+                        clusterLabel={clusterForPlace(clusters, place.id)?.name}
+                        clusterRelationship={(() => {
+                          const cluster = clusterForPlace(clusters, place.id);
+                          if (!cluster) return undefined;
+                          return clusterMember(cluster, place.id)?.relationship ?? 'anchor';
+                        })()}
+                      />
+                    ))}
+                  </SortableContext>
+                ) : null}
+              </Stack>
+            </Paper>
+          ) : (
             <Box className="drop-placeholder">
               <Text size="xs" c="dimmed" ta="center">
                 {t('dropPlacesLater')}
               </Text>
             </Box>
-          ) : null}
-        </Stack>
+          )}
+        </Box>
       </Collapse>
     </Paper>
   );

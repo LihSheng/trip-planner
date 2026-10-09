@@ -560,10 +560,76 @@ select {
 .place-card--tint-station { background: color-mix(in srgb, var(--mantine-color-lime-6) 13%, #fff); }
 .place-card--tint-transit { background: color-mix(in srgb, var(--mantine-color-yellow-6) 13.5%, #fff); }
 
-.place-card--unscheduled {
-  border-style: dashed;
-  border-color: var(--mantine-color-gray-4);
-  background: var(--mantine-color-gray-1);
+.unscheduled-list {
+  padding: 8px 6px 10px;
+}
+
+.place-card-row {
+  padding: 0 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 140ms ease, opacity 180ms ease;
+}
+
+.place-card-row:hover {
+  background: var(--mantine-color-gray-0);
+}
+
+.place-card-row[data-selected] {
+  background: var(--mantine-color-teal-0);
+}
+
+.place-card-row__main {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 8px;
+}
+
+.place-card-row__name {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Zero basis: the region only takes space the full name leaves over, so it truncates before the name does. */
+.place-card-row__region {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.place-card-row__ai,
+.place-card-row__grip,
+.place-card-row .place-card__menu {
+  flex: 0 0 auto;
+}
+
+.place-card-row .place-card__menu {
+  margin-left: auto;
+}
+
+.place-card-row__grip {
+  position: relative;
+  overflow: visible;
+  touch-action: none;
+}
+
+/* Grows the 22px grip to a 44px-tall touch target; the left side stays inside the 8px gap so the menu button keeps its full hit area. */
+.place-card-row__grip::after {
+  content: '';
+  position: absolute;
+  inset: -11px -11px -11px -4px;
+}
+
+/* The grip only renders at this width; rows match its 44px target so neighbouring grips never overlap. */
+@media (max-width: 47.99em) {
+  .place-card-row__main {
+    min-height: 44px;
+  }
+}
+
+/* Indent under the name: 15px icon + 8px gap. */
+.place-card-row__sub {
+  padding: 0 0 6px 23px;
 }
 
 .place-card__icon {
@@ -630,7 +696,8 @@ select {
   box-shadow: 0 0 0 2px rgba(43, 200, 166, 0.1);
 }
 
-.place-card[data-dragging] {
+.place-card[data-dragging],
+.place-card-row[data-dragging] {
   opacity: 0.35;
 }
 
@@ -769,7 +836,8 @@ select {
   background: var(--mantine-color-teal-0);
 }
 
-.place-card[data-expired] {
+.place-card[data-expired],
+.place-card-row[data-expired] {
   filter: grayscale(1);
   opacity: 0.58;
 }
