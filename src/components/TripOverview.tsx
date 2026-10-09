@@ -1,4 +1,4 @@
-import type { PointerEventHandler } from 'react';
+import type { PointerEventHandler, TouchEventHandler } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Box, Paper, Stack, Text, UnstyledButton } from '@mantine/core';
@@ -78,8 +78,12 @@ function OverviewDayCard({ day, index, dateLabel, places, lodgingLabel, readOnly
       data-dragging={isDragging || undefined}
       data-draggable={!readOnly || undefined}
       aria-roledescription={attributes['aria-roledescription']}
-      // Pointer only, like the rail: Enter on the header keeps opening the day.
-      onPointerDown={listeners?.onPointerDown as PointerEventHandler<HTMLDivElement> | undefined}
+      // Mouse and pen drag after a short move; touch goes to the TouchSensor's press-and-hold so swipes
+      // keep scrolling. No keyboard listener: Enter on the header keeps opening the day.
+      onPointerDown={(event) => {
+        if (event.pointerType !== 'touch') (listeners?.onPointerDown as PointerEventHandler<HTMLDivElement> | undefined)?.(event);
+      }}
+      onTouchStart={listeners?.onTouchStart as TouchEventHandler<HTMLDivElement> | undefined}
     >
       <UnstyledButton className="trip-overview__header" onClick={() => onOpenDay(day.id)} aria-label={t('openDay', { day: dayName })}>
         <span className="day-rail__badge">{index + 1}</span>

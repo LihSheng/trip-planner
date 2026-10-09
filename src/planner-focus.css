@@ -228,6 +228,9 @@
 
 .trip-overview__day[data-draggable] {
   touch-action: manipulation;
+  /* Press-and-hold starts a drag, so keep the long-press callout and text selection out of the way. */
+  -webkit-touch-callout: none;
+  user-select: none;
   cursor: grab;
 }
 
