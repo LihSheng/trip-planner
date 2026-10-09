@@ -13,7 +13,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Box, Button, Group, Modal, Stack, Text } from '@mantine/core';
 import type { ContainerId, PlaceholderKind, Place, StopSchedule, TravelMode, TripState } from '../types';
 import { findContainer, getContainerItems } from '../utils/itinerary';
@@ -34,6 +34,15 @@ import { DayTasksModal } from './DayTasksModal';
 import { FlightBookingModal, StayBookingModal } from './BookingModals';
 import type { FlightBooking, StayBooking } from '../types';
 import type { PlannerBookingCard } from './BookingCard';
+
+// Days are dragged from the rail (`day:<id>`) or the whole-trip cards (`overview:<id>`).
+function isDayDragId(id: string) {
+  return id.startsWith('day:') || id.startsWith('overview:');
+}
+
+function dayIdFromDragId(id: string) {
+  return id.replace(/^(day|overview):/, '');
+}
 
 interface PlannerBoardProps {
   selectedId: string | null;
@@ -108,7 +117,7 @@ export function PlannerBoard({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const activePlace = activeId?.startsWith('day:') ? undefined : activeId ? placesById.get(activeId) : undefined;
+  const activePlace = activeId && !isDayDragId(activeId) ? placesById.get(activeId) : undefined;
   const unscheduled = state.unscheduledIds.flatMap((id) => {
     const place = placesById.get(id);
     return place ? [place] : [];
@@ -212,6 +221,12 @@ export function PlannerBoard({
     if (String(args.active.id).startsWith('day:')) {
       return closestCenter({ ...args, droppableContainers: args.droppableContainers.filter((container) => String(container.id).startsWith('day:')) });
     }
+    if (String(args.active.id).startsWith('overview:')) {
+      // Cards land on other cards or rail rows: whatever is under the pointer, else the nearest one.
+      const dayTargets = args.droppableContainers.filter((container) => /^(overview|day):/.test(String(container.id)));
+      const underPointer = pointerWithin({ ...args, droppableContainers: dayTargets });
+      return underPointer.length ? underPointer : closestCenter({ ...args, droppableContainers: dayTargets });
+    }
     const underPointer = pointerWithin(args);
     return underPointer.length ? underPointer : closestCorners(args);
   };
@@ -225,10 +240,9 @@ export function PlannerBoard({
     if (!event.over) return;
 
     const activeId = String(event.active.id);
-    if (activeId.startsWith('day:')) {
-      const activeDayId = activeId.slice(4);
-      const overId = String(event.over.id);
-      const overDayId = overId.startsWith('day:') ? overId.slice(4) : overId;
+    if (isDayDragId(activeId)) {
+      const activeDayId = dayIdFromDragId(activeId);
+      const overDayId = dayIdFromDragId(String(event.over.id));
       const fromIndex = state.days.findIndex((day) => day.id === activeDayId);
       const toIndex = state.days.findIndex((day) => day.id === overDayId);
       if (fromIndex >= 0 && toIndex >= 0) onReorderDays(fromIndex, toIndex);
@@ -344,14 +358,16 @@ export function PlannerBoard({
                 <Text fw={800} size="xl">{state.tripName}</Text>
                 <Text c="dimmed" size="sm">{t('wholeTripSummary', { days: state.days.length, stops: state.days.reduce((total, day) => total + day.placeIds.length, 0) })}</Text>
               </div>
-              <TripOverview
-                days={state.days}
-                startDate={state.startDate}
-                placesById={placesById}
-                lodgingLabels={lodgingLabels}
-                readOnly={readOnly}
-                onOpenDay={setSelectedDayId}
-              />
+              <SortableContext items={state.days.map((day) => `overview:${day.id}`)} strategy={rectSortingStrategy}>
+                <TripOverview
+                  days={state.days}
+                  startDate={state.startDate}
+                  placesById={placesById}
+                  lodgingLabels={lodgingLabels}
+                  readOnly={readOnly}
+                  onOpenDay={setSelectedDayId}
+                />
+              </SortableContext>
             </Stack>
           )}
         </Box>
