@@ -613,11 +613,18 @@ select {
   touch-action: none;
 }
 
-/* Grows the 22px grip to a 44px-tall touch target without changing the row height; the left side stays inside the 8px gap so the menu button keeps its full hit area. */
+/* Grows the 22px grip to a 44px-tall touch target; the left side stays inside the 8px gap so the menu button keeps its full hit area. */
 .place-card-row__grip::after {
   content: '';
   position: absolute;
   inset: -11px -11px -11px -4px;
+}
+
+/* The grip only renders at this width; rows match its 44px target so neighbouring grips never overlap. */
+@media (max-width: 47.99em) {
+  .place-card-row__main {
+    min-height: 44px;
+  }
 }
 
 /* Indent under the name: 15px icon + 8px gap. */
