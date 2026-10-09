@@ -1,4 +1,4 @@
-import type { Place, TripState } from '../types';
+import type { FlightLeg, Place, TripDay, TripState } from '../types';
 import { expenseSources } from '../domain/expenses';
 import { getCachedExchangeRate } from '../lib/exchangeRates';
 
@@ -15,10 +15,19 @@ function download(content: BlobPart, type: string, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
+function localDate(date: string, offset = 0): Date {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(year, month - 1, day + offset);
+}
+
+// Formats from local parts: toISOString() would shift the date back a day east of UTC.
 function addDays(date: string, offset: number): string {
-  const value = new Date(`${date}T00:00:00`);
-  value.setDate(value.getDate() + offset);
-  return value.toISOString().slice(0, 10);
+  const value = localDate(date, offset);
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+}
+
+function shortDate(date: string, offset = 0): string {
+  return localDate(date, offset).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 function xmlEscape(value: unknown): string {
@@ -90,33 +99,87 @@ function cachedBudgetRemaining(state: TripState, total: number | null): number |
   return rate === null ? null : state.budget.amount * rate - total;
 }
 
+const DIVIDER = '━━━━━━━━━━━━━━━━';
+const TIME_GUTTER = '       ';
+
+function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return [hours ? `${hours}h` : '', rest ? `${rest}m` : ''].filter(Boolean).join(' ');
+}
+
+function formatFlightLeg(label: string, leg: FlightLeg): string {
+  const dayOffset = Math.round((localDate(leg.arrivalDate).getTime() - localDate(leg.departureDate).getTime()) / 86_400_000);
+  const nextDay = dayOffset ? `${dayOffset > 0 ? '+' : ''}${dayOffset}` : '';
+  const flight = [leg.airline, leg.flightNumber].filter(Boolean).join(' ');
+  return `• ${label}: ${leg.departureAirport} → ${leg.arrivalAirport} · ${shortDate(leg.departureDate)} ${leg.departureTime} → ${leg.arrivalTime}${nextDay}${flight ? ` (${flight})` : ''}`;
+}
+
+function formatFlights(state: TripState): string[] {
+  const bookings = state.flightBookings ?? [];
+  if (!bookings.length) return [];
+  return [
+    '✈️ Flights',
+    ...bookings.flatMap((booking) => [
+      formatFlightLeg('Out', booking.outbound),
+      ...(booking.return ? [formatFlightLeg('Back', booking.return)] : []),
+    ]),
+    '',
+  ];
+}
+
+// Same precedence as the board: the day's own pick, then a booking covering that night, then the trip hotel.
+function stayForDate(state: TripState, day: TripDay, date: string, places: Map<string, Place>): Place | undefined {
+  const booking = (state.stayBookings ?? []).find((item) => item.checkInDate <= date && date < item.checkOutDate);
+  const placeId = day.lodgingPlaceId || booking?.placeId || state.hotelPlaceId;
+  return placeId ? places.get(placeId) : undefined;
+}
+
+function formatStop(day: TripDay, place: Place): string[] {
+  const schedule = day.timeManagementEnabled ? day.stopSchedules?.[place.id] : undefined;
+  const time = schedule?.startTime ? schedule.startTime.padEnd(5) : '—    ';
+  const duration = schedule?.startTime && schedule.durationMinutes ? ` (${formatDuration(schedule.durationMinutes)})` : '';
+  const lines = [`${time}  ${place.name}${duration}`];
+  if (place.notes.trim()) lines.push(`${TIME_GUTTER}${place.notes.trim()}`);
+  return lines;
+}
+
+function formatDay(state: TripState, day: TripDay, dayIndex: number, places: Map<string, Place>): string[] {
+  const date = addDays(state.startDate, dayIndex);
+  const lines = [DIVIDER, `📅 Day ${dayIndex + 1} · ${shortDate(state.startDate, dayIndex)}${day.label ? ` — ${day.label}` : ''}`];
+  const stay = stayForDate(state, day, date, places);
+  if (stay) lines.push(`🏨 Stay: ${stay.name}`);
+  lines.push('');
+
+  const stops = day.placeIds.flatMap((placeId) => places.get(placeId) ?? []);
+  if (!stops.length) lines.push('No places scheduled.');
+  stops.forEach((place) => lines.push(...formatStop(day, place)));
+
+  const tasks = (state.dayTasks ?? []).filter((task) => task.dayId === day.id).sort((a, b) => a.sortOrder - b.sortOrder);
+  if (tasks.length) {
+    lines.push('');
+    tasks.forEach((task) => lines.push(`${task.completed ? '☑️' : '⬜'} ${task.text}`));
+  }
+  lines.push('');
+  return lines;
+}
+
 export function formatTripPlainText(state: TripState): string {
   const places = new Map(state.places.map((place) => [place.id, place]));
-  const lines: string[] = [];
+  const dayCount = state.days.length;
+  const range = dayCount > 1 ? `${shortDate(state.startDate)} – ${shortDate(state.startDate, dayCount - 1)}` : shortDate(state.startDate);
+  const lines = [
+    `🧳 ${state.tripName}`,
+    `${range} · ${dayCount} ${dayCount === 1 ? 'day' : 'days'}`,
+    '',
+    ...formatFlights(state),
+    ...state.days.flatMap((day, dayIndex) => formatDay(state, day, dayIndex, places)),
+  ];
 
-  state.days.forEach((day, dayIndex) => {
-    lines.push(`Day ${dayIndex + 1}${day.label ? ` — ${day.label}` : ''}`);
-    if (day.placeIds.length === 0) {
-      lines.push('No places scheduled.');
-    } else {
-      day.placeIds.forEach((placeId, placeIndex) => {
-        const place = places.get(placeId);
-        if (!place) return;
-        lines.push(`${placeIndex + 1}. ${place.name}`);
-        if (place.notes.trim()) lines.push(`   ${place.notes.trim()}`);
-      });
-    }
-    lines.push('');
-  });
-
-  if (state.unscheduledIds.length) {
-    lines.push('Unscheduled');
-    state.unscheduledIds.forEach((placeId, placeIndex) => {
-      const place = places.get(placeId);
-      if (!place) return;
-      lines.push(`${placeIndex + 1}. ${place.name}`);
-      if (place.notes.trim()) lines.push(`   ${place.notes.trim()}`);
-    });
+  const unscheduled = state.unscheduledIds.flatMap((placeId) => places.get(placeId) ?? []);
+  if (unscheduled.length) {
+    lines.push(DIVIDER, '📌 Not scheduled yet');
+    unscheduled.forEach((place) => lines.push(`• ${place.name}`));
   }
 
   return lines.join('\n').trim();
