@@ -18,9 +18,25 @@ describe('plain-text itinerary export', () => {
     const state = createInitialState();
     const [firstId] = state.days[0].placeIds;
     state.days[0].stopSchedules = { [firstId]: { startTime: '09:00', durationMinutes: 90 } };
-    const text = formatTripPlainText(state);
+    state.days[0].timeManagementEnabled = true;
 
-    expect(text).toMatch(/09:00  .+ \(1h 30m\)/);
+    expect(formatTripPlainText(state)).toMatch(/09:00  .+ \(1h 30m\)/);
+
+    state.days[0].timeManagementEnabled = false;
+    const hidden = formatTripPlainText(state);
+    expect(hidden).not.toContain('09:00');
+    expect(hidden).not.toContain('1h 30m');
+  });
+
+  it('shows the real arrival-day offset for multi-day flights', () => {
+    const state = createInitialState();
+    state.flightBookings = [{
+      id: 'f2',
+      tripType: 'one-way',
+      outbound: { airline: 'BR', departureAirport: 'JFK', departureDate: '2026-11-05', departureTime: '23:50', arrivalAirport: 'TPE', arrivalDate: '2026-11-07', arrivalTime: '05:30' },
+    }];
+
+    expect(formatTripPlainText(state)).toContain('→ 05:30+2 (BR)');
   });
 
   it('lists flights, the night stay and day tasks', () => {

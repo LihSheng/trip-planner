@@ -109,7 +109,8 @@ function formatDuration(minutes: number): string {
 }
 
 function formatFlightLeg(label: string, leg: FlightLeg): string {
-  const nextDay = leg.arrivalDate > leg.departureDate ? '+1' : '';
+  const dayOffset = Math.round((localDate(leg.arrivalDate).getTime() - localDate(leg.departureDate).getTime()) / 86_400_000);
+  const nextDay = dayOffset ? `${dayOffset > 0 ? '+' : ''}${dayOffset}` : '';
   const flight = [leg.airline, leg.flightNumber].filter(Boolean).join(' ');
   return `• ${label}: ${leg.departureAirport} → ${leg.arrivalAirport} · ${shortDate(leg.departureDate)} ${leg.departureTime} → ${leg.arrivalTime}${nextDay}${flight ? ` (${flight})` : ''}`;
 }
@@ -135,7 +136,7 @@ function stayForDate(state: TripState, day: TripDay, date: string, places: Map<s
 }
 
 function formatStop(day: TripDay, place: Place): string[] {
-  const schedule = day.stopSchedules?.[place.id];
+  const schedule = day.timeManagementEnabled ? day.stopSchedules?.[place.id] : undefined;
   const time = schedule?.startTime ? schedule.startTime.padEnd(5) : '—    ';
   const duration = schedule?.startTime && schedule.durationMinutes ? ` (${formatDuration(schedule.durationMinutes)})` : '';
   const lines = [`${time}  ${place.name}${duration}`];
