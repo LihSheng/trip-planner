@@ -47,6 +47,14 @@ An incomplete DayTask owned by a day before the selected Today day. It keeps its
 An ephemeral, editable interpretation of imported travel content. It is not part of a Trip until the traveller confirms it; closing, cancelling, switching Trip, or signing out discards it.
 _Avoid_: Imported itinerary, saved draft
 
+**AI review**:
+An ephemeral assessment of a Trip: scores, notes, and Suggestions. It is never saved; closing it, switching Trip, or signing out discards it.
+_Avoid_: Trip rating, AI report
+
+**Suggestion**:
+One proposed change inside an AI review. It does not affect the Trip until a traveller applies it, and it is out of date once the visit or day it names no longer exists.
+_Avoid_: Proposal, recommendation
+
 **Booking cost**:
 A consolidated expense attached to one reservation, independent of how many itinerary days display that hotel or flight. A round-trip flight booking has one total cost; separate reservations remain separate costs.
 _Avoid_: Per-day hotel cost, planner-card expense
