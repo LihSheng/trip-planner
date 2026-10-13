@@ -50,6 +50,7 @@ import { TodayModePage } from './components/TodayModePage';
 import { ExpensesPage } from './components/ExpensesPage';
 import { StayBookingModal } from './components/BookingModals';
 import { AiImportDrawer } from './components/AiImportDrawer';
+import { AiReviewDrawer } from './components/AiReviewDrawer';
 import { formatTripPlainText } from './utils/exportTrip';
 import { useCurrentLocation } from './hooks/useCurrentLocation';
 import { useI18n } from './i18n';
@@ -95,6 +96,7 @@ export default function App() {
   const [deleteTarget, setDeleteTarget] = useState<Place | undefined>();
   const [dayDeleteTarget, setDayDeleteTarget] = useState<string | null>(null);
   const [aiImportOpened, setAiImportOpened] = useState(false);
+  const [aiReviewOpened, setAiReviewOpened] = useState(false);
   const [clusterDeleteMode, setClusterDeleteMode] = useState<'replace' | 'ungroup' | 'all'>('replace');
   const [replacementAnchorId, setReplacementAnchorId] = useState<string | null>(null);
 
@@ -453,6 +455,7 @@ export default function App() {
         <AppHeader
           onAddPlace={openAddPlace}
           onOpenAiImport={() => setAiImportOpened(true)}
+          onOpenAiReview={() => setAiReviewOpened(true)}
           onOpenSettings={() => setSettingsOpened(true)}
           onOpenShare={() => setShareOpened(true)}
           onExport={exportTrip}
@@ -509,6 +512,7 @@ export default function App() {
         </Container>
       </AppShell.Main>
       <ShareTripModal opened={shareOpened} onClose={() => setShareOpened(false)} />
+      <AiReviewDrawer opened={aiReviewOpened} onClose={() => setAiReviewOpened(false)} />
       <AiImportDrawer
         opened={aiImportOpened}
         onClose={() => setAiImportOpened(false)}

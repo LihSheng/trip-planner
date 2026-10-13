@@ -32,6 +32,7 @@ import {
   IconPlus,
   IconRefresh,
   IconSparkles,
+  IconStars,
   IconSettings,
   IconUsers,
   IconWifiOff,
@@ -47,6 +48,7 @@ import { useI18n } from '../i18n';
 interface AppHeaderProps {
   onAddPlace: () => void;
   onOpenAiImport: () => void;
+  onOpenAiReview: () => void;
   onOpenSettings: () => void;
   onOpenShare: () => void;
   onExport: () => void;
@@ -59,6 +61,7 @@ interface AppHeaderProps {
 export function AppHeader({
   onAddPlace,
   onOpenAiImport,
+  onOpenAiReview,
   onOpenSettings,
   onOpenShare,
   onExport,
@@ -225,6 +228,11 @@ export function AppHeader({
               <IconSparkles size={18} />
             </ActionIcon>
           </Tooltip> : null}
+          {!readOnly ? <Tooltip label="Review this trip with AI">
+            <ActionIcon color="violet" variant="subtle" size="lg" visibleFrom="sm" onClick={onOpenAiReview} aria-label="Review trip">
+              <IconStars size={18} />
+            </ActionIcon>
+          </Tooltip> : null}
           {!readOnly ? <Tooltip label={t('addPlace')}>
             <ActionIcon color="teal" size="lg" hiddenFrom="sm" onClick={onAddPlace} aria-label={t('addPlace')}>
               <IconPlus size={18} />
@@ -256,6 +264,7 @@ export function AppHeader({
             <Menu.Dropdown>
               {isPhone && !readOnly ? <>
                 <Menu.Item leftSection={<IconSparkles size={16} />} onClick={onOpenAiImport}>Import with AI</Menu.Item>
+                <Menu.Item leftSection={<IconStars size={16} />} onClick={onOpenAiReview}>Review trip</Menu.Item>
                 <Menu.Item leftSection={<IconSettings size={16} />} onClick={onOpenSettings}>{t('tripSettings')}</Menu.Item>
                 {canShare ? <Menu.Item leftSection={<IconUsers size={16} />} onClick={onOpenShare}>Share trip</Menu.Item> : null}
                 <Menu.Divider />

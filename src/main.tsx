@@ -108,7 +108,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="light">
-      <Notifications position="top-right" />
+      <Notifications position="top-right" zIndex={3000} />
       <I18nProvider>
         {shareToken ? (
           <AuthGate allowGuest><SharedTripRoute token={shareToken} /></AuthGate>
