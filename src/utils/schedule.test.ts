@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { dayWarningCount, dayWarnings, defaultDuration, estimateTravelMinutes, nextAnchor, scheduleFor, toMinutes, toTime } from './schedule';
 import type { LocationCluster, Place, TripDay } from '../types';
+import { resolveLeg } from './routing';
 
 const first: Place = { id: 'first', name: 'First', region: 'Taipei', category: 'Landmark', latitude: 25.03, longitude: 121.56, notes: '' };
 const second: Place = { id: 'second', name: 'Second', region: 'Taipei', category: 'Food', latitude: 25.04, longitude: 121.57, notes: '' };
@@ -23,7 +24,7 @@ describe('schedule helpers', () => {
       id: 'day-1', label: '', placeIds: ['first', 'second'], travelMode: 'walk',
       stopSchedules: { first: { startTime: '09:00', durationMinutes: 90 }, second: { startTime: '09:40', durationMinutes: 60 } },
     };
-    expect(dayWarningCount(day, [first, { ...second, openingHours: { opensAt: '10:00', closesAt: '18:00' } }])).toBe(2);
+    expect(dayWarningCount(day, [first, { ...second, openingHours: { opensAt: '10:00', closesAt: '18:00' } }], [])).toBe(2);
   });
 
   it('uses category defaults and preserves explicit stop schedules', () => {
@@ -31,7 +32,45 @@ describe('schedule helpers', () => {
 
     expect(defaultDuration('Nature')).toBe(120);
     expect(scheduleFor(day, first)).toEqual({ durationMinutes: 45 });
-    expect(dayWarnings({ ...day, stopSchedules: {} }, [first])).toEqual(new Map());
+    expect(dayWarnings({ ...day, stopSchedules: {} }, [first], [])).toEqual(new Map());
+  });
+});
+
+describe('travel time agrees with resolveLeg', () => {
+  const third: Place = { id: 'third', name: 'Third', region: 'Taipei', category: 'Food', latitude: 25.05, longitude: 121.58, notes: '' };
+  const timed = (secondStart: string, overrides: Partial<TripDay> = {}): TripDay => ({
+    id: 'day-1', label: '', placeIds: ['first', 'second'], travelMode: 'walk', timeManagementEnabled: true,
+    stopSchedules: { first: { startTime: '09:00', durationMinutes: 60 }, second: { startTime: secondStart, durationMinutes: 60 } },
+    ...overrides,
+  });
+  const insideMall: LocationCluster[] = [{
+    id: 'c1', name: 'Mall', anchorPlaceId: 'first',
+    members: [{ placeId: 'second', relationship: 'inside', travelMinutes: 4 }, { placeId: 'third', relationship: 'inside', travelMinutes: 6 }],
+  }];
+
+  it('uses the leg mode override', () => {
+    const override = { legModeOverrides: { 'first:second': 'car' as const } };
+    expect(resolveLeg(timed('10:05', override), [], first, second).minutes).toBe(5);
+    expect(dayWarnings(timed('10:05', override), [first, second], [])).toEqual(new Map());
+    expect(dayWarnings(timed('10:04', override), [first, second], [])).toEqual(new Map([['second', ['Insufficient travel time']]]));
+    expect(nextAnchor(timed('10:05', override), [], [first, second], 'first', 'second')).toMatchObject({ travelMinutes: 5, leaveAt: '10:00' });
+  });
+
+  it('uses cluster member minutes', () => {
+    const day = timed('10:04', { travelMode: 'car' });
+    expect(resolveLeg(day, insideMall, first, second).minutes).toBe(4);
+    expect(dayWarnings(day, [first, second], insideMall)).toEqual(new Map());
+    expect(dayWarnings(timed('10:03', { travelMode: 'car' }), [first, second], insideMall)).toEqual(new Map([['second', ['Insufficient travel time']]]));
+    expect(nextAnchor(day, insideMall, [first, second], 'first', 'second')).toMatchObject({ travelMinutes: 4, leaveAt: '10:00' });
+  });
+
+  it('sums every leg between timed stops across an untimed one', () => {
+    const day = (thirdStart: string): TripDay => ({
+      id: 'day-1', label: '', placeIds: ['first', 'second', 'third'], travelMode: 'car', timeManagementEnabled: true,
+      stopSchedules: { first: { startTime: '09:00', durationMinutes: 60 }, third: { startTime: thirdStart } },
+    });
+    expect(dayWarnings(day('10:10'), [first, second, third], insideMall)).toEqual(new Map());
+    expect(dayWarnings(day('10:09'), [first, second, third], insideMall)).toEqual(new Map([['third', ['Insufficient travel time']]]));
   });
 });
 

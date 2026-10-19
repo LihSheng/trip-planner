@@ -69,11 +69,12 @@ export function plannedLeaveMinutes(day: TripDay, place: Place): number | null {
   return startsAt === null ? null : startsAt + (schedule.durationMinutes ?? defaultDuration(place.category));
 }
 
-export function dayWarnings(day: TripDay, places: Place[]) {
+export function dayWarnings(day: TripDay, places: Place[], clusters: LocationCluster[]) {
   const warnings = new Map<string, string[]>();
-  let previous: { place: Place; endsAt: number } | null = null;
+  const legs = places.slice(1).map((place, i) => resolveLeg(day, clusters, places[i], place));
+  let previous: { index: number; endsAt: number } | null = null;
 
-  for (const place of places) {
+  for (const [index, place] of places.entries()) {
     const schedule = scheduleFor(day, place);
     const startsAt = toMinutes(schedule.startTime);
     if (startsAt === null) continue;
@@ -82,16 +83,19 @@ export function dayWarnings(day: TripDay, places: Place[]) {
     const opensAt = toMinutes(place.openingHours?.opensAt);
     const placeWarnings: string[] = [];
     if ((opensAt !== null && startsAt < opensAt) || (closesAt !== null && startsAt + duration > closesAt)) placeWarnings.push('Outside opening hours');
-    if (previous && startsAt < previous.endsAt + estimateTravelMinutes(previous.place, place, day.travelMode)) placeWarnings.push('Insufficient travel time');
+    if (previous) {
+      const travel = legs.slice(previous.index, index).reduce((total, leg) => total + (leg.minutes ?? 0), 0);
+      if (startsAt < previous.endsAt + travel) placeWarnings.push('Insufficient travel time');
+    }
     if (placeWarnings.length) warnings.set(place.id, placeWarnings);
-    previous = { place, endsAt: startsAt + duration };
+    previous = { index, endsAt: startsAt + duration };
   }
 
   return warnings;
 }
 
-export function dayWarningCount(day: TripDay, places: Place[]) {
-  return [...dayWarnings(day, places).values()].reduce((total, warnings) => total + warnings.length, 0);
+export function dayWarningCount(day: TripDay, places: Place[], clusters: LocationCluster[]) {
+  return [...dayWarnings(day, places, clusters).values()].reduce((total, warnings) => total + warnings.length, 0);
 }
 
 export type NextAnchor =

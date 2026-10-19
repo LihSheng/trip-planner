@@ -21,7 +21,7 @@ import type { DayTask, LocationCluster, PlaceholderKind, Place, StopSchedule, Tr
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
 import { useI18n } from '../i18n';
-import { dayWarnings, estimateTravelMinutes, scheduleFor } from '../utils/schedule';
+import { dayWarnings, scheduleFor } from '../utils/schedule';
 import { isExceptionLeg, resolveLeg } from '../utils/routing';
 import { legGoogleMapsUrl } from '../utils/mapPresentation';
 import { TransportLegChip } from './TransportLegChip';
@@ -106,7 +106,7 @@ export function DayColumn({
   const dayName = t('day', { number: index + 1 });
   const visitedCount = places.filter((place) => visitedPlaceIds.includes(place.id)).length;
   const allPlacesVisited = places.length > 0 && visitedCount === places.length;
-  const warningsByPlace = day.timeManagementEnabled ? dayWarnings(day, places) : new Map<string, string[]>();
+  const warningsByPlace = day.timeManagementEnabled ? dayWarnings(day, places, clusters) : new Map<string, string[]>();
   const warningCount = [...warningsByPlace.values()].reduce((total, warnings) => total + warnings.length, 0);
   const incompleteTaskCount = tasks.filter((task) => !task.completed).length;
 
@@ -280,7 +280,7 @@ export function DayColumn({
                   onReplace={!readOnly && isPlaceholder(place) ? onReplacePlaceholder : undefined}
                   onRename={!readOnly && isPlaceholder(place) ? (target) => { setRenameTarget(target); setRenameLabel(target.name === target.placeholderKind ? '' : target.name); } : undefined}
                   schedule={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] ? scheduleFor(day, place) : undefined}
-                  travelMinutes={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 && !isPlaceholder(place) && !isPlaceholder(places[placeIndex - 1]) ? estimateTravelMinutes(places[placeIndex - 1], place, day.travelMode) : undefined}
+                  travelMinutes={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 ? legs[placeIndex - 1].minutes : undefined}
                   warnings={readOnly ? undefined : warningsByPlace.get(place.id)}
                   onScheduleChange={!readOnly && day.timeManagementEnabled ? (updates) => onStopScheduleChange(day.id, place.id, updates) : undefined}
                   onEnableSchedule={!readOnly && day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
@@ -289,7 +289,7 @@ export function DayColumn({
                 />
                 {places[placeIndex + 1] ? (() => {
                   const nextPlace = places[placeIndex + 1];
-                  const leg = resolveLeg(day, clusters, place, nextPlace);
+                  const leg = legs[placeIndex];
                   const context = leg.relationship === 'inside' ? t('insideVenue') : leg.relationship === 'same-area' ? t('inArea') : leg.relationship === 'walkable' ? t('nearby') : undefined;
                   const showChip = showAllLegs || isExceptionLeg(leg.legMode, leg.mode, dayDefaultMode);
                   return (
