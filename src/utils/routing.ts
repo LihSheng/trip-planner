@@ -102,8 +102,43 @@ export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Plac
   };
 }
 
+/** A day's stops in order, skipping ids with no place. dayLegs(...)[i] runs from dayStops(...)[i] to dayStops(...)[i + 1]. */
+export function dayStops(day: Pick<TripDay, 'placeIds'>, placesById: Map<string, Place>): Place[] {
+  return day.placeIds.flatMap((id) => { const place = placesById.get(id); return place ? [place] : []; });
+}
+
 /** Consecutive legs for a day's placeIds, skipping ids with no place. */
 export function dayLegs(day: TripDay, placesById: Map<string, Place>, clusters: LocationCluster[]): ResolvedLeg[] {
-  const places = day.placeIds.map((id) => placesById.get(id)).filter((place): place is Place => Boolean(place));
+  const places = dayStops(day, placesById);
   return places.slice(1).map((place, i) => resolveLeg(day, clusters, places[i], place));
+}
+
+/** Total minutes over legs; a leg with unknown minutes (placeholder, cluster without a time) adds 0. */
+export function sumLegMinutes(legs: ResolvedLeg[]): number {
+  return legs.reduce((total, leg) => total + (leg.minutes ?? 0), 0);
+}
+
+/**
+ * A day's travel minutes, the one number every day summary shows.
+ * `placesById` must hold every place the day lists, placeholders and hotel-stay copies included,
+ * so the total is the sum of the legs the planner shows rather than a route that skips stops.
+ */
+export function dayTravelMinutes(day: TripDay, placesById: Map<string, Place>, clusters: LocationCluster[]): number {
+  return sumLegMinutes(dayLegs(day, placesById, clusters));
+}
+
+/** A leg the map can draw: a placeholder has no real coordinates (0,0), so a leg touching one gets no line or chip. */
+export function isDrawableLeg(leg: Pick<ResolvedLeg, 'from' | 'to'>): boolean {
+  return !isPlaceholder(leg.from) && !isPlaceholder(leg.to);
+}
+
+/**
+ * Places the map fits its viewport to: the markers plus any stop a drawn leg ends at that has no marker
+ * (a hotel-stay copy). Returns `markers` itself when nothing is added, so the map does not refit needlessly.
+ */
+export function viewportPlaces(markers: Place[], stops: Place[]): Place[] {
+  const markerIds = new Set(markers.map((place) => place.id));
+  const legEnds = stops.filter((stop, i) => !markerIds.has(stop.id)
+    && [stops[i - 1], stops[i + 1]].some((neighbour) => neighbour && isDrawableLeg({ from: stop, to: neighbour })));
+  return legEnds.length ? [...markers, ...legEnds] : markers;
 }

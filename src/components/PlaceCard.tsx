@@ -16,7 +16,7 @@ import {
 import { useMediaQuery } from '@mantine/hooks';
 import { IconAlertTriangle, IconBed, IconCalendarOff, IconSparkles, IconBuildingCommunity, IconBuildingMonument, IconBus, IconClock, IconCoffee, IconDotsVertical, IconEdit, IconGripVertical, IconLeaf, IconMapPin, IconPalette, IconPencil, IconPlane, IconRobot, IconRoute, IconShoppingBag, IconSun, IconToolsKitchen, IconTrain, IconTrash, IconTree } from '@tabler/icons-react';
 import type { ClusterRelationship, Place, PlaceCategory, StopSchedule } from '../types';
-import { categoryLabel, useI18n } from '../i18n';
+import { categoryLabel, placeName, useI18n } from '../i18n';
 import { isStayExpired } from '../utils/stay';
 import { isPlaceholder } from '../domain/place';
 
@@ -109,11 +109,9 @@ export function PlaceCard({
   });
   const placeholder = isPlaceholder(place);
   const stayExpired = isStayExpired(place);
-  const presetPlaceholderLabel = place.placeholderKind === 'meal' ? t('lunchDinner') : place.placeholderKind === 'coffee' ? t('coffeeBreak') : place.placeholderKind === 'free-time' ? t('freeTime') : t('customStop');
-  const placeholderLabel = place.name === place.placeholderKind ? presetPlaceholderLabel : place.name;
   const PlaceholderIcon = place.placeholderKind === 'meal' ? IconToolsKitchen : place.placeholderKind === 'coffee' ? IconCoffee : IconSun;
   const CategoryIcon = categoryIcons[place.category];
-  const displayName = placeholder ? placeholderLabel : place.name;
+  const displayName = placeName(t, place);
 
   const menu = onEdit || onDelete || onEnableSchedule || onReplace || onRename || onFlexibleWindowChange ? (
     <Menu position="bottom-end" withinPortal shadow="md">

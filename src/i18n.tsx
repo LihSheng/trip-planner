@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { SegmentedControl } from '@mantine/core';
+import type { Place } from './types';
 
 export type Locale = 'en' | 'zh-TW';
 
@@ -134,6 +135,12 @@ export function useI18n() { const value = useContext(I18nContext); if (!value) t
 export function categoryLabel(t: I18nValue['t'], category: string) {
   const key = ({ Landmark: 'landmark', Nature: 'nature', Culture: 'culture', Food: 'food', Shopping: 'shopping', Relaxation: 'relaxation', Accommodation: 'accommodation', Airport: 'airport', Station: 'station', Transit: 'transit' } as Record<string, TranslationKey>)[category];
   return key ? t(key) : category;
+}
+
+/** The name a stop shows: a placeholder still named after its kind ('meal', 'coffee', ...) gets the translated preset label. */
+export function placeName(t: I18nValue['t'], place: Pick<Place, 'name' | 'placeholderKind'>) {
+  if (!place.placeholderKind || place.name !== place.placeholderKind) return place.name;
+  return place.placeholderKind === 'meal' ? t('lunchDinner') : place.placeholderKind === 'coffee' ? t('coffeeBreak') : place.placeholderKind === 'free-time' ? t('freeTime') : t('customStop');
 }
 
 export function LanguageToggle() {

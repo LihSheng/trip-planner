@@ -30,7 +30,7 @@ import type { CurrentLocation } from '../hooks/useCurrentLocation';
 import { formatTripDate } from '../utils/date';
 import { categoryLabel, useI18n } from '../i18n';
 import { ghostPathOptions, googleMapsRouteUrl, legModeColor, legPathOptions, markerColors, timeRange } from '../utils/mapPresentation';
-import { dayLegs } from '../utils/routing';
+import { dayLegs, dayStops, dayTravelMinutes, isDrawableLeg, viewportPlaces } from '../utils/routing';
 import { MapLegChips } from './MapLegChips';
 import { MapPlaceCard } from './MapPlaceCard';
 import { MapStopTimeline } from './MapStopTimeline';
@@ -40,7 +40,10 @@ import { transportIcon } from './transportIcons';
 const geoapifyMapsApiKey = import.meta.env.VITE_GEOAPIFY_API_KEY as string | undefined;
 
 interface TaiwanMapProps {
+  /** Places drawn as markers: no placeholders or hotel-stay copies. */
   places: Place[];
+  /** Every place a day can list, placeholders and hotel-stay copies included, so day minutes match the planner. */
+  itineraryPlaces: Place[];
   days: TripDay[];
   unscheduledIds: string[];
   startDate: string;
@@ -194,6 +197,7 @@ const PlaceMarker = memo(function PlaceMarker({
 
 function MapSurface({
   places,
+  itineraryPlaces,
   days,
   unscheduledIds,
   startDate,
@@ -253,11 +257,18 @@ function MapSurface({
   );
   const selectedPlace = visiblePlaces.find((place) => place.id === selectedId);
   const cardPlace = selectedPlace && selectedPlace.id !== dismissedCardId ? selectedPlace : undefined;
-  const legs = useMemo(() => (activeDay ? dayLegs(activeDay, placesById, clusters) : []), [activeDay, placesById, clusters]);
-  const totalMinutes = useMemo(() => legs.reduce((sum, leg) => sum + (leg.minutes ?? 0), 0), [legs]);
+  const itineraryPlacesById = useMemo(() => new Map(itineraryPlaces.map((place) => [place.id, place])), [itineraryPlaces]);
+  // Every stop the active day lists, placeholders and hotel-stay copies included, so legs match the planner.
+  // legs[i] runs from stops[i] to stops[i + 1]; markers stay on routePlaces.
+  const activePlaceIds = activeDay?.placeIds;
+  // Keyed on placeIds, not the day, so changing a leg's mode does not refit the viewport.
+  const stops = useMemo(() => (activePlaceIds ? dayStops({ placeIds: activePlaceIds }, itineraryPlacesById) : []), [activePlaceIds, itineraryPlacesById]);
+  const fitPlaces = useMemo(() => viewportPlaces(visiblePlaces, stops), [visiblePlaces, stops]);
+  const legs = useMemo(() => (activeDay ? dayLegs(activeDay, itineraryPlacesById, clusters) : []), [activeDay, itineraryPlacesById, clusters]);
+  const drawnLegs = useMemo(() => legs.filter(isDrawableLeg), [legs]);
   const dayMinutes = useMemo(
-    () => new Map(days.map((day) => [day.id, dayLegs(day, placesById, clusters).reduce((sum, leg) => sum + (leg.minutes ?? 0), 0)])),
-    [days, placesById, clusters],
+    () => new Map(days.map((day) => [day.id, dayTravelMinutes(day, itineraryPlacesById, clusters)])),
+    [days, itineraryPlacesById, clusters],
   );
   const ghostDays = useMemo(() => {
     if (!activeDay || !showOtherDays) return [];
@@ -268,11 +279,11 @@ function MapSurface({
     }]);
   }, [activeDay, days, placesById, showOtherDays]);
   const visibleIdSet = useMemo(() => new Set(visiblePlaces.map((place) => place.id)), [visiblePlaces]);
-  const legModes = useMemo(() => [...new Set(legs.map((leg) => leg.mode))], [legs]);
+  const legModes = useMemo(() => [...new Set(drawnLegs.map((leg) => leg.mode))], [drawnLegs]);
   const categories = useMemo(() => [...new Set(visiblePlaces.map((place) => place.category))], [visiblePlaces]);
   const selectedStopIndex = activeDay && selectedPlace ? activeDay.placeIds.indexOf(selectedPlace.id) : -1;
   const selectedDayIndex = selectedPlace ? dayByPlaceId.get(selectedPlace.id) : undefined;
-  const showTimeline = Boolean(activeDay && routePlaces.length > 0);
+  const showTimeline = Boolean(activeDay && stops.length > 0);
   const modeLabels: Record<TravelMode, string> = {
     public: t('publicTransport'), walk: t('walk'), bike: t('bike'), car: t('car'), taxi: t('taxi'), other: t('otherTransport'),
   };
@@ -292,7 +303,7 @@ function MapSurface({
     <Paper withBorder radius={expanded ? 0 : 'lg'} className={`map-shell${expanded ? ' map-shell--expanded' : ''}${showTimeline ? ' map-shell--with-timeline' : ''}${cardPlace ? ' map-shell--card-open' : ''}`}>
       <MapContainer center={[23.8, 120.95]} zoom={7} minZoom={6} scrollWheelZoom className="taiwan-map">
         <MapSizeController expanded={expanded} />
-        <MapViewportController activeView={activeView} visiblePlaces={visiblePlaces} selectedPlace={selectedPlace} cardOpen={Boolean(cardPlace)} fitRequest={fitRequest} />
+        <MapViewportController activeView={activeView} visiblePlaces={fitPlaces} selectedPlace={selectedPlace} cardOpen={Boolean(cardPlace)} fitRequest={fitRequest} />
         <TileLayer
           key={useOpenStreetMapFallback ? 'osm-fallback' : 'geoapify-primary'}
           attribution={
@@ -330,7 +341,7 @@ function MapSurface({
           </Fragment>
         ))}
 
-        {legs.map((leg) => {
+        {drawnLegs.map((leg) => {
           const dimmed = selectedId !== null && leg.from.id !== selectedId && leg.to.id !== selectedId;
           return (
             <Polyline
@@ -344,7 +355,7 @@ function MapSurface({
         {activeDay ? (
           <MapLegChips
             dayId={activeDay.id}
-            legs={legs}
+            legs={drawnLegs}
             dayDefaultMode={activeDay.travelMode ?? 'public'}
             readOnly={readOnly || !onLegModeChange}
             selectedPlaceId={selectedId}
@@ -496,7 +507,7 @@ function MapSurface({
           {activeDay ? (
             <div className="map-route-summary__stats">
               <div><span>{routePlaces.length}</span><small>{t('stopsLabel')}</small></div>
-              <div><span>{totalMinutes}</span><small>{t('minTravelLabel')}</small></div>
+              <div><span>{dayMinutes.get(activeDay.id) ?? 0}</span><small>{t('minTravelLabel')}</small></div>
             </div>
           ) : null}
         </Stack>
@@ -550,7 +561,7 @@ function MapSurface({
       {showTimeline && activeDay ? (
         <MapStopTimeline
           day={activeDay}
-          places={routePlaces}
+          places={stops}
           legs={legs}
           selectedId={selectedId}
           visitedPlaceIds={visitedPlaceIds}
