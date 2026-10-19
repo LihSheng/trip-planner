@@ -3,3 +3,6 @@ verify_jwt = true
 
 [functions.send-collaborator-invite]
 verify_jwt = true
+
+[functions.transit-routes]
+verify_jwt = true

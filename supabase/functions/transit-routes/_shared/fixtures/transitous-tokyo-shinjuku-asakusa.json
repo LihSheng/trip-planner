@@ -1,0 +1,1387 @@
+{
+ "from": {
+  "name": "START",
+  "lat": 35.6896,
+  "lon": 139.7006
+ },
+ "to": {
+  "name": "END",
+  "lat": 35.7148,
+  "lon": 139.7967
+ },
+ "direct": [],
+ "itineraries": [
+  {
+   "duration": 1920,
+   "startTime": "2026-10-21T00:00:00Z",
+   "endTime": "2026-10-21T00:32:00Z",
+   "transfers": 2,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:00:00Z",
+     "endTime": "2026-10-21T00:02:00Z",
+     "distance": 128,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "新宿 Shinjuku"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 540,
+     "startTime": "2026-10-21T00:02:00Z",
+     "endTime": "2026-10-21T00:11:00Z",
+     "headsign": "(通勤特快 Commuter Special Rapid) 東京 Tōkyō",
+     "agencyName": "JR東日本 JR East",
+     "routeType": 2,
+     "routeShortName": "JC",
+     "routeLongName": "JR中央線快速 JR Chūō Rapid Line",
+     "tripShortName": "774T",
+     "displayName": "JC",
+     "from": {
+      "name": "新宿 Shinjuku"
+     },
+     "to": {
+      "name": "御茶ノ水 Ochanomizu"
+     },
+     "intermediateStops": [
+      {
+       "name": "四ツ谷 Yotsuya"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:11:00Z",
+     "endTime": "2026-10-21T00:13:00Z",
+     "from": {
+      "name": "御茶ノ水 Ochanomizu"
+     },
+     "to": {
+      "name": "御茶ノ水"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 120,
+     "startTime": "2026-10-21T00:13:00Z",
+     "endTime": "2026-10-21T00:15:00Z",
+     "headsign": "津田沼",
+     "agencyName": "JR",
+     "routeType": 106,
+     "routeShortName": "9454341",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "9454341",
+     "from": {
+      "name": "御茶ノ水"
+     },
+     "to": {
+      "name": "秋葉原"
+     },
+     "intermediateStops": []
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:15:00Z",
+     "endTime": "2026-10-21T00:17:00Z",
+     "from": {
+      "name": "秋葉原"
+     },
+     "to": {
+      "name": "秋葉原 Akihabara"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 360,
+     "startTime": "2026-10-21T00:18:00Z",
+     "endTime": "2026-10-21T00:24:00Z",
+     "headsign": "(普通 Local) つくば Tsukuba",
+     "agencyName": "首都圏新都市鉄道 Metropolitan Intercity Railway",
+     "routeType": 2,
+     "routeShortName": "TX",
+     "routeLongName": "つくばエクスプレス Tsukuba Express Line",
+     "tripShortName": "5013",
+     "displayName": "TX",
+     "from": {
+      "name": "秋葉原 Akihabara"
+     },
+     "to": {
+      "name": "浅草 Asakusa"
+     },
+     "intermediateStops": [
+      {
+       "name": "新御徒町 Shin-okachimachi"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T00:24:00Z",
+     "endTime": "2026-10-21T00:32:00Z",
+     "distance": 581,
+     "from": {
+      "name": "浅草 Asakusa"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 2280,
+   "startTime": "2026-10-21T00:02:00Z",
+   "endTime": "2026-10-21T00:40:00Z",
+   "transfers": 1,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:02:00Z",
+     "endTime": "2026-10-21T00:04:00Z",
+     "distance": 128,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "新宿 Shinjuku"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 720,
+     "startTime": "2026-10-21T00:04:00Z",
+     "endTime": "2026-10-21T00:16:00Z",
+     "headsign": "(快速 Rapid) 東京 Tōkyō",
+     "agencyName": "JR東日本 JR East",
+     "routeType": 2,
+     "routeShortName": "JC",
+     "routeLongName": "JR中央線快速 JR Chūō Rapid Line",
+     "tripShortName": "810H",
+     "displayName": "JC",
+     "from": {
+      "name": "新宿 Shinjuku"
+     },
+     "to": {
+      "name": "神田 Kanda"
+     },
+     "intermediateStops": [
+      {
+       "name": "四ツ谷 Yotsuya"
+      },
+      {
+       "name": "御茶ノ水 Ochanomizu"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 660,
+     "startTime": "2026-10-21T00:16:00Z",
+     "endTime": "2026-10-21T00:27:00Z",
+     "from": {
+      "name": "神田 Kanda"
+     },
+     "to": {
+      "name": "秋葉原 Akihabara"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 300,
+     "startTime": "2026-10-21T00:27:00Z",
+     "endTime": "2026-10-21T00:32:00Z",
+     "headsign": "(快速 Rapid) つくば Tsukuba",
+     "agencyName": "首都圏新都市鉄道 Metropolitan Intercity Railway",
+     "routeType": 2,
+     "routeShortName": "TX",
+     "routeLongName": "つくばエクスプレス Tsukuba Express Line",
+     "tripShortName": "3007",
+     "displayName": "TX",
+     "from": {
+      "name": "秋葉原 Akihabara"
+     },
+     "to": {
+      "name": "浅草 Asakusa"
+     },
+     "intermediateStops": [
+      {
+       "name": "新御徒町 Shin-okachimachi"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T00:32:00Z",
+     "endTime": "2026-10-21T00:40:00Z",
+     "distance": 581,
+     "from": {
+      "name": "浅草 Asakusa"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 2040,
+   "startTime": "2026-10-21T00:02:00Z",
+   "endTime": "2026-10-21T00:36:00Z",
+   "transfers": 2,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:02:00Z",
+     "endTime": "2026-10-21T00:04:00Z",
+     "distance": 128,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "新宿 Shinjuku"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 540,
+     "startTime": "2026-10-21T00:04:00Z",
+     "endTime": "2026-10-21T00:13:00Z",
+     "headsign": "(快速 Rapid) 東京 Tōkyō",
+     "agencyName": "JR東日本 JR East",
+     "routeType": 2,
+     "routeShortName": "JC",
+     "routeLongName": "JR中央線快速 JR Chūō Rapid Line",
+     "tripShortName": "810H",
+     "displayName": "JC",
+     "from": {
+      "name": "新宿 Shinjuku"
+     },
+     "to": {
+      "name": "御茶ノ水 Ochanomizu"
+     },
+     "intermediateStops": [
+      {
+       "name": "四ツ谷 Yotsuya"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:13:00Z",
+     "endTime": "2026-10-21T00:15:00Z",
+     "from": {
+      "name": "御茶ノ水 Ochanomizu"
+     },
+     "to": {
+      "name": "御茶ノ水"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 120,
+     "startTime": "2026-10-21T00:17:00Z",
+     "endTime": "2026-10-21T00:19:00Z",
+     "headsign": "千葉",
+     "agencyName": "JR",
+     "routeType": 106,
+     "routeShortName": "9957071",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "9957071",
+     "from": {
+      "name": "御茶ノ水"
+     },
+     "to": {
+      "name": "秋葉原"
+     },
+     "intermediateStops": []
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:19:00Z",
+     "endTime": "2026-10-21T00:21:00Z",
+     "from": {
+      "name": "秋葉原"
+     },
+     "to": {
+      "name": "秋葉原 Akihabara"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 360,
+     "startTime": "2026-10-21T00:22:00Z",
+     "endTime": "2026-10-21T00:28:00Z",
+     "headsign": "(普通 Local) 守谷 Moriya",
+     "agencyName": "首都圏新都市鉄道 Metropolitan Intercity Railway",
+     "routeType": 2,
+     "routeShortName": "TX",
+     "routeLongName": "つくばエクスプレス Tsukuba Express Line",
+     "tripShortName": "5267",
+     "displayName": "TX",
+     "from": {
+      "name": "秋葉原 Akihabara"
+     },
+     "to": {
+      "name": "浅草 Asakusa"
+     },
+     "intermediateStops": [
+      {
+       "name": "新御徒町 Shin-okachimachi"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T00:28:00Z",
+     "endTime": "2026-10-21T00:36:00Z",
+     "distance": 581,
+     "from": {
+      "name": "浅草 Asakusa"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 1980,
+   "startTime": "2026-10-21T00:07:00Z",
+   "endTime": "2026-10-21T00:40:00Z",
+   "transfers": 2,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:07:00Z",
+     "endTime": "2026-10-21T00:09:00Z",
+     "distance": 128,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "新宿 Shinjuku"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 660,
+     "startTime": "2026-10-21T00:09:00Z",
+     "endTime": "2026-10-21T00:20:00Z",
+     "headsign": "(快速 Rapid) 東京 Tōkyō",
+     "agencyName": "JR東日本 JR East",
+     "routeType": 2,
+     "routeShortName": "JC",
+     "routeLongName": "JR中央線快速 JR Chūō Rapid Line",
+     "tripShortName": "818H",
+     "displayName": "JC",
+     "from": {
+      "name": "新宿 Shinjuku"
+     },
+     "to": {
+      "name": "神田 Kanda"
+     },
+     "intermediateStops": [
+      {
+       "name": "四ツ谷 Yotsuya"
+      },
+      {
+       "name": "御茶ノ水 Ochanomizu"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:20:00Z",
+     "endTime": "2026-10-21T00:22:00Z",
+     "from": {
+      "name": "神田 Kanda"
+     },
+     "to": {
+      "name": "神田(東京都)"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 120,
+     "startTime": "2026-10-21T00:23:00Z",
+     "endTime": "2026-10-21T00:25:00Z",
+     "headsign": "大崎",
+     "agencyName": "JR",
+     "routeType": 106,
+     "routeShortName": "6214501",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "6214501",
+     "from": {
+      "name": "神田(東京都)"
+     },
+     "to": {
+      "name": "秋葉原"
+     },
+     "intermediateStops": []
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:25:00Z",
+     "endTime": "2026-10-21T00:27:00Z",
+     "from": {
+      "name": "秋葉原"
+     },
+     "to": {
+      "name": "秋葉原 Akihabara"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 300,
+     "startTime": "2026-10-21T00:27:00Z",
+     "endTime": "2026-10-21T00:32:00Z",
+     "headsign": "(快速 Rapid) つくば Tsukuba",
+     "agencyName": "首都圏新都市鉄道 Metropolitan Intercity Railway",
+     "routeType": 2,
+     "routeShortName": "TX",
+     "routeLongName": "つくばエクスプレス Tsukuba Express Line",
+     "tripShortName": "3007",
+     "displayName": "TX",
+     "from": {
+      "name": "秋葉原 Akihabara"
+     },
+     "to": {
+      "name": "浅草 Asakusa"
+     },
+     "intermediateStops": [
+      {
+       "name": "新御徒町 Shin-okachimachi"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T00:32:00Z",
+     "endTime": "2026-10-21T00:40:00Z",
+     "distance": 581,
+     "from": {
+      "name": "浅草 Asakusa"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 2220,
+   "startTime": "2026-10-21T00:09:00Z",
+   "endTime": "2026-10-21T00:46:00Z",
+   "transfers": 1,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:09:00Z",
+     "endTime": "2026-10-21T00:11:00Z",
+     "distance": 128,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "新宿 Shinjuku"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 1140,
+     "startTime": "2026-10-21T00:11:00Z",
+     "endTime": "2026-10-21T00:30:00Z",
+     "headsign": "(普通 Local) 津田沼 Tsudanuma",
+     "agencyName": "JR東日本 JR East",
+     "routeType": 2,
+     "routeShortName": "JB",
+     "routeLongName": "JR中央・総武緩行線 JR Chūō-Sobu Local Line",
+     "tripShortName": "854B",
+     "displayName": "JB",
+     "from": {
+      "name": "新宿 Shinjuku"
+     },
+     "to": {
+      "name": "秋葉原 Akihabara"
+     },
+     "intermediateStops": [
+      {
+       "name": "代々木 Yoyogi"
+      },
+      {
+       "name": "千駄ケ谷 Sendagaya"
+      },
+      {
+       "name": "信濃町 Shinanomachi"
+      },
+      {
+       "name": "四ツ谷 Yotsuya"
+      },
+      {
+       "name": "市ケ谷 Ichigaya"
+      },
+      {
+       "name": "飯田橋 Iidabashi"
+      },
+      {
+       "name": "水道橋 Suidōbashi"
+      },
+      {
+       "name": "御茶ノ水 Ochanomizu"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:30:00Z",
+     "endTime": "2026-10-21T00:32:00Z",
+     "from": {
+      "name": "秋葉原 Akihabara"
+     },
+     "to": {
+      "name": "秋葉原 Akihabara"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 300,
+     "startTime": "2026-10-21T00:33:00Z",
+     "endTime": "2026-10-21T00:38:00Z",
+     "headsign": "(普通 Local) 守谷 Moriya",
+     "agencyName": "首都圏新都市鉄道 Metropolitan Intercity Railway",
+     "routeType": 2,
+     "routeShortName": "TX",
+     "routeLongName": "つくばエクスプレス Tsukuba Express Line",
+     "tripShortName": "5269",
+     "displayName": "TX",
+     "from": {
+      "name": "秋葉原 Akihabara"
+     },
+     "to": {
+      "name": "浅草 Asakusa"
+     },
+     "intermediateStops": [
+      {
+       "name": "新御徒町 Shin-okachimachi"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T00:38:00Z",
+     "endTime": "2026-10-21T00:46:00Z",
+     "distance": 581,
+     "from": {
+      "name": "浅草 Asakusa"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 2160,
+   "startTime": "2026-10-21T00:09:00Z",
+   "endTime": "2026-10-21T00:45:00Z",
+   "transfers": 2,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:09:00Z",
+     "endTime": "2026-10-21T00:11:00Z",
+     "distance": 128,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "新宿 Shinjuku"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 1260,
+     "startTime": "2026-10-21T00:11:00Z",
+     "endTime": "2026-10-21T00:32:00Z",
+     "headsign": "(普通 Local) 津田沼 Tsudanuma",
+     "agencyName": "JR東日本 JR East",
+     "routeType": 2,
+     "routeShortName": "JB",
+     "routeLongName": "JR中央・総武緩行線 JR Chūō-Sobu Local Line",
+     "tripShortName": "854B",
+     "displayName": "JB",
+     "from": {
+      "name": "新宿 Shinjuku"
+     },
+     "to": {
+      "name": "浅草橋 Asakusabashi"
+     },
+     "intermediateStops": [
+      {
+       "name": "代々木 Yoyogi"
+      },
+      {
+       "name": "千駄ケ谷 Sendagaya"
+      },
+      {
+       "name": "信濃町 Shinanomachi"
+      },
+      {
+       "name": "四ツ谷 Yotsuya"
+      },
+      {
+       "name": "市ケ谷 Ichigaya"
+      },
+      {
+       "name": "飯田橋 Iidabashi"
+      },
+      {
+       "name": "水道橋 Suidōbashi"
+      },
+      {
+       "name": "御茶ノ水 Ochanomizu"
+      },
+      {
+       "name": "秋葉原 Akihabara"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:32:00Z",
+     "endTime": "2026-10-21T00:34:00Z",
+     "from": {
+      "name": "浅草橋 Asakusabashi"
+     },
+     "to": {
+      "name": "浅草橋"
+     }
+    },
+    {
+     "mode": "SUBWAY",
+     "duration": 120,
+     "startTime": "2026-10-21T00:34:00Z",
+     "endTime": "2026-10-21T00:36:00Z",
+     "headsign": "青砥",
+     "agencyName": "東京都交通局",
+     "routeType": 1,
+     "routeShortName": "",
+     "routeLongName": "浅草線",
+     "tripShortName": "",
+     "displayName": "浅草線",
+     "from": {
+      "name": "浅草橋"
+     },
+     "to": {
+      "name": "浅草"
+     },
+     "intermediateStops": [
+      {
+       "name": "蔵前"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 180,
+     "startTime": "2026-10-21T00:36:00Z",
+     "endTime": "2026-10-21T00:39:00Z",
+     "from": {
+      "name": "浅草"
+     },
+     "to": {
+      "name": "東武浅草駅前"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 60,
+     "startTime": "2026-10-21T00:40:00Z",
+     "endTime": "2026-10-21T00:41:00Z",
+     "headsign": "日暮里駅前",
+     "agencyName": "都営バス",
+     "routeType": 3,
+     "routeShortName": "都０８（Ｔ０８）",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "都０８（Ｔ０８）",
+     "from": {
+      "name": "東武浅草駅前"
+     },
+     "to": {
+      "name": "二天門"
+     },
+     "intermediateStops": []
+    },
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T00:41:00Z",
+     "endTime": "2026-10-21T00:45:00Z",
+     "distance": 226,
+     "from": {
+      "name": "二天門"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 2100,
+   "startTime": "2026-10-21T00:11:00Z",
+   "endTime": "2026-10-21T00:46:00Z",
+   "transfers": 2,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:11:00Z",
+     "endTime": "2026-10-21T00:13:00Z",
+     "distance": 128,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "新宿 Shinjuku"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 720,
+     "startTime": "2026-10-21T00:13:00Z",
+     "endTime": "2026-10-21T00:25:00Z",
+     "headsign": "(快速 Rapid) 東京 Tōkyō",
+     "agencyName": "JR東日本 JR East",
+     "routeType": 2,
+     "routeShortName": "JC",
+     "routeLongName": "JR中央線快速 JR Chūō Rapid Line",
+     "tripShortName": "894T",
+     "displayName": "JC",
+     "from": {
+      "name": "新宿 Shinjuku"
+     },
+     "to": {
+      "name": "神田 Kanda"
+     },
+     "intermediateStops": [
+      {
+       "name": "四ツ谷 Yotsuya"
+      },
+      {
+       "name": "御茶ノ水 Ochanomizu"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:25:00Z",
+     "endTime": "2026-10-21T00:27:00Z",
+     "from": {
+      "name": "神田 Kanda"
+     },
+     "to": {
+      "name": "神田(東京都)"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 60,
+     "startTime": "2026-10-21T00:27:00Z",
+     "endTime": "2026-10-21T00:28:00Z",
+     "headsign": "大崎",
+     "agencyName": "JR",
+     "routeType": 106,
+     "routeShortName": "732131",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "732131",
+     "from": {
+      "name": "神田(東京都)"
+     },
+     "to": {
+      "name": "秋葉原"
+     },
+     "intermediateStops": []
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:28:00Z",
+     "endTime": "2026-10-21T00:30:00Z",
+     "from": {
+      "name": "秋葉原"
+     },
+     "to": {
+      "name": "秋葉原 Akihabara"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 300,
+     "startTime": "2026-10-21T00:33:00Z",
+     "endTime": "2026-10-21T00:38:00Z",
+     "headsign": "(普通 Local) 守谷 Moriya",
+     "agencyName": "首都圏新都市鉄道 Metropolitan Intercity Railway",
+     "routeType": 2,
+     "routeShortName": "TX",
+     "routeLongName": "つくばエクスプレス Tsukuba Express Line",
+     "tripShortName": "5269",
+     "displayName": "TX",
+     "from": {
+      "name": "秋葉原 Akihabara"
+     },
+     "to": {
+      "name": "浅草 Asakusa"
+     },
+     "intermediateStops": [
+      {
+       "name": "新御徒町 Shin-okachimachi"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T00:38:00Z",
+     "endTime": "2026-10-21T00:46:00Z",
+     "distance": 581,
+     "from": {
+      "name": "浅草 Asakusa"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 2040,
+   "startTime": "2026-10-21T00:11:00Z",
+   "endTime": "2026-10-21T00:45:00Z",
+   "transfers": 3,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:11:00Z",
+     "endTime": "2026-10-21T00:13:00Z",
+     "distance": 128,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "新宿 Shinjuku"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 540,
+     "startTime": "2026-10-21T00:13:00Z",
+     "endTime": "2026-10-21T00:22:00Z",
+     "headsign": "(快速 Rapid) 東京 Tōkyō",
+     "agencyName": "JR東日本 JR East",
+     "routeType": 2,
+     "routeShortName": "JC",
+     "routeLongName": "JR中央線快速 JR Chūō Rapid Line",
+     "tripShortName": "894T",
+     "displayName": "JC",
+     "from": {
+      "name": "新宿 Shinjuku"
+     },
+     "to": {
+      "name": "御茶ノ水 Ochanomizu"
+     },
+     "intermediateStops": [
+      {
+       "name": "四ツ谷 Yotsuya"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:22:00Z",
+     "endTime": "2026-10-21T00:24:00Z",
+     "from": {
+      "name": "御茶ノ水 Ochanomizu"
+     },
+     "to": {
+      "name": "御茶ノ水"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 240,
+     "startTime": "2026-10-21T00:24:00Z",
+     "endTime": "2026-10-21T00:28:00Z",
+     "headsign": "千葉",
+     "agencyName": "JR",
+     "routeType": 106,
+     "routeShortName": "9957081",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "9957081",
+     "from": {
+      "name": "御茶ノ水"
+     },
+     "to": {
+      "name": "浅草橋"
+     },
+     "intermediateStops": [
+      {
+       "name": "秋葉原"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:28:00Z",
+     "endTime": "2026-10-21T00:30:00Z",
+     "from": {
+      "name": "浅草橋"
+     },
+     "to": {
+      "name": "浅草橋"
+     }
+    },
+    {
+     "mode": "SUBWAY",
+     "duration": 120,
+     "startTime": "2026-10-21T00:34:00Z",
+     "endTime": "2026-10-21T00:36:00Z",
+     "headsign": "青砥",
+     "agencyName": "東京都交通局",
+     "routeType": 1,
+     "routeShortName": "",
+     "routeLongName": "浅草線",
+     "tripShortName": "",
+     "displayName": "浅草線",
+     "from": {
+      "name": "浅草橋"
+     },
+     "to": {
+      "name": "浅草"
+     },
+     "intermediateStops": [
+      {
+       "name": "蔵前"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 180,
+     "startTime": "2026-10-21T00:36:00Z",
+     "endTime": "2026-10-21T00:39:00Z",
+     "from": {
+      "name": "浅草"
+     },
+     "to": {
+      "name": "東武浅草駅前"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 60,
+     "startTime": "2026-10-21T00:40:00Z",
+     "endTime": "2026-10-21T00:41:00Z",
+     "headsign": "日暮里駅前",
+     "agencyName": "都営バス",
+     "routeType": 3,
+     "routeShortName": "都０８（Ｔ０８）",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "都０８（Ｔ０８）",
+     "from": {
+      "name": "東武浅草駅前"
+     },
+     "to": {
+      "name": "二天門"
+     },
+     "intermediateStops": []
+    },
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T00:41:00Z",
+     "endTime": "2026-10-21T00:45:00Z",
+     "distance": 226,
+     "from": {
+      "name": "二天門"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 2280,
+   "startTime": "2026-10-21T00:13:00Z",
+   "endTime": "2026-10-21T00:51:00Z",
+   "transfers": 1,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:13:00Z",
+     "endTime": "2026-10-21T00:15:00Z",
+     "distance": 128,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "新宿 Shinjuku"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 1140,
+     "startTime": "2026-10-21T00:15:00Z",
+     "endTime": "2026-10-21T00:34:00Z",
+     "headsign": "(普通 Local) 千葉 Chiba",
+     "agencyName": "JR東日本 JR East",
+     "routeType": 2,
+     "routeShortName": "JB",
+     "routeLongName": "JR中央・総武緩行線 JR Chūō-Sobu Local Line",
+     "tripShortName": "890B",
+     "displayName": "JB",
+     "from": {
+      "name": "新宿 Shinjuku"
+     },
+     "to": {
+      "name": "秋葉原 Akihabara"
+     },
+     "intermediateStops": [
+      {
+       "name": "代々木 Yoyogi"
+      },
+      {
+       "name": "千駄ケ谷 Sendagaya"
+      },
+      {
+       "name": "信濃町 Shinanomachi"
+      },
+      {
+       "name": "四ツ谷 Yotsuya"
+      },
+      {
+       "name": "市ケ谷 Ichigaya"
+      },
+      {
+       "name": "飯田橋 Iidabashi"
+      },
+      {
+       "name": "水道橋 Suidōbashi"
+      },
+      {
+       "name": "御茶ノ水 Ochanomizu"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:34:00Z",
+     "endTime": "2026-10-21T00:36:00Z",
+     "from": {
+      "name": "秋葉原 Akihabara"
+     },
+     "to": {
+      "name": "秋葉原 Akihabara"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 300,
+     "startTime": "2026-10-21T00:38:00Z",
+     "endTime": "2026-10-21T00:43:00Z",
+     "headsign": "(普通 Local) 守谷 Moriya",
+     "agencyName": "首都圏新都市鉄道 Metropolitan Intercity Railway",
+     "routeType": 2,
+     "routeShortName": "TX",
+     "routeLongName": "つくばエクスプレス Tsukuba Express Line",
+     "tripShortName": "5271",
+     "displayName": "TX",
+     "from": {
+      "name": "秋葉原 Akihabara"
+     },
+     "to": {
+      "name": "浅草 Asakusa"
+     },
+     "intermediateStops": [
+      {
+       "name": "新御徒町 Shin-okachimachi"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T00:43:00Z",
+     "endTime": "2026-10-21T00:51:00Z",
+     "distance": 581,
+     "from": {
+      "name": "浅草 Asakusa"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 2340,
+   "startTime": "2026-10-21T00:18:00Z",
+   "endTime": "2026-10-21T00:57:00Z",
+   "transfers": 1,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:18:00Z",
+     "endTime": "2026-10-21T00:20:00Z",
+     "distance": 128,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "新宿 Shinjuku"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 780,
+     "startTime": "2026-10-21T00:20:00Z",
+     "endTime": "2026-10-21T00:33:00Z",
+     "headsign": "(快速 Rapid) 東京 Tōkyō",
+     "agencyName": "JR東日本 JR East",
+     "routeType": 2,
+     "routeShortName": "JC",
+     "routeLongName": "JR中央線快速 JR Chūō Rapid Line",
+     "tripShortName": "846T",
+     "displayName": "JC",
+     "from": {
+      "name": "新宿 Shinjuku"
+     },
+     "to": {
+      "name": "神田 Kanda"
+     },
+     "intermediateStops": [
+      {
+       "name": "四ツ谷 Yotsuya"
+      },
+      {
+       "name": "御茶ノ水 Ochanomizu"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 660,
+     "startTime": "2026-10-21T00:33:00Z",
+     "endTime": "2026-10-21T00:44:00Z",
+     "from": {
+      "name": "神田 Kanda"
+     },
+     "to": {
+      "name": "秋葉原 Akihabara"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 300,
+     "startTime": "2026-10-21T00:44:00Z",
+     "endTime": "2026-10-21T00:49:00Z",
+     "headsign": "(区間快速 Semi Rapid) つくば Tsukuba",
+     "agencyName": "首都圏新都市鉄道 Metropolitan Intercity Railway",
+     "routeType": 2,
+     "routeShortName": "TX",
+     "routeLongName": "つくばエクスプレス Tsukuba Express Line",
+     "tripShortName": "4035",
+     "displayName": "TX",
+     "from": {
+      "name": "秋葉原 Akihabara"
+     },
+     "to": {
+      "name": "浅草 Asakusa"
+     },
+     "intermediateStops": [
+      {
+       "name": "新御徒町 Shin-okachimachi"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T00:49:00Z",
+     "endTime": "2026-10-21T00:57:00Z",
+     "distance": 581,
+     "from": {
+      "name": "浅草 Asakusa"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 1980,
+   "startTime": "2026-10-21T00:18:00Z",
+   "endTime": "2026-10-21T00:51:00Z",
+   "transfers": 2,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:18:00Z",
+     "endTime": "2026-10-21T00:20:00Z",
+     "distance": 128,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "新宿 Shinjuku"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 540,
+     "startTime": "2026-10-21T00:20:00Z",
+     "endTime": "2026-10-21T00:29:00Z",
+     "headsign": "(快速 Rapid) 東京 Tōkyō",
+     "agencyName": "JR東日本 JR East",
+     "routeType": 2,
+     "routeShortName": "JC",
+     "routeLongName": "JR中央線快速 JR Chūō Rapid Line",
+     "tripShortName": "846T",
+     "displayName": "JC",
+     "from": {
+      "name": "新宿 Shinjuku"
+     },
+     "to": {
+      "name": "御茶ノ水 Ochanomizu"
+     },
+     "intermediateStops": [
+      {
+       "name": "四ツ谷 Yotsuya"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:29:00Z",
+     "endTime": "2026-10-21T00:31:00Z",
+     "from": {
+      "name": "御茶ノ水 Ochanomizu"
+     },
+     "to": {
+      "name": "御茶ノ水"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 120,
+     "startTime": "2026-10-21T00:32:00Z",
+     "endTime": "2026-10-21T00:34:00Z",
+     "headsign": "千葉",
+     "agencyName": "JR",
+     "routeType": 106,
+     "routeShortName": "9957101",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "9957101",
+     "from": {
+      "name": "御茶ノ水"
+     },
+     "to": {
+      "name": "秋葉原"
+     },
+     "intermediateStops": []
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T00:34:00Z",
+     "endTime": "2026-10-21T00:36:00Z",
+     "from": {
+      "name": "秋葉原"
+     },
+     "to": {
+      "name": "秋葉原 Akihabara"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 300,
+     "startTime": "2026-10-21T00:38:00Z",
+     "endTime": "2026-10-21T00:43:00Z",
+     "headsign": "(普通 Local) 守谷 Moriya",
+     "agencyName": "首都圏新都市鉄道 Metropolitan Intercity Railway",
+     "routeType": 2,
+     "routeShortName": "TX",
+     "routeLongName": "つくばエクスプレス Tsukuba Express Line",
+     "tripShortName": "5271",
+     "displayName": "TX",
+     "from": {
+      "name": "秋葉原 Akihabara"
+     },
+     "to": {
+      "name": "浅草 Asakusa"
+     },
+     "intermediateStops": [
+      {
+       "name": "新御徒町 Shin-okachimachi"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T00:43:00Z",
+     "endTime": "2026-10-21T00:51:00Z",
+     "distance": 581,
+     "from": {
+      "name": "浅草 Asakusa"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,490 @@
+{
+ "from": {
+  "name": "START",
+  "lat": 25.0478,
+  "lon": 121.517
+ },
+ "to": {
+  "name": "END",
+  "lat": 22.6394,
+  "lon": 120.3025
+ },
+ "direct": [],
+ "itineraries": [
+  {
+   "duration": 7140,
+   "startTime": "2026-10-21T01:27:00Z",
+   "endTime": "2026-10-21T03:26:00Z",
+   "transfers": 1,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T01:27:00Z",
+     "endTime": "2026-10-21T01:31:00Z",
+     "distance": 1091,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "台北"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 5640,
+     "startTime": "2026-10-21T01:31:00Z",
+     "endTime": "2026-10-21T03:05:00Z",
+     "headsign": "左營",
+     "agencyName": "臺灣高速鐵路股份有限公司",
+     "routeType": 2,
+     "routeShortName": "南港-左營",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "南港-左營",
+     "from": {
+      "name": "台北"
+     },
+     "to": {
+      "name": "左營"
+     },
+     "intermediateStops": [
+      {
+       "name": "板橋"
+      },
+      {
+       "name": "台中"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T03:05:00Z",
+     "endTime": "2026-10-21T03:07:00Z",
+     "distance": 583,
+     "from": {
+      "name": "左營"
+     },
+     "to": {
+      "name": "左營"
+     }
+    },
+    {
+     "mode": "SUBWAY",
+     "duration": 660,
+     "startTime": "2026-10-21T03:12:00Z",
+     "endTime": "2026-10-21T03:23:00Z",
+     "headsign": "小港",
+     "agencyName": "高雄捷運股份有限公司",
+     "routeType": 1,
+     "routeShortName": "紅線",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "紅線",
+     "from": {
+      "name": "左營"
+     },
+     "to": {
+      "name": "高雄車站"
+     },
+     "intermediateStops": [
+      {
+       "name": "生態園區"
+      },
+      {
+       "name": "巨蛋"
+      },
+      {
+       "name": "凹子底"
+      },
+      {
+       "name": "後驛"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 180,
+     "startTime": "2026-10-21T03:23:00Z",
+     "endTime": "2026-10-21T03:26:00Z",
+     "distance": 281,
+     "from": {
+      "name": "高雄車站"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 8640,
+   "startTime": "2026-10-21T01:42:00Z",
+   "endTime": "2026-10-21T04:06:00Z",
+   "transfers": 1,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T01:42:00Z",
+     "endTime": "2026-10-21T01:46:00Z",
+     "distance": 1091,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "台北"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 7140,
+     "startTime": "2026-10-21T01:46:00Z",
+     "endTime": "2026-10-21T03:45:00Z",
+     "headsign": "左營",
+     "agencyName": "臺灣高速鐵路股份有限公司",
+     "routeType": 2,
+     "routeShortName": "南港-左營",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "南港-左營",
+     "from": {
+      "name": "台北"
+     },
+     "to": {
+      "name": "左營"
+     },
+     "intermediateStops": [
+      {
+       "name": "板橋"
+      },
+      {
+       "name": "桃園"
+      },
+      {
+       "name": "新竹"
+      },
+      {
+       "name": "台中"
+      },
+      {
+       "name": "嘉義"
+      },
+      {
+       "name": "台南"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T03:45:00Z",
+     "endTime": "2026-10-21T03:47:00Z",
+     "distance": 583,
+     "from": {
+      "name": "左營"
+     },
+     "to": {
+      "name": "左營"
+     }
+    },
+    {
+     "mode": "SUBWAY",
+     "duration": 660,
+     "startTime": "2026-10-21T03:52:00Z",
+     "endTime": "2026-10-21T04:03:00Z",
+     "headsign": "小港",
+     "agencyName": "高雄捷運股份有限公司",
+     "routeType": 1,
+     "routeShortName": "紅線",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "紅線",
+     "from": {
+      "name": "左營"
+     },
+     "to": {
+      "name": "高雄車站"
+     },
+     "intermediateStops": [
+      {
+       "name": "生態園區"
+      },
+      {
+       "name": "巨蛋"
+      },
+      {
+       "name": "凹子底"
+      },
+      {
+       "name": "後驛"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 180,
+     "startTime": "2026-10-21T04:03:00Z",
+     "endTime": "2026-10-21T04:06:00Z",
+     "distance": 281,
+     "from": {
+      "name": "高雄車站"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 15180,
+   "startTime": "2026-10-21T01:56:00Z",
+   "endTime": "2026-10-21T06:09:00Z",
+   "transfers": 0,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T01:56:00Z",
+     "endTime": "2026-10-21T02:00:00Z",
+     "distance": 1069,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "臺北"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 14580,
+     "startTime": "2026-10-21T02:00:00Z",
+     "endTime": "2026-10-21T06:03:00Z",
+     "headsign": "潮州",
+     "agencyName": "交通部臺灣鐵路管理局",
+     "routeType": 2,
+     "routeShortName": "七堵-潮州",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "七堵-潮州",
+     "from": {
+      "name": "臺北"
+     },
+     "to": {
+      "name": "高雄"
+     },
+     "intermediateStops": [
+      {
+       "name": "板橋"
+      },
+      {
+       "name": "新竹"
+      },
+      {
+       "name": "臺中"
+      },
+      {
+       "name": "彰化"
+      },
+      {
+       "name": "嘉義"
+      },
+      {
+       "name": "臺南"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 360,
+     "startTime": "2026-10-21T06:03:00Z",
+     "endTime": "2026-10-21T06:09:00Z",
+     "distance": 394,
+     "from": {
+      "name": "高雄"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 17160,
+   "startTime": "2026-10-21T02:16:00Z",
+   "endTime": "2026-10-21T07:02:00Z",
+   "transfers": 0,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T02:16:00Z",
+     "endTime": "2026-10-21T02:20:00Z",
+     "distance": 1069,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "臺北"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 16560,
+     "startTime": "2026-10-21T02:20:00Z",
+     "endTime": "2026-10-21T06:56:00Z",
+     "headsign": "潮州",
+     "agencyName": "交通部臺灣鐵路管理局",
+     "routeType": 2,
+     "routeShortName": "基隆-潮州",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "基隆-潮州",
+     "from": {
+      "name": "臺北"
+     },
+     "to": {
+      "name": "高雄"
+     },
+     "intermediateStops": [
+      {
+       "name": "板橋"
+      },
+      {
+       "name": "桃園"
+      },
+      {
+       "name": "中壢"
+      },
+      {
+       "name": "新竹"
+      },
+      {
+       "name": "竹南"
+      },
+      {
+       "name": "苗栗"
+      },
+      {
+       "name": "豐原"
+      },
+      {
+       "name": "臺中"
+      },
+      {
+       "name": "彰化"
+      },
+      {
+       "name": "員林"
+      },
+      {
+       "name": "斗六"
+      },
+      {
+       "name": "民雄"
+      },
+      {
+       "name": "嘉義"
+      },
+      {
+       "name": "新營"
+      },
+      {
+       "name": "臺南"
+      },
+      {
+       "name": "岡山"
+      },
+      {
+       "name": "新左營"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 360,
+     "startTime": "2026-10-21T06:56:00Z",
+     "endTime": "2026-10-21T07:02:00Z",
+     "distance": 394,
+     "from": {
+      "name": "高雄"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 18600,
+   "startTime": "2026-10-21T02:25:00Z",
+   "endTime": "2026-10-21T07:35:00Z",
+   "transfers": 0,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 300,
+     "startTime": "2026-10-21T02:25:00Z",
+     "endTime": "2026-10-21T02:30:00Z",
+     "distance": 295,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "臺北轉運站"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 17460,
+     "startTime": "2026-10-21T02:30:00Z",
+     "endTime": "2026-10-21T07:21:00Z",
+     "headsign": "建國客運站",
+     "agencyName": "統聯客運",
+     "routeType": 3,
+     "routeShortName": "1838A",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "1838A",
+     "from": {
+      "name": "臺北轉運站"
+     },
+     "to": {
+      "name": "建國客運站"
+     },
+     "intermediateStops": [
+      {
+       "name": "重陽站"
+      },
+      {
+       "name": "西螺"
+      },
+      {
+       "name": "楠梓站"
+      },
+      {
+       "name": "捷運苓雅運動園區站"
+      },
+      {
+       "name": "大順三路口"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 840,
+     "startTime": "2026-10-21T07:21:00Z",
+     "endTime": "2026-10-21T07:35:00Z",
+     "distance": 826,
+     "from": {
+      "name": "建國客運站"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  }
+ ]
+}
