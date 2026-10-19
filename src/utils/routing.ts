@@ -107,3 +107,17 @@ export function dayLegs(day: TripDay, placesById: Map<string, Place>, clusters: 
   const places = day.placeIds.map((id) => placesById.get(id)).filter((place): place is Place => Boolean(place));
   return places.slice(1).map((place, i) => resolveLeg(day, clusters, places[i], place));
 }
+
+/** Total minutes over legs; a leg with unknown minutes (placeholder, cluster without a time) adds 0. */
+export function sumLegMinutes(legs: ResolvedLeg[]): number {
+  return legs.reduce((total, leg) => total + (leg.minutes ?? 0), 0);
+}
+
+/**
+ * A day's travel minutes, the one number every day summary shows.
+ * `placesById` must hold every place the day lists, placeholders and hotel-stay copies included,
+ * so the total is the sum of the legs the planner shows rather than a route that skips stops.
+ */
+export function dayTravelMinutes(day: TripDay, placesById: Map<string, Place>, clusters: LocationCluster[]): number {
+  return sumLegMinutes(dayLegs(day, placesById, clusters));
+}
