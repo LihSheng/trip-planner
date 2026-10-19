@@ -77,9 +77,14 @@ export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Plac
   return { from, to, legMode, mode, minutes, relationship, inside };
 }
 
+/** A day's stops in order, skipping ids with no place. dayLegs(...)[i] runs from dayStops(...)[i] to dayStops(...)[i + 1]. */
+export function dayStops(day: TripDay, placesById: Map<string, Place>): Place[] {
+  return day.placeIds.flatMap((id) => { const place = placesById.get(id); return place ? [place] : []; });
+}
+
 /** Consecutive legs for a day's placeIds, skipping ids with no place. */
 export function dayLegs(day: TripDay, placesById: Map<string, Place>, clusters: LocationCluster[]): ResolvedLeg[] {
-  const places = day.placeIds.map((id) => placesById.get(id)).filter((place): place is Place => Boolean(place));
+  const places = dayStops(day, placesById);
   return places.slice(1).map((place, i) => resolveLeg(day, clusters, places[i], place));
 }
 
@@ -95,4 +100,9 @@ export function sumLegMinutes(legs: ResolvedLeg[]): number {
  */
 export function dayTravelMinutes(day: TripDay, placesById: Map<string, Place>, clusters: LocationCluster[]): number {
   return sumLegMinutes(dayLegs(day, placesById, clusters));
+}
+
+/** A leg the map can draw: a placeholder has no real coordinates (0,0), so a leg touching one gets no line or chip. */
+export function isDrawableLeg(leg: Pick<ResolvedLeg, 'from' | 'to'>): boolean {
+  return !isPlaceholder(leg.from) && !isPlaceholder(leg.to);
 }

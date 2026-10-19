@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialState } from '../data/seed';
 import type { LocationCluster, Place, TripDay } from '../types';
-import { dayLegs, dayTravelMinutes, effectiveLegMode, markRouteStale, resolveLeg, routeLegKey } from './routing';
+import { dayLegs, dayStops, dayTravelMinutes, effectiveLegMode, isDrawableLeg, markRouteStale, resolveLeg, routeLegKey } from './routing';
 
 const day: TripDay = { id: 'day-1', label: 'Day 1', placeIds: ['a', 'b'], travelMode: 'public' };
 
@@ -87,5 +87,23 @@ describe('dayTravelMinutes', () => {
     const placeholderDay: TripDay = { ...dayTwo, placeIds: ['shifen', 'placeholder-lunch', 'jiufen'] };
     expect(dayTravelMinutes(placeholderDay, placesById, [])).toBe(0);
     expect(dayTravelMinutes({ ...dayTwo, placeIds: ['shifen', 'jiufen'] }, placesById, [])).toBe(33);
+  });
+
+  it('draws only legs with real coordinates at both ends: the hotel stay leg, not the placeholder ones', () => {
+    const legs = dayLegs(dayTwo, placesById, []);
+    expect(legs.map((leg) => [leg.from.id, leg.to.id, isDrawableLeg(leg)])).toEqual([
+      ['stay-1', 'shifen', true],
+      ['shifen', 'placeholder-lunch', false],
+      ['placeholder-lunch', 'jiufen', false],
+    ]);
+  });
+
+  it('pairs legs with stops, skipping ids with no place', () => {
+    const withMissing: TripDay = { ...dayTwo, placeIds: ['stay-1', 'gone', 'shifen', 'placeholder-lunch', 'jiufen'] };
+    const stops = dayStops(withMissing, placesById);
+    const legs = dayLegs(withMissing, placesById, []);
+    expect(stops.map((stop) => stop.id)).toEqual(['stay-1', 'shifen', 'placeholder-lunch', 'jiufen']);
+    expect(legs).toHaveLength(stops.length - 1);
+    legs.forEach((leg, i) => expect([leg.from, leg.to]).toEqual([stops[i], stops[i + 1]]));
   });
 });
