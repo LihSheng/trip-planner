@@ -62,6 +62,13 @@ export function scheduleFor(day: TripDay, place: Place): StopSchedule {
   };
 }
 
+/** The stop's planned leave time in minutes of day, or null when it has no start time. */
+export function plannedLeaveMinutes(day: TripDay, place: Place): number | null {
+  const schedule = scheduleFor(day, place);
+  const startsAt = toMinutes(schedule.startTime);
+  return startsAt === null ? null : startsAt + (schedule.durationMinutes ?? defaultDuration(place.category));
+}
+
 export function dayWarnings(day: TripDay, places: Place[]) {
   const warnings = new Map<string, string[]>();
   let previous: { place: Place; endsAt: number } | null = null;

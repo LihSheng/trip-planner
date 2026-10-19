@@ -1,11 +1,8 @@
 import type { LocationCluster, Place, RouteLegMode, TravelMode, TripDay } from '../types';
 import { clusterForPlace, clusterMember } from '../domain/locationCluster';
 import { isPlaceholder } from '../domain/place';
-import { estimateTravelMinutes } from './schedule';
-
-export function routeLegKey(fromPlaceId: string, toPlaceId: string) {
-  return `${fromPlaceId}:${toPlaceId}`;
-}
+import { isTransitEligible, legTransit, routeLegKey, type LegTransit } from '../domain/transit';
+import { estimateTravelMinutes, plannedLeaveMinutes } from './schedule';
 
 export function routePolylinePositions(day: TripDay, placesById: Map<string, Place>): [number, number][] {
   const positions: [number, number][] = [];
@@ -26,20 +23,30 @@ export function isExceptionLeg(legMode: RouteLegMode, resolvedMode: TravelMode, 
 
 export type LegRelationship = 'inside' | 'same-area' | 'walkable';
 
+export type LegMinutesSource = 'transit' | 'cluster' | 'estimate' | 'none';
+
 export interface ResolvedLeg {
   from: Place;
   to: Place;
+  key: string;
   /** Raw override stored on the day, 'default' when none. */
   legMode: RouteLegMode;
   /** Mode actually used after cluster/override/day-default resolution. */
   mode: TravelMode;
+  /** The leg's minutes for every surface: chosen transit route, then cluster member, then estimate; undefined for placeholders. */
   minutes?: number;
+  minutesSource: LegMinutesSource;
   relationship?: LegRelationship;
   inside: boolean;
+  transit: LegTransit;
 }
 
-/** Resolve the transport leg between two consecutive stops: mode, minutes and cluster relationship. */
+/**
+ * Resolve the transport leg between two consecutive stops: mode, minutes and cluster relationship.
+ * Nothing else may estimate leg time, so every surface shows the same minutes.
+ */
 export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Place, to: Place): ResolvedLeg {
+  const key = routeLegKey(from.id, to.id);
   const dayDefaultMode: TravelMode = day.travelMode ?? 'public';
   const cluster = clusterForPlace(clusters, from.id);
   const nextCluster = clusterForPlace(clusters, to.id);
@@ -47,7 +54,7 @@ export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Plac
   const connectionMember = cluster && sameCluster ? clusterMember(cluster, to.id) ?? clusterMember(cluster, from.id) : undefined;
   const relationship = (connectionMember?.relationship === 'nearby' ? 'walkable' : connectionMember?.relationship) as LegRelationship | undefined;
   const inside = relationship === 'inside';
-  const legMode: RouteLegMode = day.legModeOverrides?.[routeLegKey(from.id, to.id)] ?? 'default';
+  const legMode: RouteLegMode = day.legModeOverrides?.[key] ?? 'default';
   const mode: TravelMode = inside
     ? 'walk'
     : legMode !== 'default'
@@ -57,10 +64,27 @@ export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Plac
         : relationship === 'walkable'
           ? 'walk'
           : dayDefaultMode;
-  const minutes = sameCluster
-    ? connectionMember?.travelMinutes ?? connectionMember?.walkMinutes
-    : !isPlaceholder(from) && !isPlaceholder(to) ? estimateTravelMinutes(from, to, mode) : undefined;
-  return { from, to, legMode, mode, minutes, relationship, inside };
+  const transit = legTransit(
+    day.transitByLeg?.[key],
+    isTransitEligible(mode, inside, from, to),
+    from,
+    to,
+    day.timeManagementEnabled ? plannedLeaveMinutes(day, from) : null,
+  );
+  // A stale chosen route still wins: the traveller picked it, and the UI flags it for refresh.
+  const chosen = transit.status === 'saved' ? transit.chosen : null;
+  const [minutes, minutesSource]: [number | undefined, LegMinutesSource] = chosen
+    ? [chosen.minutes, 'transit']
+    : sameCluster
+      ? [connectionMember?.travelMinutes ?? connectionMember?.walkMinutes, 'cluster']
+      : !isPlaceholder(from) && !isPlaceholder(to)
+        ? [estimateTravelMinutes(from, to, mode), 'estimate']
+        : [undefined, 'none'];
+  return {
+    from, to, key, legMode, mode, minutes,
+    minutesSource: minutes === undefined ? 'none' : minutesSource,
+    relationship, inside, transit,
+  };
 }
 
 /** Consecutive legs for a day's placeIds, skipping ids with no place. */
