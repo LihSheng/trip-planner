@@ -3,7 +3,7 @@ import { SegmentedControl } from '@mantine/core';
 
 export type Locale = 'en' | 'zh-TW';
 
-type TranslationKey = keyof typeof translations.en;
+export type TranslationKey = keyof typeof translations.en;
 type TranslationParams = Record<string, string | number>;
 
 const zhRouteTranslations = {
@@ -33,9 +33,41 @@ const plannerFocusTranslations = {
   },
 } as const;
 
+const transitTranslations = {
+  en: {
+    transitOptions: 'Transit options', legMinutesLabel: '{minutes} min, show transit options', transitChosenMark: 'chosen route', transitStaleMark: 'needs refresh',
+    showTransit: 'Show transit', transitRefreshSuggested: 'refresh suggested', transitLoading: 'Finding transit options…', transitFind: 'Find routes', transitRefresh: 'Refresh',
+    transitSavedOn: 'Saved {date}', transitStale: 'Stops or times changed since this was saved.', transitStaleChosen: 'Your chosen route still sets the travel time until you refresh.',
+    transitChosenGone: 'Your chosen route isn’t offered any more.', transitNoSaved: 'No saved route yet.', transitEmpty: 'No transit routes found for this place or date.',
+    transitLimitReached: 'You’ve used today’s transit lookups. More from {time}.', transitLimitReachedNoTime: 'You’ve used today’s transit lookups. Try again tomorrow.',
+    transitBusy: 'Busy, try again in a minute.', transitOffline: 'You’re offline. Saved routes still work.', transitUnavailable: 'Transit lookup isn’t available right now.',
+    transitLegGone: 'This leg has changed. Open it again from the plan.', transitIneligible: 'Transit options are only for public transport legs.',
+    transitChoose: 'Choose', transitChosen: 'Chosen', transitUseEstimate: 'Use the estimate instead',
+    transitRouteChosen: 'Route chosen', transitRouteChosenMessage: 'Travel time is now {minutes} min.', transitRouteCleared: 'Route cleared', transitRouteClearedMessage: 'Travel time uses the estimate again.',
+    transitOptionNumber: 'Option {number}', transitStops: '{count} stops', transitAttribution: 'Routes: {provider} · data sources', transitSampleData: 'Sample data',
+    transitStepWalk: 'Walk', transitStepBus: 'Bus {line}', transitStepTram: 'Tram {line}', transitStepMetro: 'Metro {line}', transitStepRail: 'Train {line}',
+    transitStepHighSpeedRail: 'High-speed rail {line}', transitStepFerry: 'Ferry {line}', transitStepCableCar: 'Cable car {line}', transitStepOther: 'Transit {line}',
+  },
+  'zh-TW': {
+    transitOptions: '大眾運輸方案', legMinutesLabel: '{minutes} 分鐘，查看大眾運輸方案', transitChosenMark: '已選路線', transitStaleMark: '需要更新',
+    showTransit: '查看大眾運輸', transitRefreshSuggested: '建議更新', transitLoading: '正在尋找大眾運輸方案…', transitFind: '搜尋路線', transitRefresh: '重新整理',
+    transitSavedOn: '儲存於 {date}', transitStale: '儲存後停靠點或時間已變更。', transitStaleChosen: '在更新前，仍以你選擇的路線計算交通時間。',
+    transitChosenGone: '你選擇的路線已不再提供。', transitNoSaved: '尚未儲存路線。', transitEmpty: '找不到此地點或日期的大眾運輸路線。',
+    transitLimitReached: '今日的大眾運輸查詢次數已用完，{time} 起可再查詢。', transitLimitReachedNoTime: '今日的大眾運輸查詢次數已用完，請明天再試。',
+    transitBusy: '目前忙碌中，請一分鐘後再試。', transitOffline: '目前離線，已儲存的路線仍可使用。', transitUnavailable: '目前無法查詢大眾運輸。',
+    transitLegGone: '此路段已變更，請從行程重新開啟。', transitIneligible: '只有大眾運輸路段提供方案。',
+    transitChoose: '選擇', transitChosen: '已選擇', transitUseEstimate: '改用預估時間',
+    transitRouteChosen: '已選擇路線', transitRouteChosenMessage: '交通時間已改為 {minutes} 分鐘。', transitRouteCleared: '已取消路線', transitRouteClearedMessage: '交通時間改回預估值。',
+    transitOptionNumber: '方案 {number}', transitStops: '{count} 站', transitAttribution: '路線：{provider} · 資料來源', transitSampleData: '範例資料',
+    transitStepWalk: '步行', transitStepBus: '公車 {line}', transitStepTram: '路面電車 {line}', transitStepMetro: '捷運 {line}', transitStepRail: '火車 {line}',
+    transitStepHighSpeedRail: '高鐵 {line}', transitStepFerry: '渡輪 {line}', transitStepCableCar: '纜車 {line}', transitStepOther: '大眾運輸 {line}',
+  },
+} as const;
+
 const translations = {
   en: {
     ...plannerFocusTranslations.en,
+    ...transitTranslations.en,
     language: 'Language', english: 'English', traditionalChinese: '繁中',
     loadingTrip: 'Loading your synchronized trip…', restoringTrip: 'Restoring your trip…', stopsCount: '{count} stops',
     startsSummary: 'Starts {date} · {days} days · {places} places',
@@ -73,6 +105,7 @@ const translations = {
     today: '今天',
     ...zhRouteTranslations,
     ...plannerFocusTranslations['zh-TW'],
+    ...transitTranslations['zh-TW'],
   },
 } as const;
 

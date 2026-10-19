@@ -54,6 +54,7 @@ import { AiReviewDrawer } from './components/AiReviewDrawer';
 import { formatTripPlainText } from './utils/exportTrip';
 import { useCurrentLocation } from './hooks/useCurrentLocation';
 import { useI18n } from './i18n';
+import { TransitSheetProvider } from './components/TransitSheet';
 import { isPlaceholder } from './domain/place';
 import type { ClusterAssignment } from './domain/locationCluster';
 
@@ -72,6 +73,10 @@ const WORKSPACE_VIEWS = [
 type WorkspaceView = (typeof WORKSPACE_VIEWS)[number]['value'];
 
 export default function App() {
+  return <TransitSheetProvider><TripWorkspace /></TransitSheetProvider>;
+}
+
+function TripWorkspace() {
   const planner = useTrip();
   const { user, signOut } = useAuth();
   const { t } = useI18n();
