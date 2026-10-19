@@ -6,6 +6,7 @@ import { normalizeFlexibleWindows } from './flexibleWindows';
 import { ensureItineraryEntries } from './itinerary';
 import { normalizeLocationClusters } from './locationCluster';
 import { normalizePlace } from './place';
+import { normalizeDayTransit } from './transit';
 
 export interface RestoredTrip {
   state: TripState;
@@ -45,7 +46,7 @@ export function normalizeTripState(state: TripState): TripState {
     visitedPlaceIds: Array.isArray(state.visitedPlaceIds)
       ? state.visitedPlaceIds.filter((placeId): placeId is string => typeof placeId === 'string')
       : [],
-    days: state.days.map((day) => ({
+    days: state.days.map((day) => normalizeDayTransit({
       ...withoutLegacyRouteFields(day),
       travelMode: day.travelMode ?? 'public',
       stopSchedules: day.stopSchedules ?? {},

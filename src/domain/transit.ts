@@ -166,3 +166,11 @@ export function pruneTransitByLeg(day: TripDay): TripDay {
   if (kept.length === keys.length) return day;
   return { ...day, transitByLeg: Object.fromEntries(kept.map((key) => [key, routes[key]])) };
 }
+
+/**
+ * Defaults transitByLeg to {} and prunes it. A missing record would make two collaborators who each
+ * add a leg conflict on the whole field instead of merging per key. Returns `day` itself when unchanged.
+ */
+export function normalizeDayTransit(day: TripDay): TripDay {
+  return pruneTransitByLeg(day.transitByLeg ? day : { ...day, transitByLeg: {} });
+}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import type { ClusterRelationship, ContainerId, CurrencyCode, DayExecutionState, DayTask, FlightBooking, Money, PlaceholderKind, Place, StayBooking, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
 import { movePlace } from '../utils/itinerary';
 import { cascadeStartTimes, defaultDuration } from '../utils/schedule';
-import { routeLegKey } from '../domain/transit';
+import { normalizeDayTransit, routeLegKey } from '../domain/transit';
 import { applyAiDraft as applyConfirmedAiDraft } from '../utils/applyAiDraft';
 import type { ConfirmedAiDraft } from '../types/aiImport';
 import { ensureActivities, updateActivityDetails, type ActivityDetailUpdates } from '../domain/activity';
@@ -21,8 +21,14 @@ interface TripActor {
 
 type UndoPoint = { label: string; before: TripState; sealed: boolean };
 
-function withNormalizedWindows(value: SetStateAction<TripState>): SetStateAction<TripState> {
-  return (current) => normalizeFlexibleWindows(typeof value === 'function' ? value(current) : value);
+function normalizeOnWrite(state: TripState): TripState {
+  const windowed = normalizeFlexibleWindows(state);
+  const days = windowed.days.map(normalizeDayTransit);
+  return days.every((day, index) => day === windowed.days[index]) ? windowed : { ...windowed, days };
+}
+
+function withNormalizedState(value: SetStateAction<TripState>): SetStateAction<TripState> {
+  return (current) => normalizeOnWrite(typeof value === 'function' ? value(current) : value);
 }
 
 export function useTripState(readOnly: boolean, actor?: TripActor) {
@@ -48,7 +54,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
 
   const setState = useCallback<Dispatch<SetStateAction<TripState>>>((value) => {
     if (undoPoint.current?.sealed) setUndoPoint(null);
-    setTripState(withNormalizedWindows(value));
+    setTripState(withNormalizedState(value));
   }, [setUndoPoint]);
 
   const undo = useCallback(() => {
@@ -63,7 +69,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
   // Undoing across them would revert someone else's change, so they disarm.
   const setLifecycleState = useCallback<Dispatch<SetStateAction<TripState>>>((value) => {
     setUndoPoint(null);
-    setTripState(withNormalizedWindows(value));
+    setTripState(withNormalizedState(value));
   }, [setUndoPoint]);
 
   const placesById = useMemo(

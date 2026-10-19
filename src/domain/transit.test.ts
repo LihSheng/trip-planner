@@ -5,6 +5,7 @@ import {
   isTransitEligible,
   legTransit,
   mergeLookup,
+  normalizeDayTransit,
   pruneTransitByLeg,
   type RawTransitOption,
   type SavedLegTransit,
@@ -159,6 +160,12 @@ describe('pruneTransitByLeg', () => {
   it('drops routes whose stop left the day', () => {
     const pruned = pruneTransitByLeg(day(['a', 'c'], { 'a:b': saved(), 'b:c': saved(), 'a:c': saved() }));
     expect(Object.keys(pruned.transitByLeg!)).toEqual(['a:c']);
+  });
+
+  it('defaults a missing record on normalize and is otherwise the same day', () => {
+    expect(normalizeDayTransit(day(['a'])).transitByLeg).toEqual({});
+    const normalized = day(['a', 'b'], { 'a:b': saved() });
+    expect(normalizeDayTransit(normalized)).toBe(normalized);
   });
 
   it('matches ids that themselves contain a colon', () => {
