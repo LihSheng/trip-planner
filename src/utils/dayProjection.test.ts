@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { projectDay, storeProjectedStarts } from './dayProjection';
-import { dayTravelMinutes, sumLegMinutes } from './routing';
+import { nextAnchor, projectDay, storeProjectedStarts, timingLabel } from './dayProjection';
+import { dayTravelMinutes, resolveLeg, sumLegMinutes } from './routing';
 import { toTime } from './schedule';
 import type { SavedLegTransit } from '../domain/transit';
 import type { LocationCluster, Place, TripDay } from '../types';
@@ -240,5 +240,89 @@ describe('storeProjectedStarts', () => {
   it('leaves the day alone when the stop has no start time', () => {
     const d = day({ stopSchedules: { first: { durationMinutes: 60 } } });
     expect(storeProjectedStarts(d, places, [], 'first')).toBe(d);
+  });
+});
+
+describe('nextAnchor', () => {
+  const anchor = (d: TripDay, current: string | null, next: string | null, places = all, clusters: LocationCluster[] = []) =>
+    nextAnchor(d, projectDay(d, places, clusters), clusters, current, next);
+
+  it('leaves at the planned start minus the planner leg minutes', () => {
+    const d = day({ stopSchedules: { second: { startTime: '15:30' } } });
+    expect(anchor(d, 'first', 'second')).toEqual({
+      kind: 'leaveBy', leaveAt: '15:07', arriveBy: '15:30', estimated: false, travelMinutes: 23, mode: 'walk', toPlaceId: 'second',
+      leg: projectDay(d, all, []).legs[0],
+      legRef: { dayId: 'day-1', fromPlaceId: 'first', toPlaceId: 'second' },
+    });
+  });
+
+  it('gives a leave-by line on a day without planned times, at the times the planner shows', () => {
+    const d = day();
+    const { stops } = projectDay(d, all, []);
+    expect(stops.map(({ timing }) => timingLabel(timing))).toEqual(['~09:00–10:30', '~10:53–11:53']);
+    // Leave when the current stop's projected visit ends, arrive at the next stop's projected start.
+    expect(anchor(d, 'first', 'second')).toMatchObject({ kind: 'leaveBy', leaveAt: '10:30', arriveBy: '10:53', estimated: true, travelMinutes: 23 });
+  });
+
+  it('follows a chosen leg mode and a location cluster, as the planner does', () => {
+    expect(anchor(day({ stopSchedules: { second: { startTime: '15:30' } }, legModeOverrides: { 'first:second': 'car' } }), 'first', 'second'))
+      .toMatchObject({ leaveAt: '15:25', travelMinutes: 5, mode: 'car' });
+    const insideMall: LocationCluster[] = [{ id: 'c1', name: 'Mall', anchorPlaceId: 'first', members: [{ placeId: 'second', relationship: 'inside', travelMinutes: 4 }] }];
+    expect(anchor(day({ travelMode: 'car', stopSchedules: { second: { startTime: '15:30' } } }), 'first', 'second', all, insideMall))
+      .toMatchObject({ leaveAt: '15:26', travelMinutes: 4, mode: 'walk' });
+  });
+
+  describe('over a placeholder', () => {
+    const d = day({ placeIds: ['first', 'lunch', 'second'], stopSchedules: { second: { startTime: '15:30' } } });
+    const bridged = projectDay(d, all, []).legs[1];
+    const bridgedRef = { dayId: 'day-1', fromPlaceId: 'first', toPlaceId: 'second' };
+
+    it('uses the bridged leg when the placeholder was skipped, so transit opens for it', () => {
+      expect(bridged).toMatchObject({ from: first, to: second, follows: lunch, minutes: 23 });
+      expect(anchor(d, 'first', 'second')).toMatchObject({ leaveAt: '15:07', travelMinutes: 23, leg: bridged, legRef: bridgedRef });
+    });
+
+    it('uses the bridged leg from the placeholder too, since the traveller is still where the last real stop was', () => {
+      expect(anchor(d, 'lunch', 'second')).toMatchObject({ leaveAt: '15:07', travelMinutes: 23, leg: bridged, legRef: bridgedRef });
+    });
+
+    it('has no travel into the placeholder', () => {
+      expect(anchor(d, 'first', 'lunch')).toMatchObject({ kind: 'leaveBy', travelMinutes: 0, arriveBy: '10:30', estimated: true });
+    });
+
+    it('has no travel after a leading placeholder', () => {
+      const leading = day({ placeIds: ['lunch', 'second'], stopSchedules: { second: { startTime: '13:00' } } });
+      expect(anchor(leading, 'lunch', 'second')).toMatchObject({ kind: 'leaveBy', travelMinutes: 0, leaveAt: '13:00' });
+    });
+  });
+
+  it('times the direct trip without a saved route when a real stop between was skipped', () => {
+    const d = day({ placeIds: ['first', 'third', 'second'], stopSchedules: { second: { startTime: '15:30' } } });
+    expect(anchor(d, 'first', 'second')).toMatchObject({
+      leaveAt: '15:07', travelMinutes: 23, legRef: null, leg: resolveLeg(d, [], first, second),
+    });
+  });
+
+  describe('without a current stop', () => {
+    it('says when to be at a planned next stop', () => {
+      expect(anchor(day({ stopSchedules: { second: { startTime: '10:00' } } }), null, 'second')).toEqual({
+        kind: 'leaveBy', leaveAt: '10:00', arriveBy: '10:00', estimated: false, travelMinutes: 0, mode: 'walk', toPlaceId: 'second', leg: null, legRef: null,
+      });
+    });
+
+    it('gives the opening time instead of an estimate', () => {
+      const opening = { ...second, openingHours: { opensAt: '09:30', closesAt: '18:00' } };
+      expect(anchor(day(), null, 'second', [first, opening])).toEqual({ kind: 'opensAt', opensAt: '09:30', placeId: 'second' });
+      expect(anchor(day(), null, 'second')).toEqual({ kind: 'none' });
+    });
+  });
+
+  it('returns none without a next stop', () => {
+    expect(anchor(day(), 'first', null)).toEqual({ kind: 'none' });
+    expect(anchor(day(), 'first', 'missing')).toEqual({ kind: 'none' });
+  });
+
+  it('clamps leaveAt at midnight', () => {
+    expect(anchor(day({ stopSchedules: { second: { startTime: '00:10' } } }), 'first', 'second')).toMatchObject({ leaveAt: '00:00', arriveBy: '00:10' });
   });
 });

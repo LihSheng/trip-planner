@@ -61,3 +61,13 @@ Rebuilt on main after PR #27 went stale. Main had since made `resolveLeg` the on
 6. **"Show all legs" is gone.** Every leg has a row, and its minutes explain the gap between two gutter times; hiding default legs would hide why a time moved. The header warning count is gone too, as warnings sit on their stop.
 
 Still out of scope: Today and the map read stored times.
+
+## Today and the map, 2026-10-19
+
+Every time surface now reads `projectDay`, so the planner gutter, Today and the map show the same numbers.
+
+1. **`nextAnchor` moved to `dayProjection.ts` and takes the projection.** The next stop's arrival is its projected start, planned or estimated; leave-by is that minus the leg minutes. Days without planned times get a leave-by line. Estimated times carry the `~` prefix on Today as in the planner gutter (`timingStartLabel`, `timingLabel`).
+2. **The closing-time fallback is gone.** Before, a next stop without a start time was timed as "closing time minus duration". Every stop now has a projected start, and a visit past closing shows as the projection's `outsideHours` warning.
+3. **With no current stop, an estimate is not a deadline.** A planned next stop still gives "Be at X by"; an estimated one gives "X opens at" when it has opening hours, otherwise nothing. An estimate chained from the day start means little before the day has a current stop.
+4. **Today's leg is the planner's leg when only placeholders sit between current and next.** That includes a current stop that is itself a placeholder: the bridged leg runs from the last real stop, so its minutes and saved route are the planner's and "Show transit" opens it. When a real stop was skipped, Today times the direct trip with `resolveLeg` and offers no saved route, as before.
+5. **The map card's next leg skips placeholders** (`legOnwardFrom`): from a stop before a placeholder, or from the placeholder, it names the next real stop with the bridged minutes. The strip and card show the projected range, so "No fixed time" is gone.

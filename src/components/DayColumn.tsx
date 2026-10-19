@@ -23,7 +23,7 @@ import { PlaceCard } from './PlaceCard';
 import { placeName, useI18n } from '../i18n';
 import { scheduleFor, toTime } from '../utils/schedule';
 import { sumLegMinutes, type ResolvedLeg } from '../utils/routing';
-import { projectDay, type ScheduleWarning, type StopTiming } from '../utils/dayProjection';
+import { projectDay, timingStartLabel, type ScheduleWarning, type StopTiming } from '../utils/dayProjection';
 import { DayModeChip, TransportLegChip } from './TransportLegChip';
 import { useTransitSheet } from './TransitSheet';
 import { isPlaceholder } from '../domain/place';
@@ -346,7 +346,7 @@ function TimelineGutter({ timing }: { timing: StopTiming }) {
   return (
     <>
       <div className="timeline-stop__time" data-estimated={estimated}>
-        <span className="timeline-stop__start">{estimated ? '~' : ''}{toTime(timing.start)}</span>
+        <span className="timeline-stop__start">{timingStartLabel(timing)}</span>
         <span className="timeline-stop__end">{toTime(timing.end)}</span>
       </div>
       <div className="timeline-stop__rail" aria-hidden="true">

@@ -29,8 +29,9 @@ import type { LocationCluster, Place, PlaceCategory, RouteLegMode, TravelMode, T
 import type { CurrentLocation } from '../hooks/useCurrentLocation';
 import { formatTripDate } from '../utils/date';
 import { categoryLabel, useI18n } from '../i18n';
-import { ghostPathOptions, googleMapsRouteUrl, legModeColor, legPathOptions, markerColors, timeRange } from '../utils/mapPresentation';
-import { dayLegs, dayStops, dayTravelMinutes, isDrawableLeg, viewportPlaces } from '../utils/routing';
+import { ghostPathOptions, googleMapsRouteUrl, legModeColor, legPathOptions, markerColors } from '../utils/mapPresentation';
+import { dayStops, dayTravelMinutes, isDrawableLeg, legOnwardFrom, viewportPlaces } from '../utils/routing';
+import { projectDay, timingLabel } from '../utils/dayProjection';
 import { MapLegChips } from './MapLegChips';
 import { MapPlaceCard } from './MapPlaceCard';
 import { MapStopTimeline } from './MapStopTimeline';
@@ -264,7 +265,9 @@ function MapSurface({
   // Keyed on placeIds, not the day, so changing a leg's mode does not refit the viewport.
   const stops = useMemo(() => (activePlaceIds ? dayStops({ placeIds: activePlaceIds }, itineraryPlacesById) : []), [activePlaceIds, itineraryPlacesById]);
   const fitPlaces = useMemo(() => viewportPlaces(visiblePlaces, stops), [visiblePlaces, stops]);
-  const legs = useMemo(() => (activeDay ? dayLegs(activeDay, itineraryPlacesById, clusters) : []), [activeDay, itineraryPlacesById, clusters]);
+  // The planner's projection: its legs are dayLegs, and its times are the ones the strip and card show.
+  const projection = useMemo(() => (activeDay ? projectDay(activeDay, itineraryPlaces, clusters) : null), [activeDay, itineraryPlaces, clusters]);
+  const legs = useMemo(() => projection?.legs ?? [], [projection]);
   const drawnLegs = useMemo(() => legs.filter(isDrawableLeg), [legs]);
   const dayMinutes = useMemo(
     () => new Map(days.map((day) => [day.id, dayTravelMinutes(day, itineraryPlacesById, clusters)])),
@@ -282,6 +285,7 @@ function MapSurface({
   const legModes = useMemo(() => [...new Set(drawnLegs.map((leg) => leg.mode))], [drawnLegs]);
   const categories = useMemo(() => [...new Set(visiblePlaces.map((place) => place.category))], [visiblePlaces]);
   const selectedStopIndex = activeDay && selectedPlace ? activeDay.placeIds.indexOf(selectedPlace.id) : -1;
+  const cardStopIndex = cardPlace && projection ? projection.stops.findIndex((stop) => stop.place.id === cardPlace.id) : -1;
   const selectedDayIndex = selectedPlace ? dayByPlaceId.get(selectedPlace.id) : undefined;
   const showTimeline = Boolean(activeDay && stops.length > 0);
   const modeLabels: Record<TravelMode, string> = {
@@ -560,8 +564,7 @@ function MapSurface({
 
       {showTimeline && activeDay ? (
         <MapStopTimeline
-          day={activeDay}
-          places={stops}
+          stops={projection?.stops ?? []}
           legs={legs}
           selectedId={selectedId}
           visitedPlaceIds={visitedPlaceIds}
@@ -575,9 +578,9 @@ function MapSurface({
           stopNumber={selectedStopIndex >= 0 ? selectedStopIndex + 1 : undefined}
           dayNumber={selectedStopIndex < 0 && selectedDayIndex !== undefined ? selectedDayIndex + 1 : undefined}
           isUnscheduled={unscheduledIds.includes(cardPlace.id)}
-          timeLabel={activeDay && activeDay.stopSchedules?.[cardPlace.id]?.startTime ? timeRange(activeDay, cardPlace.id) : undefined}
+          timeLabel={projection && cardStopIndex >= 0 ? timingLabel(projection.stops[cardStopIndex].timing) : undefined}
           visited={visitedPlaceIds.includes(cardPlace.id)}
-          nextLeg={legs.find((leg) => leg.from.id === cardPlace.id)}
+          nextLeg={legOnwardFrom(legs, cardStopIndex)}
           currentLocation={currentLocation}
           readOnly={readOnly}
           onClose={() => setDismissedCardId(cardPlace.id)}

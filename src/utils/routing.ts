@@ -128,6 +128,14 @@ export function dayLegs(day: TripDay, placesById: Map<string, Place>, clusters: 
   });
 }
 
+/**
+ * The leg that takes the traveller on from stops[stopIndex] to the next real stop: the leg into a
+ * placeholder has no destination to show, so the bridged leg after it is the one that counts.
+ */
+export function legOnwardFrom(legs: ResolvedLeg[], stopIndex: number): ResolvedLeg | undefined {
+  return stopIndex < 0 ? undefined : legs.slice(stopIndex).find((leg) => !isPlaceholder(leg.to));
+}
+
 /** Total minutes over legs; a leg with unknown minutes (placeholder, cluster without a time) adds 0. */
 export function sumLegMinutes(legs: ResolvedLeg[]): number {
   return legs.reduce((total, leg) => total + (leg.minutes ?? 0), 0);

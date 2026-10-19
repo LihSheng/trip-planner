@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { SavedLegTransit, TransitLookup } from '../domain/transit';
 import type { Place, TripState } from '../types';
 import { dayLegs, resolveLeg } from '../utils/routing';
-import { nextAnchor, toTime } from '../utils/schedule';
-import { projectDay } from '../utils/dayProjection';
+import { toTime } from '../utils/schedule';
+import { nextAnchor, projectDay } from '../utils/dayProjection';
 import { useTripState } from './useTripState';
 
 const samplePlace: Place = {
@@ -429,7 +429,7 @@ describe('transit mutators', () => {
     expect(resolveLeg(after, [], a, b)).toMatchObject({ minutes: 35, minutesSource: 'transit' });
     expect(dayLegs(after, places, [])[0].minutes).toBe(35);
     expect(projectDay(after, [a, b, c], []).stops[1].warnings).toEqual([{ kind: 'shortTravel', shortByMinutes: 5 }]);
-    expect(nextAnchor(after, [], [a, b, c], 'a', 'b')).toMatchObject({ travelMinutes: 35, leaveAt: '09:55' });
+    expect(nextAnchor(after, projectDay(after, [a, b, c], []), [], 'a', 'b')).toMatchObject({ travelMinutes: 35, leaveAt: '09:55' });
 
     act(() => result.current.chooseTransitRoute(ref, null));
     expect(resolveLeg(result.current.state.days[0], [], a, b).minutes).toBe(24);
