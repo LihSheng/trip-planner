@@ -37,5 +37,11 @@ test('gives up after the timeout', async () => {
   const hang = ((_url: string, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
     init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
   })) as typeof fetch;
-  assert.deepEqual(await fetchTransitousPlan('https://example.test', query, hang, 20), { ok: false, reason: 'unavailable', status: null });
+  // AbortSignal.timeout's timer does not keep Node alive, so without this the runner can exit before it fires.
+  const keepAlive = setTimeout(() => {}, 1000);
+  try {
+    assert.deepEqual(await fetchTransitousPlan('https://example.test', query, hang, 20), { ok: false, reason: 'unavailable', status: null });
+  } finally {
+    clearTimeout(keepAlive);
+  }
 });
