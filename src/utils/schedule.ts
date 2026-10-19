@@ -1,5 +1,6 @@
 import type { LocationCluster, Place, PlaceCategory, StopSchedule, TravelMode, TripDay } from '../types';
-import { resolveLeg } from './routing';
+import type { LegRef } from '../domain/transit';
+import { resolveLeg, type ResolvedLeg } from './routing';
 
 const DEFAULT_DURATIONS: Record<PlaceCategory, number> = {
   Landmark: 90,
@@ -98,7 +99,11 @@ export function cascadeStartTimes(day: TripDay, placesById: Map<string, Place>, 
 }
 
 export type NextAnchor =
-  | { kind: 'leaveBy'; leaveAt: string; arriveBy: string; travelMinutes: number; mode: TravelMode; toPlaceId: string }
+  | {
+    kind: 'leaveBy'; leaveAt: string; arriveBy: string; travelMinutes: number; mode: TravelMode; toPlaceId: string;
+    /** Null when there is no current stop, so no leg leads to the next one. */
+    leg: ResolvedLeg | null; legRef: LegRef | null;
+  }
   | { kind: 'opensAt'; opensAt: string; placeId: string }
   | { kind: 'none' };
 
@@ -119,5 +124,6 @@ export function nextAnchor(day: TripDay, clusters: LocationCluster[], orderedPla
   const leg = current ? resolveLeg(day, clusters, current, next) : null;
   const mode = leg?.mode ?? day.travelMode ?? 'public';
   const travelMinutes = leg?.minutes ?? 0;
-  return { kind: 'leaveBy', leaveAt: toTime(arriveMinutes - travelMinutes), arriveBy: toTime(arriveMinutes), travelMinutes, mode, toPlaceId: next.id };
+  const legRef = current ? { dayId: day.id, fromPlaceId: current.id, toPlaceId: next.id } : null;
+  return { kind: 'leaveBy', leaveAt: toTime(arriveMinutes - travelMinutes), arriveBy: toTime(arriveMinutes), travelMinutes, mode, toPlaceId: next.id, leg, legRef };
 }
