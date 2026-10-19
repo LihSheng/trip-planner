@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import type { ClusterRelationship, ContainerId, CurrencyCode, DayExecutionState, DayTask, FlightBooking, Money, PlaceholderKind, Place, StayBooking, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
 import { movePlace } from '../utils/itinerary';
-import { cascadeStartTimes, defaultDuration } from '../utils/schedule';
+import { defaultDuration } from '../utils/schedule';
+import { storeProjectedStarts } from '../utils/dayProjection';
 import { basisMatchesStops, legAt, mergeLookup, normalizeDayTransit, routeLegKey, type LegRef, type TransitLookup } from '../domain/transit';
 import { applyAiDraft as applyConfirmedAiDraft } from '../utils/applyAiDraft';
 import type { ConfirmedAiDraft } from '../types/aiImport';
@@ -387,18 +388,15 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
 
   const updateStopSchedule = useCallback((dayId: string, placeId: string, updates: StopSchedule) => {
     if (readOnly) return;
-    setState((current) => {
-      const placesById = new Map(current.places.map((place) => [place.id, place]));
-      return {
-        ...current,
-        places: current.places.map((place) => place.id === placeId ? touchPlace(place) : place),
-        days: current.days.map((day) => {
-          if (day.id !== dayId) return day;
-          const stopSchedules = { ...day.stopSchedules, [placeId]: { ...day.stopSchedules?.[placeId], ...updates } };
-          return cascadeStartTimes({ ...day, stopSchedules }, placesById, current.locationClusters ?? [], placeId);
-        }),
-      };
-    });
+    setState((current) => ({
+      ...current,
+      places: current.places.map((place) => place.id === placeId ? touchPlace(place) : place),
+      days: current.days.map((day) => {
+        if (day.id !== dayId) return day;
+        const stopSchedules = { ...day.stopSchedules, [placeId]: { ...day.stopSchedules?.[placeId], ...updates } };
+        return storeProjectedStarts({ ...day, stopSchedules }, current.places, current.locationClusters ?? [], placeId);
+      }),
+    }));
   }, [readOnly, touchPlace]);
 
   const toggleVisited = useCallback((placeId: string) => {

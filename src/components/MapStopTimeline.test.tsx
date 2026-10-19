@@ -58,8 +58,8 @@ describe('MapStopTimeline', () => {
       expect.stringContaining('1Hotel'), expect.stringContaining('2Shifen'), expect.stringContaining('3Lunch'), expect.stringContaining('4Jiufen'),
     ]);
     const legMinutes = [...document.querySelectorAll('.map-stop-timeline__leg')].map((node) => node.textContent);
-    expect(legMinutes).toEqual([`${stopLegs[0].minutes} min`, '', '']);
-    expect(stopLegs[0].minutes).toBeGreaterThan(0);
+    // The leg after lunch is bridged from Shifen, so the strip shows the minutes the day total counts.
+    expect(legMinutes).toEqual(['85 min', '', '32 min']);
   });
 
   it('shows the translated label for a placeholder still named after its kind, and a custom name as is', () => {

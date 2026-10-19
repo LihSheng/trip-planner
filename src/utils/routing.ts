@@ -32,10 +32,6 @@ export function modeLabel(mode: RouteLegMode) {
   return mode === 'default' ? 'Use day default' : mode;
 }
 
-export function isExceptionLeg(legMode: RouteLegMode, resolvedMode: TravelMode, dayDefaultMode: TravelMode): boolean {
-  return legMode !== 'default';
-}
-
 export type LegRelationship = 'inside' | 'same-area' | 'walkable';
 
 export type LegMinutesSource = 'transit' | 'cluster' | 'estimate' | 'none';
@@ -54,13 +50,19 @@ export interface ResolvedLeg {
   relationship?: LegRelationship;
   inside: boolean;
   transit: LegTransit;
+  /**
+   * Set on a bridged leg: placeholders sit between `from` (the last real stop) and `to`, and this is
+   * the placeholder the leg follows in the day.
+   */
+  follows?: Place;
 }
 
 /**
  * Resolve the transport leg between two consecutive stops: mode, minutes and cluster relationship.
  * Nothing else may estimate leg time, so every surface shows the same minutes.
+ * `departFrom` is the stop the traveller leaves at: the last placeholder on a bridged leg, else `from`.
  */
-export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Place, to: Place): ResolvedLeg {
+export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Place, to: Place, departFrom: Place = from): ResolvedLeg {
   const key = routeLegKey(from.id, to.id);
   const dayDefaultMode: TravelMode = day.travelMode ?? 'public';
   const cluster = clusterForPlace(clusters, from.id);
@@ -84,7 +86,7 @@ export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Plac
     isTransitEligible(mode, inside, from, to),
     from,
     to,
-    day.timeManagementEnabled ? plannedLeaveMinutes(day, from) : null,
+    day.timeManagementEnabled ? plannedLeaveMinutes(day, departFrom) : null,
   );
   // A stale chosen route still wins: the traveller picked it, and the UI flags it for refresh.
   const chosen = transit.status === 'saved' ? transit.chosen : null;
@@ -102,15 +104,29 @@ export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Plac
   };
 }
 
-/** A day's stops in order, skipping ids with no place. dayLegs(...)[i] runs from dayStops(...)[i] to dayStops(...)[i + 1]. */
+/**
+ * A day's stops in order, skipping ids with no place. dayLegs(...)[i] sits between dayStops(...)[i] and
+ * dayStops(...)[i + 1]; its `from` is stops[i] unless the leg is bridged.
+ */
 export function dayStops(day: Pick<TripDay, 'placeIds'>, placesById: Map<string, Place>): Place[] {
   return day.placeIds.flatMap((id) => { const place = placesById.get(id); return place ? [place] : []; });
 }
 
-/** Consecutive legs for a day's placeIds, skipping ids with no place. */
+/**
+ * The day's legs, the one list the planner, its header total, the map and projectDay all read.
+ * A placeholder has no location, so the traveller is still at the last real stop: the leg into a
+ * placeholder has no minutes, and the leg after it is resolved from the last real stop to the next one.
+ */
 export function dayLegs(day: TripDay, placesById: Map<string, Place>, clusters: LocationCluster[]): ResolvedLeg[] {
-  const places = dayStops(day, placesById);
-  return places.slice(1).map((place, i) => resolveLeg(day, clusters, places[i], place));
+  const stops = dayStops(day, placesById);
+  let lastReal: Place | undefined;
+  return stops.slice(1).map((to, i) => {
+    const before = stops[i];
+    if (!isPlaceholder(before)) lastReal = before;
+    return isPlaceholder(before) && lastReal && !isPlaceholder(to)
+      ? { ...resolveLeg(day, clusters, lastReal, to, before), follows: before }
+      : resolveLeg(day, clusters, before, to);
+  });
 }
 
 /** Total minutes over legs; a leg with unknown minutes (placeholder, cluster without a time) adds 0. */
@@ -127,18 +143,27 @@ export function dayTravelMinutes(day: TripDay, placesById: Map<string, Place>, c
   return sumLegMinutes(dayLegs(day, placesById, clusters));
 }
 
-/** A leg the map can draw: a placeholder has no real coordinates (0,0), so a leg touching one gets no line or chip. */
+/**
+ * A leg the map can draw: a placeholder has no real coordinates (0,0), so a leg touching one gets no line or chip.
+ * A bridged leg runs between two real stops, so it is drawn and its minutes stay visible next to the day total.
+ */
 export function isDrawableLeg(leg: Pick<ResolvedLeg, 'from' | 'to'>): boolean {
   return !isPlaceholder(leg.from) && !isPlaceholder(leg.to);
 }
 
 /**
- * Places the map fits its viewport to: the markers plus any stop a drawn leg ends at that has no marker
- * (a hotel-stay copy). Returns `markers` itself when nothing is added, so the map does not refit needlessly.
+ * Places the map fits its viewport to: the markers plus any end of a drawn leg that has no marker
+ * (a hotel-stay copy, including across a bridged placeholder). Returns `markers` itself when nothing
+ * is added, so the map does not refit needlessly.
  */
-export function viewportPlaces(markers: Place[], stops: Place[]): Place[] {
-  const markerIds = new Set(markers.map((place) => place.id));
-  const legEnds = stops.filter((stop, i) => !markerIds.has(stop.id)
-    && [stops[i - 1], stops[i + 1]].some((neighbour) => neighbour && isDrawableLeg({ from: stop, to: neighbour })));
+export function viewportPlaces(markers: Place[], legs: Pick<ResolvedLeg, 'from' | 'to'>[]): Place[] {
+  const seen = new Set(markers.map((place) => place.id));
+  const legEnds: Place[] = [];
+  for (const leg of legs) {
+    if (!isDrawableLeg(leg)) continue;
+    for (const end of [leg.from, leg.to]) {
+      if (!seen.has(end.id)) { seen.add(end.id); legEnds.push(end); }
+    }
+  }
   return legEnds.length ? [...markers, ...legEnds] : markers;
 }

@@ -204,13 +204,21 @@ describe('legAt', () => {
   const ref = { dayId: 'day-1', fromPlaceId: 'from', toPlaceId: 'to' };
 
   it('finds the leg while its stops are adjacent in that order', () => {
-    expect(legAt(state(['from', 'to']), ref)).toEqual({ day: state(['from', 'to']).days[1], dayIndex: 1, from, to });
+    expect(legAt(state(['from', 'to']), ref)).toEqual({ day: state(['from', 'to']).days[1], dayIndex: 1, from, to, departFrom: from });
   });
 
   it('is null once the stops are reordered, separated or the day is gone', () => {
     expect(legAt(state(['to', 'from']), ref)).toBeNull();
     expect(legAt(state(['from', 'other', 'to']), ref)).toBeNull();
     expect(legAt(state(['from', 'to']), { ...ref, dayId: 'missing' })).toBeNull();
+  });
+
+  it('finds a bridged leg across placeholders only, as dayLegs resolves it', () => {
+    const lunch: Place = { ...from, id: 'lunch', placeholderKind: 'meal' };
+    const real: Place = { ...from, id: 'real' };
+    const withPlaces = (placeIds: string[]): TripState => ({ ...state(placeIds), places: [from, to, lunch, real] });
+    expect(legAt(withPlaces(['from', 'lunch', 'to']), ref)).toMatchObject({ from, to, departFrom: lunch });
+    expect(legAt(withPlaces(['from', 'lunch', 'real', 'to']), ref)).toBeNull();
   });
 });
 

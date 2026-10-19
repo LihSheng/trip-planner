@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { SavedLegTransit, TransitLookup } from '../domain/transit';
 import type { Place, TripState } from '../types';
 import { dayLegs, resolveLeg } from '../utils/routing';
-import { dayWarnings, nextAnchor } from '../utils/schedule';
+import { nextAnchor, toTime } from '../utils/schedule';
+import { projectDay } from '../utils/dayProjection';
 import { useTripState } from './useTripState';
 
 const samplePlace: Place = {
@@ -78,6 +79,32 @@ describe('useTripState', () => {
       result.current.addPlace(samplePlace);
     });
     expect(result.current.state.places.length).toBe(initialPlaceCount);
+  });
+
+  it('stores the projected times of the stops it cascades into, until the next planned stop', () => {
+    const { result } = renderHook(() => useTripState(false));
+    const first = { ...samplePlace, id: 'cascade-first' };
+    const second = { ...samplePlace, id: 'cascade-second', category: 'Food' as const, latitude: 25.04, longitude: 121.57 };
+    const third = { ...samplePlace, id: 'cascade-third', latitude: 25.1, longitude: 121.6 };
+    act(() => result.current.addDay());
+    const dayId = result.current.state.days[result.current.state.days.length - 1].id;
+    act(() => {
+      [first, second, third].forEach((place) => result.current.addPlace(place));
+      [first, second, third].forEach((place, index) => result.current.move(place.id, dayId, index));
+      result.current.updateDaySchedule(dayId, { travelMode: 'walk' });
+      result.current.updateLegMode(dayId, first.id, second.id, 'car');
+      result.current.updateStopSchedule(dayId, third.id, { startTime: '18:00' });
+      result.current.updateStopSchedule(dayId, first.id, { startTime: '09:00' });
+    });
+
+    const day = result.current.state.days.find((item) => item.id === dayId)!;
+    expect(day.stopSchedules).toEqual({
+      [first.id]: { startTime: '09:00' },
+      [second.id]: { startTime: '10:35', durationMinutes: 60 },
+      [third.id]: { startTime: '18:00' },
+    });
+    const projected = projectDay(day, result.current.state.places, []).stops.map((stop) => toTime(stop.timing.start));
+    expect(projected).toEqual(['09:00', '10:35', '18:00']);
   });
 
   it('manages days (add, update label, remove, reorder)', () => {
@@ -393,7 +420,7 @@ describe('transit mutators', () => {
     act(() => result.current.saveTransitLookup(ref, lookup));
     const before = result.current.state.days[0];
     expect(resolveLeg(before, [], a, b)).toMatchObject({ minutes: 24, minutesSource: 'estimate' });
-    expect(dayWarnings(before, [a, b, c], []).get('b')).toBeUndefined();
+    expect(projectDay(before, [a, b, c], []).stops[1].warnings).toEqual([]);
 
     act(() => result.current.chooseTransitRoute(ref, 'bus:307'));
 
@@ -401,7 +428,7 @@ describe('transit mutators', () => {
     expect(after.transitByLeg?.['a:b'].chosen).toBe('bus:307');
     expect(resolveLeg(after, [], a, b)).toMatchObject({ minutes: 35, minutesSource: 'transit' });
     expect(dayLegs(after, places, [])[0].minutes).toBe(35);
-    expect(dayWarnings(after, [a, b, c], []).get('b')).toEqual(['Insufficient travel time']);
+    expect(projectDay(after, [a, b, c], []).stops[1].warnings).toEqual([{ kind: 'shortTravel', shortByMinutes: 5 }]);
     expect(nextAnchor(after, [], [a, b, c], 'a', 'b')).toMatchObject({ travelMinutes: 35, leaveAt: '09:55' });
 
     act(() => result.current.chooseTransitRoute(ref, null));
