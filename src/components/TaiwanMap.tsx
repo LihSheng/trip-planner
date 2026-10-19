@@ -12,7 +12,6 @@ import {
   Tooltip,
 } from '@mantine/core';
 import {
-  IconAlertTriangle,
   IconArrowsMaximize,
   IconArrowsMinimize,
   IconCalendar,
@@ -503,7 +502,6 @@ function MapSurface({
               <div><span>{dayMinutes.get(activeDay.id) ?? 0}</span><small>{t('minTravelLabel')}</small></div>
             </div>
           ) : null}
-          {activeDay?.routeStale ? <div className="map-route-summary__stale"><IconAlertTriangle size={14} />{t('routeStaleShort')}</div> : null}
         </Stack>
         {routeUrl ? (
           <Button
