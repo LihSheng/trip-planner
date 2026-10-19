@@ -212,6 +212,14 @@ describe('legAt', () => {
     expect(legAt(state(['from', 'other', 'to']), ref)).toBeNull();
     expect(legAt(state(['from', 'to']), { ...ref, dayId: 'missing' })).toBeNull();
   });
+
+  it('finds a bridged leg across placeholders only, as dayLegs resolves it', () => {
+    const lunch: Place = { ...from, id: 'lunch', placeholderKind: 'meal' };
+    const real: Place = { ...from, id: 'real' };
+    const withPlaces = (placeIds: string[]): TripState => ({ ...state(placeIds), places: [from, to, lunch, real] });
+    expect(legAt(withPlaces(['from', 'lunch', 'to']), ref)).toMatchObject({ from, to });
+    expect(legAt(withPlaces(['from', 'lunch', 'real', 'to']), ref)).toBeNull();
+  });
 });
 
 describe('basisMatchesStops', () => {

@@ -121,24 +121,39 @@ describe('dayTravelMinutes', () => {
   const placesById = new Map([...state.places, hotel, stay, lunch].map((item) => [item.id, item]));
   const dayTwo: TripDay = { ...state.days[1], placeIds: ['stay-1', 'shifen', 'placeholder-lunch', 'jiufen'] };
 
-  it('sums the legs the planner shows, counting the hotel stop and leaving placeholder legs at 0', () => {
+  it('sums the legs the planner shows, counting the hotel stop and bridging the placeholder', () => {
     const legs = dayLegs(dayTwo, placesById, []);
-    expect(legs.map((leg) => leg.minutes)).toEqual([85, undefined, undefined]);
-    expect(dayTravelMinutes(dayTwo, placesById, [])).toBe(85);
+    expect(legs.map((leg) => leg.minutes)).toEqual([85, undefined, 33]);
+    expect(dayTravelMinutes(dayTwo, placesById, [])).toBe(118);
   });
 
-  it('does not bridge over a placeholder', () => {
+  it('bridges a placeholder: the leg after it runs from the last real stop, the leg into it adds 0', () => {
     const placeholderDay: TripDay = { ...dayTwo, placeIds: ['shifen', 'placeholder-lunch', 'jiufen'] };
-    expect(dayTravelMinutes(placeholderDay, placesById, [])).toBe(0);
+    const legs = dayLegs(placeholderDay, placesById, []);
+    expect(legs.map((leg) => [leg.from.id, leg.to.id, leg.follows?.id, leg.minutes])).toEqual([
+      ['shifen', 'placeholder-lunch', undefined, undefined],
+      ['shifen', 'jiufen', 'placeholder-lunch', 33],
+    ]);
+    expect(dayTravelMinutes(placeholderDay, placesById, [])).toBe(33);
     expect(dayTravelMinutes({ ...dayTwo, placeIds: ['shifen', 'jiufen'] }, placesById, [])).toBe(33);
   });
 
-  it('draws only legs with real coordinates at both ends: the hotel stay leg, not the placeholder ones', () => {
+  it('bridges several placeholders in a row and adds nothing after a leading placeholder', () => {
+    const coffee = place('placeholder-coffee', 0, 0, { region: '', placeholderKind: 'coffee' });
+    const withCoffee = new Map([...placesById, [coffee.id, coffee]]);
+    const twoBreaks: TripDay = { ...dayTwo, placeIds: ['shifen', 'placeholder-lunch', 'placeholder-coffee', 'jiufen'] };
+    expect(dayLegs(twoBreaks, withCoffee, []).map((leg) => [leg.from.id, leg.minutes])).toEqual([
+      ['shifen', undefined], ['placeholder-lunch', undefined], ['shifen', 33],
+    ]);
+    expect(dayTravelMinutes({ ...dayTwo, placeIds: ['placeholder-lunch', 'jiufen'] }, placesById, [])).toBe(0);
+  });
+
+  it('draws legs with real coordinates at both ends: the hotel stay leg and the bridged leg, not the one into the placeholder', () => {
     const legs = dayLegs(dayTwo, placesById, []);
     expect(legs.map((leg) => [leg.from.id, leg.to.id, isDrawableLeg(leg)])).toEqual([
       ['stay-1', 'shifen', true],
       ['shifen', 'placeholder-lunch', false],
-      ['placeholder-lunch', 'jiufen', false],
+      ['shifen', 'jiufen', true],
     ]);
   });
 
@@ -166,6 +181,6 @@ describe('dayTravelMinutes', () => {
     const legs = dayLegs(withMissing, placesById, []);
     expect(stops.map((stop) => stop.id)).toEqual(['stay-1', 'shifen', 'placeholder-lunch', 'jiufen']);
     expect(legs).toHaveLength(stops.length - 1);
-    legs.forEach((leg, i) => expect([leg.from, leg.to]).toEqual([stops[i], stops[i + 1]]));
+    legs.forEach((leg, i) => expect([leg.follows ?? leg.from, leg.to]).toEqual([stops[i], stops[i + 1]]));
   });
 });

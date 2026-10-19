@@ -54,6 +54,11 @@ export interface ResolvedLeg {
   relationship?: LegRelationship;
   inside: boolean;
   transit: LegTransit;
+  /**
+   * Set on a bridged leg: placeholders sit between `from` (the last real stop) and `to`, and this is
+   * the placeholder the leg follows in the day.
+   */
+  follows?: Place;
 }
 
 /**
@@ -102,15 +107,29 @@ export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Plac
   };
 }
 
-/** A day's stops in order, skipping ids with no place. dayLegs(...)[i] runs from dayStops(...)[i] to dayStops(...)[i + 1]. */
+/**
+ * A day's stops in order, skipping ids with no place. dayLegs(...)[i] sits between dayStops(...)[i] and
+ * dayStops(...)[i + 1]; its `from` is stops[i] unless the leg is bridged.
+ */
 export function dayStops(day: Pick<TripDay, 'placeIds'>, placesById: Map<string, Place>): Place[] {
   return day.placeIds.flatMap((id) => { const place = placesById.get(id); return place ? [place] : []; });
 }
 
-/** Consecutive legs for a day's placeIds, skipping ids with no place. */
+/**
+ * The day's legs, the one list the planner, its header total, the map and projectDay all read.
+ * A placeholder has no location, so the traveller is still at the last real stop: the leg into a
+ * placeholder has no minutes, and the leg after it is resolved from the last real stop to the next one.
+ */
 export function dayLegs(day: TripDay, placesById: Map<string, Place>, clusters: LocationCluster[]): ResolvedLeg[] {
-  const places = dayStops(day, placesById);
-  return places.slice(1).map((place, i) => resolveLeg(day, clusters, places[i], place));
+  const stops = dayStops(day, placesById);
+  let lastReal: Place | undefined;
+  return stops.slice(1).map((to, i) => {
+    const before = stops[i];
+    if (!isPlaceholder(before)) lastReal = before;
+    return isPlaceholder(before) && lastReal && !isPlaceholder(to)
+      ? { ...resolveLeg(day, clusters, lastReal, to), follows: before }
+      : resolveLeg(day, clusters, before, to);
+  });
 }
 
 /** Total minutes over legs; a leg with unknown minutes (placeholder, cluster without a time) adds 0. */
@@ -127,7 +146,10 @@ export function dayTravelMinutes(day: TripDay, placesById: Map<string, Place>, c
   return sumLegMinutes(dayLegs(day, placesById, clusters));
 }
 
-/** A leg the map can draw: a placeholder has no real coordinates (0,0), so a leg touching one gets no line or chip. */
+/**
+ * A leg the map can draw: a placeholder has no real coordinates (0,0), so a leg touching one gets no line or chip.
+ * A bridged leg runs between two real stops, so it is drawn and its minutes stay visible next to the day total.
+ */
 export function isDrawableLeg(leg: Pick<ResolvedLeg, 'from' | 'to'>): boolean {
   return !isPlaceholder(leg.from) && !isPlaceholder(leg.to);
 }

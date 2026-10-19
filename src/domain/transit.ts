@@ -99,15 +99,22 @@ export function basisMatchesStops(basis: TransitBasis, from: Place, to: Place): 
   return movedMeters(basis.from, from) <= MOVED_STALE_METERS && movedMeters(basis.to, to) <= MOVED_STALE_METERS;
 }
 
-/** The leg `ref` names, only while both stops are still adjacent in that order on that day. */
+/**
+ * The leg `ref` names, only while both stops are still in that order on that day with nothing but
+ * placeholders between them, which is how dayLegs bridges a placeholder.
+ */
 export function legAt(state: TripState, ref: LegRef): { day: TripDay; dayIndex: number; from: Place; to: Place } | null {
   const dayIndex = state.days.findIndex((day) => day.id === ref.dayId);
   const day = state.days[dayIndex];
   if (!day) return null;
   const fromIndex = day.placeIds.indexOf(ref.fromPlaceId);
-  if (fromIndex < 0 || day.placeIds[fromIndex + 1] !== ref.toPlaceId) return null;
-  const from = state.places.find((place) => place.id === ref.fromPlaceId);
-  const to = state.places.find((place) => place.id === ref.toPlaceId);
+  const toIndex = day.placeIds.indexOf(ref.toPlaceId, fromIndex + 1);
+  if (fromIndex < 0 || toIndex < 0) return null;
+  const placesById = new Map(state.places.map((place) => [place.id, place]));
+  const between = day.placeIds.slice(fromIndex + 1, toIndex);
+  if (!between.every((id) => { const place = placesById.get(id); return place !== undefined && isPlaceholder(place); })) return null;
+  const from = placesById.get(ref.fromPlaceId);
+  const to = placesById.get(ref.toPlaceId);
   return from && to ? { day, dayIndex, from, to } : null;
 }
 

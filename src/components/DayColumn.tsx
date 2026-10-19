@@ -22,7 +22,7 @@ import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
 import { useI18n } from '../i18n';
 import { dayWarnings, scheduleFor } from '../utils/schedule';
-import { isExceptionLeg, resolveLeg, sumLegMinutes } from '../utils/routing';
+import { dayLegs, isExceptionLeg, sumLegMinutes } from '../utils/routing';
 import { DayModeChip, LegMinutesButton, TransportLegChip } from './TransportLegChip';
 import { useTransitSheet } from './TransitSheet';
 import { isPlaceholder } from '../domain/place';
@@ -113,7 +113,7 @@ export function DayColumn({
 
   const dayDefaultMode: TravelMode = day.travelMode ?? 'public';
   const [showAllLegs, setShowAllLegs] = useState(false);
-  const legs = places.slice(1).map((place, i) => resolveLeg(day, clusters, places[i], place));
+  const legs = dayLegs(day, new Map(places.map((place) => [place.id, place])), clusters);
   const legCount = legs.length;
   const totalLegMinutes = sumLegMinutes(legs);
 
