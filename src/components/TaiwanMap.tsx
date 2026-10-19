@@ -30,7 +30,7 @@ import type { CurrentLocation } from '../hooks/useCurrentLocation';
 import { formatTripDate } from '../utils/date';
 import { categoryLabel, useI18n } from '../i18n';
 import { ghostPathOptions, googleMapsRouteUrl, legModeColor, legPathOptions, markerColors, timeRange } from '../utils/mapPresentation';
-import { dayLegs, dayStops, dayTravelMinutes, isDrawableLeg } from '../utils/routing';
+import { dayLegs, dayStops, dayTravelMinutes, isDrawableLeg, viewportPlaces } from '../utils/routing';
 import { MapLegChips } from './MapLegChips';
 import { MapPlaceCard } from './MapPlaceCard';
 import { MapStopTimeline } from './MapStopTimeline';
@@ -260,7 +260,10 @@ function MapSurface({
   const itineraryPlacesById = useMemo(() => new Map(itineraryPlaces.map((place) => [place.id, place])), [itineraryPlaces]);
   // Every stop the active day lists, placeholders and hotel-stay copies included, so legs match the planner.
   // legs[i] runs from stops[i] to stops[i + 1]; markers stay on routePlaces.
-  const stops = useMemo(() => (activeDay ? dayStops(activeDay, itineraryPlacesById) : []), [activeDay, itineraryPlacesById]);
+  const activePlaceIds = activeDay?.placeIds;
+  // Keyed on placeIds, not the day, so changing a leg's mode does not refit the viewport.
+  const stops = useMemo(() => (activePlaceIds ? dayStops({ placeIds: activePlaceIds }, itineraryPlacesById) : []), [activePlaceIds, itineraryPlacesById]);
+  const fitPlaces = useMemo(() => viewportPlaces(visiblePlaces, stops), [visiblePlaces, stops]);
   const legs = useMemo(() => (activeDay ? dayLegs(activeDay, itineraryPlacesById, clusters) : []), [activeDay, itineraryPlacesById, clusters]);
   const drawnLegs = useMemo(() => legs.filter(isDrawableLeg), [legs]);
   const dayMinutes = useMemo(
@@ -300,7 +303,7 @@ function MapSurface({
     <Paper withBorder radius={expanded ? 0 : 'lg'} className={`map-shell${expanded ? ' map-shell--expanded' : ''}${showTimeline ? ' map-shell--with-timeline' : ''}${cardPlace ? ' map-shell--card-open' : ''}`}>
       <MapContainer center={[23.8, 120.95]} zoom={7} minZoom={6} scrollWheelZoom className="taiwan-map">
         <MapSizeController expanded={expanded} />
-        <MapViewportController activeView={activeView} visiblePlaces={visiblePlaces} selectedPlace={selectedPlace} cardOpen={Boolean(cardPlace)} fitRequest={fitRequest} />
+        <MapViewportController activeView={activeView} visiblePlaces={fitPlaces} selectedPlace={selectedPlace} cardOpen={Boolean(cardPlace)} fitRequest={fitRequest} />
         <TileLayer
           key={useOpenStreetMapFallback ? 'osm-fallback' : 'geoapify-primary'}
           attribution={

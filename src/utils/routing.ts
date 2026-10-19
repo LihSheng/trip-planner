@@ -103,7 +103,7 @@ export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Plac
 }
 
 /** A day's stops in order, skipping ids with no place. dayLegs(...)[i] runs from dayStops(...)[i] to dayStops(...)[i + 1]. */
-export function dayStops(day: TripDay, placesById: Map<string, Place>): Place[] {
+export function dayStops(day: Pick<TripDay, 'placeIds'>, placesById: Map<string, Place>): Place[] {
   return day.placeIds.flatMap((id) => { const place = placesById.get(id); return place ? [place] : []; });
 }
 
@@ -130,4 +130,15 @@ export function dayTravelMinutes(day: TripDay, placesById: Map<string, Place>, c
 /** A leg the map can draw: a placeholder has no real coordinates (0,0), so a leg touching one gets no line or chip. */
 export function isDrawableLeg(leg: Pick<ResolvedLeg, 'from' | 'to'>): boolean {
   return !isPlaceholder(leg.from) && !isPlaceholder(leg.to);
+}
+
+/**
+ * Places the map fits its viewport to: the markers plus any stop a drawn leg ends at that has no marker
+ * (a hotel-stay copy). Returns `markers` itself when nothing is added, so the map does not refit needlessly.
+ */
+export function viewportPlaces(markers: Place[], stops: Place[]): Place[] {
+  const markerIds = new Set(markers.map((place) => place.id));
+  const legEnds = stops.filter((stop, i) => !markerIds.has(stop.id)
+    && [stops[i - 1], stops[i + 1]].some((neighbour) => neighbour && isDrawableLeg({ from: stop, to: neighbour })));
+  return legEnds.length ? [...markers, ...legEnds] : markers;
 }

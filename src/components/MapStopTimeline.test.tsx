@@ -62,6 +62,18 @@ describe('MapStopTimeline', () => {
     expect(stopLegs[0].minutes).toBeGreaterThan(0);
   });
 
+  it('shows the translated label for a placeholder still named after its kind, and a custom name as is', () => {
+    const meal: Place = { ...place('placeholder-meal', 'meal', 0, 0), placeholderKind: 'meal' };
+    const renamed: Place = { ...place('placeholder-coffee', 'Bakery run', 0, 0), placeholderKind: 'coffee' };
+    const stops = [places[0], meal, renamed];
+    const stopDay = { ...day, placeIds: stops.map((stop) => stop.id) } as TripDay;
+    setup(null, [], vi.fn(), { day: stopDay, places: stops, legs: dayLegs(stopDay, new Map(stops.map((stop) => [stop.id, stop])), []) });
+
+    expect(screen.getByText('Lunch / dinner — undecided')).toBeDefined();
+    expect(screen.getByText('Bakery run')).toBeDefined();
+    expect(screen.queryByText('meal')).toBeNull();
+  });
+
   it('marks selected and visited stops', () => {
     setup('b', ['c']);
     expect(stop('Bravo').className).toContain('map-stop-timeline__stop--selected');
