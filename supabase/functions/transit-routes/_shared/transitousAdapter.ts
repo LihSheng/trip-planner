@@ -1,4 +1,4 @@
-export type TransitStepKindV1 = 'walk' | 'bus' | 'metro' | 'tra' | 'thsr' | 'lightRail' | 'ferry' | 'cableCar' | 'other';
+export type TransitStepKindV1 = 'walk' | 'bus' | 'tram' | 'metro' | 'rail' | 'highSpeedRail' | 'ferry' | 'cableCar' | 'other';
 
 export interface TransitStepV1 {
   kind: TransitStepKindV1;
@@ -36,14 +36,14 @@ const KIND_BY_MODE: Readonly<Record<string, TransitStepKindV1>> = {
   COACH: 'bus',
   SUBWAY: 'metro',
   METRO: 'metro',
-  HIGHSPEED_RAIL: 'thsr',
-  RAIL: 'tra',
-  REGIONAL_RAIL: 'tra',
-  REGIONAL_FAST_RAIL: 'tra',
-  LONG_DISTANCE: 'tra',
-  NIGHT_RAIL: 'tra',
-  SUBURBAN: 'tra',
-  TRAM: 'lightRail',
+  HIGHSPEED_RAIL: 'highSpeedRail',
+  RAIL: 'rail',
+  REGIONAL_RAIL: 'rail',
+  REGIONAL_FAST_RAIL: 'rail',
+  LONG_DISTANCE: 'rail',
+  NIGHT_RAIL: 'rail',
+  SUBURBAN: 'rail',
+  TRAM: 'tram',
   FERRY: 'ferry',
   AERIAL_LIFT: 'cableCar',
   AREAL_LIFT: 'cableCar',

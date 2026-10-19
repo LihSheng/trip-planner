@@ -42,14 +42,14 @@ test('Taipei to Kaohsiung: the later THSR departure collapses into the faster on
     minutes: 119,
     steps: [
       { kind: 'walk', minutes: 4, distanceMeters: 1091 },
-      // The TDX feed tags THSR as REGIONAL_RAIL, so it reads as 'tra'.
-      { kind: 'tra', minutes: 94, line: '南港-左營', fromStop: '台北', toStop: '左營', stopCount: 3 },
+      // The TDX feed tags THSR as REGIONAL_RAIL, so it reads as 'rail'.
+      { kind: 'rail', minutes: 94, line: '南港-左營', fromStop: '台北', toStop: '左營', stopCount: 3 },
       { kind: 'walk', minutes: 2, distanceMeters: 583 },
       { kind: 'metro', minutes: 11, line: '紅線', fromStop: '左營', toStop: '高雄車站', stopCount: 5 },
       { kind: 'walk', minutes: 3, distanceMeters: 281 },
     ],
   });
-  assert.deepEqual(options.slice(1).map(rides), [['tra:七堵-潮州'], ['tra:基隆-潮州'], ['bus:1838A']]);
+  assert.deepEqual(options.slice(1).map(rides), [['rail:七堵-潮州'], ['rail:基隆-潮州'], ['bus:1838A']]);
   assert.equal(options[2].steps[1].stopCount, 18);
 });
 
@@ -57,8 +57,8 @@ test('Shinjuku to Asakusa: eleven itineraries are capped at five, long-name-only
   const { options, dropped } = adaptTransitousPlan(fixture('tokyo-shinjuku-asakusa'));
   assert.equal(dropped, 0);
   assert.deepEqual(options.map((option) => option.minutes), [32, 33, 33, 34, 34]);
-  assert.deepEqual(rides(options[0]), ['tra:JC', 'tra:9454341', 'tra:TX']);
-  assert.deepEqual(rides(options[4]), ['tra:JC', 'tra:9957081', 'metro:浅草線', 'bus:都０８（Ｔ０８）']);
+  assert.deepEqual(rides(options[0]), ['rail:JC', 'rail:9454341', 'rail:TX']);
+  assert.deepEqual(rides(options[4]), ['rail:JC', 'rail:9957081', 'metro:浅草線', 'bus:都０８（Ｔ０８）']);
   assert.deepEqual(options[4].steps[5], { kind: 'metro', minutes: 2, line: '浅草線', fromStop: '浅草橋', toStop: '浅草', stopCount: 2 });
 });
 
@@ -75,8 +75,8 @@ test('Eiffel Tower to the Louvre: three departures of bus 72 become one option',
   });
   assert.deepEqual(options.slice(1).map(rides), [
     ['bus:42', 'metro:1'],
-    ['tra:C', 'metro:8', 'metro:1'],
-    ['tra:C', 'metro:13', 'metro:1'],
+    ['rail:C', 'metro:8', 'metro:1'],
+    ['rail:C', 'metro:13', 'metro:1'],
   ]);
 });
 
@@ -128,6 +128,6 @@ test('throws AdapterShapeError only when nothing usable came back', () => {
 test('maps MOTIS modes through one table, unknown modes become other', () => {
   assert.deepEqual(
     ['WALK', 'BUS', 'COACH', 'SUBWAY', 'METRO', 'HIGHSPEED_RAIL', 'REGIONAL_RAIL', 'RAIL', 'LONG_DISTANCE', 'NIGHT_RAIL', 'REGIONAL_FAST_RAIL', 'SUBURBAN', 'TRAM', 'FERRY', 'AERIAL_LIFT', 'FUNICULAR', 'AIRPLANE', 'HOVERCRAFT', 'constructor'].map(kindForMode),
-    ['walk', 'bus', 'bus', 'metro', 'metro', 'thsr', 'tra', 'tra', 'tra', 'tra', 'tra', 'tra', 'lightRail', 'ferry', 'cableCar', 'cableCar', 'other', 'other', 'other'],
+    ['walk', 'bus', 'bus', 'metro', 'metro', 'highSpeedRail', 'rail', 'rail', 'rail', 'rail', 'rail', 'rail', 'tram', 'ferry', 'cableCar', 'cableCar', 'other', 'other', 'other'],
   );
 });
