@@ -35,7 +35,7 @@ function rect(left: number, top: number, width: number, height: number) {
 // The desktop planner as the demo trip renders it at 1440px: rail on the left, the open day's full-width
 // cards in the middle, Unscheduled on the right. The drag preview is a small chip at the card's top-left.
 function layout(element: Element): DOMRect {
-  const indexIn = (selector: string) => [...document.querySelectorAll(selector)].indexOf(element);
+  const indexIn = (selector: string, target: Element = element) => [...document.querySelectorAll(selector)].indexOf(target);
   if (element.matches('.place-card--preview')) {
     const overlay = element.parentElement as HTMLElement;
     return rect(parseFloat(overlay.style.left), parseFloat(overlay.style.top), 250, 44);
@@ -43,7 +43,9 @@ function layout(element: Element): DOMRect {
   if (element.matches('.day-rail__item')) return rect(40, 230 + 61 * indexIn('.day-rail__item'), 236, 57);
   if (element.matches('.day-column--unscheduled')) return rect(1160, 100, 230, 400);
   if (element.matches('.day-column--focus')) return rect(300, 100, 820, 760);
-  if (element.matches('.day-column--focus .place-card')) return rect(314, 272 + 120 * indexIn('.day-column--focus .place-card'), 788, 92);
+  // Each stop's card, or the timeline row wrapping it, is one full-width slot.
+  const stop = element.matches('.place-card, .timeline-stop') ? element.closest('.day-column--focus .planner-place') : null;
+  if (stop) return rect(314, 272 + 120 * indexIn('.day-column--focus .planner-place', stop), 788, 92);
   if (element.matches('.place-card-row')) return rect(1170, 140 + 40 * indexIn('.place-card-row'), 210, 32);
   return rect(0, 0, 0, 0);
 }
