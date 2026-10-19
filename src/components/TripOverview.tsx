@@ -4,7 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Box, Paper, Stack, Text, UnstyledButton } from '@mantine/core';
 import { IconChevronRight, IconCoffee, IconSun, IconToolsKitchen } from '@tabler/icons-react';
 import type { Place, TripDay } from '../types';
-import { useI18n } from '../i18n';
+import { placeName, useI18n } from '../i18n';
 import { formatTripDate } from '../utils/date';
 import { isPlaceholder } from '../domain/place';
 import { categoryIcons } from './PlaceCard';
@@ -66,11 +66,6 @@ function OverviewDayCard({ day, index, dateLabel, places, lodgingLabel, flexible
   });
   const dayName = t('day', { number: index + 1 });
 
-  function stopName(place: Place) {
-    if (!isPlaceholder(place) || place.name !== place.placeholderKind) return place.name;
-    return place.placeholderKind === 'meal' ? t('lunchDinner') : place.placeholderKind === 'coffee' ? t('coffeeBreak') : place.placeholderKind === 'free-time' ? t('freeTime') : t('customStop');
-  }
-
   return (
     <Paper
       ref={setNodeRef}
@@ -109,7 +104,7 @@ function OverviewDayCard({ day, index, dateLabel, places, lodgingLabel, flexible
             <div key={place.id} className="trip-overview__stop">
               {startTime ? <Text component="span" size="xs" fw={700} className="trip-overview__time">{startTime}</Text> : null}
               <Icon size={15} className={`place-card__icon place-card__icon--${placeholder ? 'placeholder' : place.category.toLowerCase()}`} />
-              <Text component="span" size="sm" fw={600} lineClamp={1}>{stopName(place)}</Text>
+              <Text component="span" size="sm" fw={600} lineClamp={1}>{placeName(t, place)}</Text>
             </div>
           );
         }) : (

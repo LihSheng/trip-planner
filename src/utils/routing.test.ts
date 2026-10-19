@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createInitialState } from '../data/seed';
 import type { LocationCluster, Place, TripDay } from '../types';
 import type { SavedLegTransit, TransitOption } from '../domain/transit';
-import { dayLegs, dayTravelMinutes, resolveLeg } from './routing';
+import { dayLegs, dayStops, dayTravelMinutes, isDrawableLeg, resolveLeg, viewportPlaces } from './routing';
 
 const day: TripDay = { id: 'day-1', label: 'Day 1', placeIds: ['a', 'b'], travelMode: 'public' };
 
@@ -131,5 +131,41 @@ describe('dayTravelMinutes', () => {
     const placeholderDay: TripDay = { ...dayTwo, placeIds: ['shifen', 'placeholder-lunch', 'jiufen'] };
     expect(dayTravelMinutes(placeholderDay, placesById, [])).toBe(0);
     expect(dayTravelMinutes({ ...dayTwo, placeIds: ['shifen', 'jiufen'] }, placesById, [])).toBe(33);
+  });
+
+  it('draws only legs with real coordinates at both ends: the hotel stay leg, not the placeholder ones', () => {
+    const legs = dayLegs(dayTwo, placesById, []);
+    expect(legs.map((leg) => [leg.from.id, leg.to.id, isDrawableLeg(leg)])).toEqual([
+      ['stay-1', 'shifen', true],
+      ['shifen', 'placeholder-lunch', false],
+      ['placeholder-lunch', 'jiufen', false],
+    ]);
+  });
+
+  it('fits the viewport to the hotel end of a drawn leg even though the stay has no marker', () => {
+    const shifen = placesById.get('shifen')!;
+    const jiufen = placesById.get('jiufen')!;
+    const ids = (list: Place[]) => list.map((item) => item.id);
+    // [stay, Shifen]: the only marker is Shifen, but the stay -> Shifen line is drawn.
+    expect(ids(viewportPlaces([shifen], [stay, shifen]))).toEqual(['shifen', 'stay-1']);
+    // Seed day 2: the stay is added, the meal placeholder (0,0) never is.
+    expect(ids(viewportPlaces([shifen, jiufen], dayStops(dayTwo, placesById)))).toEqual(['shifen', 'jiufen', 'stay-1']);
+    // A stay next to a placeholder only has no drawn leg, so nothing pulls the view to it.
+    expect(ids(viewportPlaces([jiufen], [stay, lunch, jiufen]))).toEqual(['jiufen']);
+  });
+
+  it('returns the marker list itself when no leg end is missing, so the map does not refit', () => {
+    const markers = [placesById.get('shifen')!, placesById.get('jiufen')!];
+    expect(viewportPlaces(markers, markers)).toBe(markers);
+    expect(viewportPlaces(markers, [])).toBe(markers);
+  });
+
+  it('pairs legs with stops, skipping ids with no place', () => {
+    const withMissing: TripDay = { ...dayTwo, placeIds: ['stay-1', 'gone', 'shifen', 'placeholder-lunch', 'jiufen'] };
+    const stops = dayStops(withMissing, placesById);
+    const legs = dayLegs(withMissing, placesById, []);
+    expect(stops.map((stop) => stop.id)).toEqual(['stay-1', 'shifen', 'placeholder-lunch', 'jiufen']);
+    expect(legs).toHaveLength(stops.length - 1);
+    legs.forEach((leg, i) => expect([leg.from, leg.to]).toEqual([stops[i], stops[i + 1]]));
   });
 });
