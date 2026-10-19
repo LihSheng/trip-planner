@@ -1590,18 +1590,6 @@ select {
   text-transform: uppercase;
 }
 
-.map-route-summary__stale {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  color: #8a5a00;
-  background: #fff3d6;
-  font-size: 11.5px;
-  font-weight: 600;
-}
-
 .map-stop-timeline {
   position: absolute;
   z-index: 700;
@@ -1810,10 +1798,6 @@ select {
 
   .map-route-summary__stats {
     display: none;
-  }
-
-  .map-route-summary__stale {
-    flex: 0 1 auto;
   }
 
   .map-stop-timeline {

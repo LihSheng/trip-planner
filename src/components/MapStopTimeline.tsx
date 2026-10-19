@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, type CSSProperties } from 'react';
 import { Text } from '@mantine/core';
 import type { Place, TripDay } from '../types';
-import { useI18n } from '../i18n';
+import { placeName, useI18n } from '../i18n';
 import { legModeColor, markerColors, timeRange } from '../utils/mapPresentation';
 import type { ResolvedLeg } from '../utils/routing';
 import { transportIcon } from './transportIcons';
@@ -45,7 +45,7 @@ export function MapStopTimeline({ day, places, legs, selectedId, visitedPlaceIds
               <Text size="xs" c="dimmed" ff="monospace">{range === 'No fixed time' ? t('noFixedTime') : range}</Text>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                 <span style={{ flex: '0 0 18px', width: 18, height: 18, borderRadius: '50%', background: markerColors[place.category], color: '#fff', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{index + 1}</span>
-                <Text size="sm" fw={600} lineClamp={1} className="map-stop-timeline__name">{place.name}</Text>
+                <Text size="sm" fw={600} lineClamp={1} className="map-stop-timeline__name">{placeName(t, place)}</Text>
               </span>
             </button>
             {index < places.length - 1 && leg ? (

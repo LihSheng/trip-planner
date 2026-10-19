@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import type { SavedLegTransit } from '../domain/transit';
 import type { Place } from '../types';
 import { useTripState } from './useTripState';
 
@@ -313,5 +314,24 @@ describe('useTripState', () => {
     expect(result.current.state.days[1].placeIds).toEqual(['shifen', 'alishan', 'jiufen']);
     expect(result.current.state.unscheduledIds).not.toContain('alishan');
     expect(result.current.state.flexibleWindows).toBeUndefined();
+  });
+
+  it('drops a saved transit route once one of its stops leaves the day', () => {
+    const { result } = renderHook(() => useTripState(false));
+    const route: SavedLegTransit = {
+      provider: 'mock',
+      fetchedAt: '2026-10-19T01:00:00.000Z',
+      basis: { from: { lat: 25, lng: 121.5 }, to: { lat: 25.1, lng: 121.6 }, departAt: '2026-10-20T10:00:00+08:00' },
+      options: [],
+    };
+    act(() => result.current.setState((current) => ({
+      ...current,
+      days: current.days.map((day) => day.id === 'day-2' ? { ...day, transitByLeg: { 'shifen:jiufen': route } } : day),
+    })));
+    expect(result.current.state.days[1].transitByLeg).toEqual({ 'shifen:jiufen': route });
+
+    act(() => result.current.removePlace('jiufen'));
+
+    expect(result.current.state.days[1].transitByLeg).toEqual({});
   });
 });
