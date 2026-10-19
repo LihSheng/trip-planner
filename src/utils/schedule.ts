@@ -44,60 +44,6 @@ export function plannedLeaveMinutes(day: TripDay, place: Place): number | null {
   return startsAt === null ? null : startsAt + (schedule.durationMinutes ?? defaultDuration(place.category));
 }
 
-export function dayWarnings(day: TripDay, places: Place[], clusters: LocationCluster[]) {
-  const warnings = new Map<string, string[]>();
-  const legs = places.slice(1).map((place, i) => resolveLeg(day, clusters, places[i], place));
-  let previous: { index: number; endsAt: number } | null = null;
-
-  for (const [index, place] of places.entries()) {
-    const schedule = scheduleFor(day, place);
-    const startsAt = toMinutes(schedule.startTime);
-    if (startsAt === null) continue;
-    const duration = schedule.durationMinutes ?? defaultDuration(place.category);
-    const closesAt = toMinutes(place.openingHours?.closesAt);
-    const opensAt = toMinutes(place.openingHours?.opensAt);
-    const placeWarnings: string[] = [];
-    if ((opensAt !== null && startsAt < opensAt) || (closesAt !== null && startsAt + duration > closesAt)) placeWarnings.push('Outside opening hours');
-    if (previous) {
-      const travel = legs.slice(previous.index, index).reduce((total, leg) => total + (leg.minutes ?? 0), 0);
-      if (startsAt < previous.endsAt + travel) placeWarnings.push('Insufficient travel time');
-    }
-    if (placeWarnings.length) warnings.set(place.id, placeWarnings);
-    previous = { index, endsAt: startsAt + duration };
-  }
-
-  return warnings;
-}
-
-export function dayWarningCount(day: TripDay, places: Place[], clusters: LocationCluster[]) {
-  return [...dayWarnings(day, places, clusters).values()].reduce((total, warnings) => total + warnings.length, 0);
-}
-
-/**
- * Fills start times for the untimed stops after `fromPlaceId`, chaining stop durations and resolved
- * leg minutes, and stops at the next stop that already has a time.
- */
-export function cascadeStartTimes(day: TripDay, placesById: Map<string, Place>, clusters: LocationCluster[], fromPlaceId: string): TripDay {
-  const startIndex = day.placeIds.indexOf(fromPlaceId);
-  let previousPlace = placesById.get(fromPlaceId);
-  const fromStart = toMinutes(day.stopSchedules?.[fromPlaceId]?.startTime);
-  if (startIndex < 0 || !previousPlace || fromStart === null) return day;
-
-  const stopSchedules = { ...day.stopSchedules };
-  let nextStart = fromStart + (stopSchedules[fromPlaceId]?.durationMinutes ?? defaultDuration(previousPlace.category));
-  for (const nextPlaceId of day.placeIds.slice(startIndex + 1)) {
-    const nextPlace = placesById.get(nextPlaceId);
-    if (!nextPlace) continue;
-    nextStart += resolveLeg(day, clusters, previousPlace, nextPlace).minutes ?? 0;
-    if (stopSchedules[nextPlaceId]?.startTime) break;
-    const durationMinutes = stopSchedules[nextPlaceId]?.durationMinutes ?? defaultDuration(nextPlace.category);
-    stopSchedules[nextPlaceId] = { ...stopSchedules[nextPlaceId], startTime: toTime(nextStart), durationMinutes };
-    nextStart += durationMinutes;
-    previousPlace = nextPlace;
-  }
-  return { ...day, stopSchedules };
-}
-
 export type NextAnchor =
   | {
     kind: 'leaveBy'; leaveAt: string; arriveBy: string; travelMinutes: number; mode: TravelMode; toPlaceId: string;

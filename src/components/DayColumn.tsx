@@ -21,8 +21,9 @@ import type { DayTask, LocationCluster, PlaceholderKind, Place, StopSchedule, Tr
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
 import { useI18n } from '../i18n';
-import { dayWarnings, scheduleFor } from '../utils/schedule';
-import { dayLegs, isExceptionLeg, sumLegMinutes } from '../utils/routing';
+import { scheduleFor } from '../utils/schedule';
+import { isExceptionLeg, sumLegMinutes } from '../utils/routing';
+import { projectDay, type ScheduleWarning } from '../utils/dayProjection';
 import { DayModeChip, LegMinutesButton, TransportLegChip } from './TransportLegChip';
 import { useTransitSheet } from './TransitSheet';
 import { isPlaceholder } from '../domain/place';
@@ -107,13 +108,14 @@ export function DayColumn({
   const dayName = t('day', { number: index + 1 });
   const visitedCount = places.filter((place) => visitedPlaceIds.includes(place.id)).length;
   const allPlacesVisited = places.length > 0 && visitedCount === places.length;
-  const warningsByPlace = day.timeManagementEnabled ? dayWarnings(day, places, clusters) : new Map<string, string[]>();
-  const warningCount = [...warningsByPlace.values()].reduce((total, warnings) => total + warnings.length, 0);
+  const projection = projectDay(day, places, clusters);
+  const warningText = (warning: ScheduleWarning) => warning.kind === 'outsideHours' ? t('outsideOpeningHours') : t('shortTravelBy', { minutes: warning.shortByMinutes });
+  const warningCount = day.timeManagementEnabled ? projection.stops.reduce((total, stop) => total + stop.warnings.length, 0) : 0;
   const incompleteTaskCount = tasks.filter((task) => !task.completed).length;
 
   const dayDefaultMode: TravelMode = day.travelMode ?? 'public';
   const [showAllLegs, setShowAllLegs] = useState(false);
-  const legs = dayLegs(day, new Map(places.map((place) => [place.id, place])), clusters);
+  const legs = projection.legs;
   const legCount = legs.length;
   const totalLegMinutes = sumLegMinutes(legs);
 
@@ -279,7 +281,7 @@ export function DayColumn({
                   onRename={!readOnly && isPlaceholder(place) ? (target) => { setRenameTarget(target); setRenameLabel(target.name === target.placeholderKind ? '' : target.name); } : undefined}
                   schedule={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] ? scheduleFor(day, place) : undefined}
                   travelMinutes={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 ? legs[placeIndex - 1].minutes : undefined}
-                  warnings={readOnly ? undefined : warningsByPlace.get(place.id)}
+                  warnings={readOnly || !day.timeManagementEnabled ? undefined : projection.stops[placeIndex].warnings.map(warningText)}
                   onScheduleChange={!readOnly && day.timeManagementEnabled ? (updates) => onStopScheduleChange(day.id, place.id, updates) : undefined}
                   onEnableSchedule={!readOnly && day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
                   clusterLabel={cluster?.name}
