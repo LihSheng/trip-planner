@@ -4,6 +4,7 @@ import {
   closestCorners,
   DndContext,
   DragOverlay,
+  KeyboardCode,
   KeyboardSensor,
   PointerSensor,
   TouchSensor,
@@ -13,8 +14,11 @@ import {
   type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
+  type DroppableContainer,
+  type KeyboardCoordinateGetter,
+  type UniqueIdentifier,
 } from '@dnd-kit/core';
-import { rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { hasSortableData, rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Box, Button, Group, Modal, Stack, Text } from '@mantine/core';
 import type { ContainerId, PlaceholderKind, Place, StopSchedule, TravelMode, TripState } from '../types';
 import { findContainer, getContainerItems } from '../utils/itinerary';
@@ -45,6 +49,28 @@ function isDayDragId(id: string) {
 function dayIdFromDragId(id: string) {
   return id.replace(/^(day|overview):/, '');
 }
+
+// Arrow keys jump to the droppable with the nearest corners, measured from the drag preview. The preview is a
+// small chip, so the narrow rail rows beside a day look nearer than the full-width card above, and ArrowUp used
+// to send a stop to another day. Up and Down therefore stay in the list the drag is over (the day's stops, or the
+// rail's days); Left and Right still cross between the rail, the open day and Unscheduled.
+const plannerKeyboardCoordinates: KeyboardCoordinateGetter = (event, args) => {
+  const { active, over, droppableContainers } = args.context;
+  if (active && (event.code === KeyboardCode.Up || event.code === KeyboardCode.Down)) {
+    const listOf = (id: UniqueIdentifier | undefined) => {
+      const container = id === undefined ? undefined : droppableContainers.get(id);
+      return container && hasSortableData(container) ? container.data.current.sortable.containerId : undefined;
+    };
+    const list = listOf(over?.id) ?? listOf(active.id);
+    if (list !== undefined) {
+      // dnd-kit doesn't export its container map, so build a narrowed one from the same class.
+      const ContainerMap = droppableContainers.constructor as new (entries: Iterable<[UniqueIdentifier, DroppableContainer]>) => typeof droppableContainers;
+      const inList = new ContainerMap([...droppableContainers].filter(([id]) => id === active.id || listOf(id) === list));
+      return sortableKeyboardCoordinates(event, { ...args, context: { ...args.context, droppableContainers: inList } });
+    }
+  }
+  return sortableKeyboardCoordinates(event, args);
+};
 
 interface PlannerBoardProps {
   selectedId: string | null;
@@ -119,7 +145,7 @@ export function PlannerBoard({
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     // Handle-less overview cards start touch drags on press-and-hold so a swipe still scrolls the page.
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, { coordinateGetter: plannerKeyboardCoordinates }),
   );
 
   const activePlace = activeId && !isDayDragId(activeId) ? placesById.get(activeId) : undefined;
@@ -240,7 +266,15 @@ export function PlannerBoard({
       return underPointer.length ? underPointer : closestCenter({ ...args, droppableContainers: dayTargets });
     }
     const underPointer = pointerWithin(args);
-    return underPointer.length ? underPointer : closestCorners(args);
+    if (underPointer.length) return underPointer;
+    // Keyboard drags have no pointer. The arrow keys park the preview on their target, so take whatever is under
+    // its centre; closest corners would again favour the rail rows over the stop the preview sits on.
+    if (!args.pointerCoordinates) {
+      const { left, top, width, height } = args.collisionRect;
+      const underPreview = pointerWithin({ ...args, pointerCoordinates: { x: left + width / 2, y: top + height / 2 } });
+      if (underPreview.length) return underPreview;
+    }
+    return closestCorners(args);
   };
 
   function handleDragStart(event: DragStartEvent) {
