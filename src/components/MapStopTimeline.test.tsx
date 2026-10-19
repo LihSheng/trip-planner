@@ -9,7 +9,9 @@ import { MapStopTimeline } from './MapStopTimeline';
 const place = (id: string, name: string, latitude = 25, longitude = 121): Place => ({ id, name, region: 'Taipei', category: 'Landmark', latitude, longitude, notes: '' });
 const places = [place('a', 'Alpha'), place('b', 'Bravo'), place('c', 'Charlie')];
 const day = { id: 'd1', label: 'Day 1', placeIds: ['a', 'b', 'c'], stopSchedules: { a: { startTime: '09:00' } } } as unknown as TripDay;
-const leg = (from: Place, to: Place, minutes: number): ResolvedLeg => ({ from, to, legMode: 'default', mode: 'walk', minutes, inside: false });
+const leg = (from: Place, to: Place, minutes: number): ResolvedLeg => ({
+  from, to, key: `${from.id}:${to.id}`, legMode: 'default', mode: 'walk', minutes, minutesSource: 'estimate', inside: false, transit: { status: 'ineligible' },
+});
 const legs = [leg(places[0], places[1], 12), leg(places[1], places[2], 25)];
 const stop = (name: string) => screen.getByText(name).closest('button')!;
 

@@ -1,5 +1,4 @@
 import type { LocationCluster, Place, PlaceCategory, StopSchedule, TravelMode, TripDay } from '../types';
-import { isPlaceholder } from '../domain/place';
 import { resolveLeg } from './routing';
 
 const DEFAULT_DURATIONS: Record<PlaceCategory, number> = {
@@ -13,15 +12,6 @@ const DEFAULT_DURATIONS: Record<PlaceCategory, number> = {
   Airport: 90,
   Station: 30,
   Transit: 30,
-};
-
-const TRAVEL_SPEEDS_KMH: Record<TravelMode, number> = {
-  public: 24,
-  walk: 4.5,
-  bike: 14,
-  car: 45,
-  taxi: 42,
-  other: 20,
 };
 
 export function defaultDuration(category: PlaceCategory) {
@@ -39,22 +29,6 @@ export function toTime(minutes: number) {
   return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
 }
 
-function distanceKm(from: Place, to: Place) {
-  const radians = Math.PI / 180;
-  const latitudeDelta = (to.latitude - from.latitude) * radians;
-  const longitudeDelta = (to.longitude - from.longitude) * radians;
-  const latitude = from.latitude * radians;
-  const targetLatitude = to.latitude * radians;
-  const value = Math.sin(latitudeDelta / 2) ** 2 + Math.cos(latitude) * Math.cos(targetLatitude) * Math.sin(longitudeDelta / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
-}
-
-export function estimateTravelMinutes(from: Place, to: Place, mode: TravelMode = 'public') {
-  if (isPlaceholder(from) || isPlaceholder(to)) return 0;
-  const roadFactor = mode === 'walk' ? 1.15 : 1.3;
-  return Math.max(5, Math.round((distanceKm(from, to) * roadFactor / TRAVEL_SPEEDS_KMH[mode]) * 60));
-}
-
 export function scheduleFor(day: TripDay, place: Place): StopSchedule {
   return {
     durationMinutes: defaultDuration(place.category),
@@ -62,11 +36,19 @@ export function scheduleFor(day: TripDay, place: Place): StopSchedule {
   };
 }
 
-export function dayWarnings(day: TripDay, places: Place[]) {
-  const warnings = new Map<string, string[]>();
-  let previous: { place: Place; endsAt: number } | null = null;
+/** The stop's planned leave time in minutes of day, or null when it has no start time. */
+export function plannedLeaveMinutes(day: TripDay, place: Place): number | null {
+  const schedule = scheduleFor(day, place);
+  const startsAt = toMinutes(schedule.startTime);
+  return startsAt === null ? null : startsAt + (schedule.durationMinutes ?? defaultDuration(place.category));
+}
 
-  for (const place of places) {
+export function dayWarnings(day: TripDay, places: Place[], clusters: LocationCluster[]) {
+  const warnings = new Map<string, string[]>();
+  const legs = places.slice(1).map((place, i) => resolveLeg(day, clusters, places[i], place));
+  let previous: { index: number; endsAt: number } | null = null;
+
+  for (const [index, place] of places.entries()) {
     const schedule = scheduleFor(day, place);
     const startsAt = toMinutes(schedule.startTime);
     if (startsAt === null) continue;
@@ -75,16 +57,44 @@ export function dayWarnings(day: TripDay, places: Place[]) {
     const opensAt = toMinutes(place.openingHours?.opensAt);
     const placeWarnings: string[] = [];
     if ((opensAt !== null && startsAt < opensAt) || (closesAt !== null && startsAt + duration > closesAt)) placeWarnings.push('Outside opening hours');
-    if (previous && startsAt < previous.endsAt + estimateTravelMinutes(previous.place, place, day.travelMode)) placeWarnings.push('Insufficient travel time');
+    if (previous) {
+      const travel = legs.slice(previous.index, index).reduce((total, leg) => total + (leg.minutes ?? 0), 0);
+      if (startsAt < previous.endsAt + travel) placeWarnings.push('Insufficient travel time');
+    }
     if (placeWarnings.length) warnings.set(place.id, placeWarnings);
-    previous = { place, endsAt: startsAt + duration };
+    previous = { index, endsAt: startsAt + duration };
   }
 
   return warnings;
 }
 
-export function dayWarningCount(day: TripDay, places: Place[]) {
-  return [...dayWarnings(day, places).values()].reduce((total, warnings) => total + warnings.length, 0);
+export function dayWarningCount(day: TripDay, places: Place[], clusters: LocationCluster[]) {
+  return [...dayWarnings(day, places, clusters).values()].reduce((total, warnings) => total + warnings.length, 0);
+}
+
+/**
+ * Fills start times for the untimed stops after `fromPlaceId`, chaining stop durations and resolved
+ * leg minutes, and stops at the next stop that already has a time.
+ */
+export function cascadeStartTimes(day: TripDay, placesById: Map<string, Place>, clusters: LocationCluster[], fromPlaceId: string): TripDay {
+  const startIndex = day.placeIds.indexOf(fromPlaceId);
+  let previousPlace = placesById.get(fromPlaceId);
+  const fromStart = toMinutes(day.stopSchedules?.[fromPlaceId]?.startTime);
+  if (startIndex < 0 || !previousPlace || fromStart === null) return day;
+
+  const stopSchedules = { ...day.stopSchedules };
+  let nextStart = fromStart + (stopSchedules[fromPlaceId]?.durationMinutes ?? defaultDuration(previousPlace.category));
+  for (const nextPlaceId of day.placeIds.slice(startIndex + 1)) {
+    const nextPlace = placesById.get(nextPlaceId);
+    if (!nextPlace) continue;
+    nextStart += resolveLeg(day, clusters, previousPlace, nextPlace).minutes ?? 0;
+    if (stopSchedules[nextPlaceId]?.startTime) break;
+    const durationMinutes = stopSchedules[nextPlaceId]?.durationMinutes ?? defaultDuration(nextPlace.category);
+    stopSchedules[nextPlaceId] = { ...stopSchedules[nextPlaceId], startTime: toTime(nextStart), durationMinutes };
+    nextStart += durationMinutes;
+    previousPlace = nextPlace;
+  }
+  return { ...day, stopSchedules };
 }
 
 export type NextAnchor =
@@ -108,6 +118,6 @@ export function nextAnchor(day: TripDay, clusters: LocationCluster[], orderedPla
 
   const leg = current ? resolveLeg(day, clusters, current, next) : null;
   const mode = leg?.mode ?? day.travelMode ?? 'public';
-  const travelMinutes = leg ? leg.minutes ?? estimateTravelMinutes(current!, next, mode) : 0;
+  const travelMinutes = leg?.minutes ?? 0;
   return { kind: 'leaveBy', leaveAt: toTime(arriveMinutes - travelMinutes), arriveBy: toTime(arriveMinutes), travelMinutes, mode, toPlaceId: next.id };
 }
