@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import type { ClusterRelationship, ContainerId, CurrencyCode, DayExecutionState, DayTask, FlightBooking, Money, PlaceholderKind, Place, StayBooking, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
 import { movePlace } from '../utils/itinerary';
-import { defaultDuration, estimateTravelMinutes, toMinutes, toTime } from '../utils/schedule';
-import { markRouteStale, routeLegKey } from '../utils/routing';
+import { cascadeStartTimes, defaultDuration } from '../utils/schedule';
+import { normalizeDayTransit, routeLegKey } from '../domain/transit';
 import { applyAiDraft as applyConfirmedAiDraft } from '../utils/applyAiDraft';
 import type { ConfirmedAiDraft } from '../types/aiImport';
 import { ensureActivities, updateActivityDetails, type ActivityDetailUpdates } from '../domain/activity';
@@ -21,8 +21,14 @@ interface TripActor {
 
 type UndoPoint = { label: string; before: TripState; sealed: boolean };
 
-function withNormalizedWindows(value: SetStateAction<TripState>): SetStateAction<TripState> {
-  return (current) => normalizeFlexibleWindows(typeof value === 'function' ? value(current) : value);
+function normalizeOnWrite(state: TripState): TripState {
+  const windowed = normalizeFlexibleWindows(state);
+  const days = windowed.days.map(normalizeDayTransit);
+  return days.every((day, index) => day === windowed.days[index]) ? windowed : { ...windowed, days };
+}
+
+function withNormalizedState(value: SetStateAction<TripState>): SetStateAction<TripState> {
+  return (current) => normalizeOnWrite(typeof value === 'function' ? value(current) : value);
 }
 
 export function useTripState(readOnly: boolean, actor?: TripActor) {
@@ -48,7 +54,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
 
   const setState = useCallback<Dispatch<SetStateAction<TripState>>>((value) => {
     if (undoPoint.current?.sealed) setUndoPoint(null);
-    setTripState(withNormalizedWindows(value));
+    setTripState(withNormalizedState(value));
   }, [setUndoPoint]);
 
   const undo = useCallback(() => {
@@ -63,7 +69,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
   // Undoing across them would revert someone else's change, so they disarm.
   const setLifecycleState = useCallback<Dispatch<SetStateAction<TripState>>>((value) => {
     setUndoPoint(null);
-    setTripState(withNormalizedWindows(value));
+    setTripState(withNormalizedState(value));
   }, [setUndoPoint]);
 
   const placesById = useMemo(
@@ -129,7 +135,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     setState((current) => ({
       ...current,
       places: [...current.places, attributePlace(place)],
-      days: current.days.map((day) => (day.id === dayId ? markRouteStale({ ...day, placeIds: [...day.placeIds, place.id] }) : day)),
+      days: current.days.map((day) => (day.id === dayId ? { ...day, placeIds: [...day.placeIds, place.id] } : day)),
       hotelPlaceId: isAccommodation(place) ? place.id : current.hotelPlaceId,
     }));
   }, [readOnly]);
@@ -140,7 +146,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     setState((current) => ({
       ...current,
       places: [...current.places, attributePlace(placeholder)],
-      days: current.days.map((day) => day.id === dayId ? markRouteStale({ ...day, placeIds: [...day.placeIds, placeholder.id] }) : day),
+      days: current.days.map((day) => day.id === dayId ? { ...day, placeIds: [...day.placeIds, placeholder.id] } : day),
     }));
   }, [readOnly]);
 
@@ -150,7 +156,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
       ...current,
       places: [...current.places.filter((item) => item.id !== placeholderId), attributePlace(place)],
       days: current.days.map((day) => day.placeIds.includes(placeholderId)
-        ? markRouteStale({ ...day, placeIds: day.placeIds.map((id) => id === placeholderId ? place.id : id) })
+        ? { ...day, placeIds: day.placeIds.map((id) => id === placeholderId ? place.id : id) }
         : day),
     }));
   }, [readOnly]);
@@ -166,8 +172,8 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
         places: current.places.filter((item) => item.id !== placeholderId),
         unscheduledIds: current.unscheduledIds.filter((id) => id !== placeId),
         days: current.days.map((day) => {
-          if (day.placeIds.includes(placeholderId)) return markRouteStale({ ...day, placeIds: day.placeIds.filter((id) => id !== placeId).map((id) => id === placeholderId ? placeId : id) });
-          return day.placeIds.includes(placeId) ? markRouteStale({ ...day, placeIds: day.placeIds.filter((id) => id !== placeId) }) : day;
+          if (day.placeIds.includes(placeholderId)) return { ...day, placeIds: day.placeIds.filter((id) => id !== placeId).map((id) => id === placeholderId ? placeId : id) };
+          return day.placeIds.includes(placeId) ? { ...day, placeIds: day.placeIds.filter((id) => id !== placeId) } : day;
         }),
       };
     });
@@ -178,7 +184,6 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     setState((current) => ({
       ...current,
       places: current.places.map((item) => (item.id === place.id ? touchPlace(place) : item)),
-      days: current.days.map((day) => day.placeIds.includes(place.id) ? markRouteStale(day) : day),
       hotelPlaceId: isAccommodation(place) ? place.id : current.hotelPlaceId === place.id ? undefined : current.hotelPlaceId,
     }));
   }, [readOnly, touchPlace]);
@@ -208,7 +213,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
         unscheduledIds: current.unscheduledIds.filter((id) => !removedIds.has(id)),
         visitedPlaceIds: current.visitedPlaceIds.filter((id) => !removedIds.has(id)),
         hotelPlaceId: current.hotelPlaceId === placeId ? undefined : current.hotelPlaceId,
-        days: current.days.map((day) => markRouteStale({
+        days: current.days.map((day) => ({
           ...day,
           placeIds: day.placeIds.filter((id) => !removedIds.has(id)),
           lodgingPlaceId: day.lodgingPlaceId && removedIds.has(day.lodgingPlaceId) ? undefined : day.lodgingPlaceId,
@@ -232,7 +237,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
           ? current.unscheduledIds
           : [...current.unscheduledIds, placeId],
         days: current.days.map((item) => item.id === dayId
-          ? markRouteStale({ ...item, placeIds: item.placeIds.filter((id) => id !== placeId) })
+          ? { ...item, placeIds: item.placeIds.filter((id) => id !== placeId) }
           : item),
       };
     });
@@ -374,7 +379,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
           if (updates.startTime && firstPlace && !stopSchedules[firstPlace.id]?.startTime) {
             stopSchedules[firstPlace.id] = { ...stopSchedules[firstPlace.id], startTime: updates.startTime, durationMinutes: defaultDuration(firstPlace.category) };
           }
-          return markRouteStale({ ...day, ...updates, stopSchedules });
+          return { ...day, ...updates, stopSchedules };
         }),
       };
     });
@@ -390,23 +395,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
         days: current.days.map((day) => {
           if (day.id !== dayId) return day;
           const stopSchedules = { ...day.stopSchedules, [placeId]: { ...day.stopSchedules?.[placeId], ...updates } };
-          const startIndex = day.placeIds.indexOf(placeId);
-          const firstPlace = placesById.get(placeId);
-          let nextStart = firstPlace && toMinutes(stopSchedules[placeId].startTime);
-          let previousPlace = firstPlace;
-          if (nextStart !== null && nextStart !== undefined && previousPlace && startIndex >= 0) {
-            nextStart += stopSchedules[placeId].durationMinutes ?? defaultDuration(previousPlace.category);
-            for (const nextPlaceId of day.placeIds.slice(startIndex + 1)) {
-              const nextPlace = placesById.get(nextPlaceId);
-              if (!nextPlace) continue;
-              nextStart += estimateTravelMinutes(previousPlace, nextPlace, day.travelMode);
-              if (stopSchedules[nextPlaceId]?.startTime) break;
-              stopSchedules[nextPlaceId] = { ...stopSchedules[nextPlaceId], startTime: toTime(nextStart), durationMinutes: stopSchedules[nextPlaceId]?.durationMinutes ?? defaultDuration(nextPlace.category) };
-              nextStart += stopSchedules[nextPlaceId].durationMinutes ?? defaultDuration(nextPlace.category);
-              previousPlace = nextPlace;
-            }
-          }
-          return markRouteStale({ ...day, stopSchedules });
+          return cascadeStartTimes({ ...day, stopSchedules }, placesById, current.locationClusters ?? [], placeId);
         }),
       };
     });
@@ -538,7 +527,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
               ...current,
               places: [...current.places, duplicate],
               days: current.days.map((day) => day.id === destinationId
-                ? markRouteStale({ ...day, placeIds: targetPlaceIds, lodgingPlaceId: placeId })
+                ? { ...day, placeIds: targetPlaceIds, lodgingPlaceId: placeId }
                 : day),
             };
           }
@@ -560,14 +549,14 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
             places: occurrence ? [...current.places, occurrence] : current.places,
             days: current.days.map((day) => {
               if (day.id === destinationId) {
-                return markRouteStale({
+                return {
                   ...day,
                   placeIds: targetPlaceIds,
                   lodgingPlaceId: place.assignmentOf ?? place.id,
-                });
+                };
               }
               if (day.id === sourceDay?.id) {
-                return markRouteStale({ ...day, placeIds: day.placeIds.filter((id) => id !== placeId) });
+                return { ...day, placeIds: day.placeIds.filter((id) => id !== placeId) };
               }
               return day;
             }),
@@ -587,10 +576,9 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
           movingIds.forEach((id, index) => {
             clustered = movePlace(clustered, id, destinationId, destinationIndex + index);
           });
-          return { ...clustered, days: clustered.days.map(markRouteStale) };
+          return clustered;
         }
-        const moved = movePlace(current, placeId, destinationId, destinationIndex);
-        return { ...moved, days: moved.days.map(markRouteStale) };
+        return movePlace(current, placeId, destinationId, destinationIndex);
       });
     },
     [readOnly],
@@ -655,7 +643,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
 
   const updateTrip = useCallback((tripName: string, startDate: string, displayCurrency?: CurrencyCode) => {
     if (readOnly) return;
-    setState((current) => ({ ...current, tripName, startDate, displayCurrency: displayCurrency ?? current.displayCurrency ?? 'MYR', days: current.days.map(markRouteStale) }));
+    setState((current) => ({ ...current, tripName, startDate, displayCurrency: displayCurrency ?? current.displayCurrency ?? 'MYR' }));
   }, [readOnly]);
 
   const updateLegMode = useCallback((dayId: string, fromPlaceId: string, toPlaceId: string, mode: TravelMode | 'default') => {
@@ -664,7 +652,7 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     setState((current) => ({
       ...current,
       days: current.days.map((day) => day.id === dayId
-        ? markRouteStale({ ...day, legModeOverrides: { ...day.legModeOverrides, [key]: mode } })
+        ? { ...day, legModeOverrides: { ...day.legModeOverrides, [key]: mode } }
         : day),
     }));
   }, [readOnly]);
