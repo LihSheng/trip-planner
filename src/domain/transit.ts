@@ -1,4 +1,4 @@
-import type { Place, TravelMode, TripDay } from '../types';
+import type { Place, TravelMode, TripDay, TripState } from '../types';
 import { distanceMeters } from './locationCluster';
 import { isPlaceholder } from './place';
 
@@ -56,6 +56,11 @@ export interface SavedLegTransit extends TransitLookup {
 
 export interface LegRef { dayId: string; fromPlaceId: string; toPlaceId: string }
 
+export type TransitSurface = 'planner' | 'today';
+
+/** What the client asks for. The server resolves the origin's time zone and clamps past times to now. */
+export type TransitDeparture = { kind: 'now' } | { kind: 'planned'; local: string };
+
 export type StaleReason = 'fromMoved' | 'toMoved' | 'departureShifted';
 
 export type LegTransit =
@@ -83,6 +88,52 @@ export function isTransitEligible(mode: TravelMode, inside: boolean, from: Place
 
 function movedMeters(basis: LatLng, place: Place) {
   return distanceMeters({ latitude: basis.lat, longitude: basis.lng }, place);
+}
+
+export function latLngOf(place: Place): LatLng {
+  return { lat: place.latitude, lng: place.longitude };
+}
+
+/** True while neither stop has moved further than MOVED_STALE_METERS from where the lookup was made. */
+export function basisMatchesStops(basis: TransitBasis, from: Place, to: Place): boolean {
+  return movedMeters(basis.from, from) <= MOVED_STALE_METERS && movedMeters(basis.to, to) <= MOVED_STALE_METERS;
+}
+
+/** The leg `ref` names, only while both stops are still adjacent in that order on that day. */
+export function legAt(state: TripState, ref: LegRef): { day: TripDay; dayIndex: number; from: Place; to: Place } | null {
+  const dayIndex = state.days.findIndex((day) => day.id === ref.dayId);
+  const day = state.days[dayIndex];
+  if (!day) return null;
+  const fromIndex = day.placeIds.indexOf(ref.fromPlaceId);
+  if (fromIndex < 0 || day.placeIds[fromIndex + 1] !== ref.toPlaceId) return null;
+  const from = state.places.find((place) => place.id === ref.fromPlaceId);
+  const to = state.places.find((place) => place.id === ref.toPlaceId);
+  return from && to ? { day, dayIndex, from, to } : null;
+}
+
+function plannedLocal(dayDate: string, minutes: number) {
+  // A leave time past midnight belongs to the next calendar day.
+  const [year, month, date] = dayDate.split('-').map(Number);
+  const day = new Date(Date.UTC(year, month - 1, date + Math.floor(minutes / 1440)));
+  const minuteOfDay = minutes % 1440;
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${day.getUTCFullYear()}-${pad(day.getUTCMonth() + 1)}-${pad(day.getUTCDate())}T${pad(Math.floor(minuteOfDay / 60))}:${pad(minuteOfDay % 60)}`;
+}
+
+/**
+ * Decision 4: the from-stop's planned leave time on the trip day when the day has Times on,
+ * otherwise now. Today mode always asks for now.
+ * @param dayDate the trip day's 'yyyy-mm-dd'.
+ * @param leaveMinutes the from-stop's planned start plus duration, or null without a start time.
+ */
+export function departureFor(input: { surface: TransitSurface; timesOn: boolean; dayDate: string; leaveMinutes: number | null }): TransitDeparture {
+  if (input.surface === 'today' || !input.timesOn || input.leaveMinutes === null) return { kind: 'now' };
+  return { kind: 'planned', local: plannedLocal(input.dayDate, input.leaveMinutes) };
+}
+
+/** Today mode nudges a refresh once a saved route is older than TODAY_REFRESH_SUGGEST_DAYS. */
+export function isSavedRouteOld(saved: SavedLegTransit, now: Date): boolean {
+  return now.getTime() - Date.parse(saved.fetchedAt) > TODAY_REFRESH_SUGGEST_DAYS * 24 * 60 * 60 * 1000;
 }
 
 /** Wall-clock minutes as written in the instant, which carries the departure stop's own offset. */
