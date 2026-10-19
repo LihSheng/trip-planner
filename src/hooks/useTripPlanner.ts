@@ -77,6 +77,8 @@ export function useTripPlanner(shareToken?: string, requestedPlanId?: string) {
     replaceLocationClusterAnchor: tripState.replaceLocationClusterAnchor,
     updateTrip: tripState.updateTrip,
     updateLegMode: tripState.updateLegMode,
+    saveTransitLookup: tripState.saveTransitLookup,
+    chooseTransitRoute: tripState.chooseTransitRoute,
     applyAiDraft: tripState.applyAiDraft,
     reset: tripState.reset,
     markUndoPoint: tripState.markUndoPoint,

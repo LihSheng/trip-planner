@@ -23,8 +23,8 @@ import { PlaceCard } from './PlaceCard';
 import { useI18n } from '../i18n';
 import { dayWarnings, scheduleFor } from '../utils/schedule';
 import { isExceptionLeg, resolveLeg, sumLegMinutes } from '../utils/routing';
-import { legGoogleMapsUrl } from '../utils/mapPresentation';
-import { TransportLegChip } from './TransportLegChip';
+import { DayModeChip, LegMinutesButton, TransportLegChip } from './TransportLegChip';
+import { useTransitSheet } from './TransitSheet';
 import { isPlaceholder } from '../domain/place';
 import { clusterForPlace, clusterMember } from '../domain/locationCluster';
 import { BookingCard, type PlannerBookingCard } from './BookingCard';
@@ -99,6 +99,7 @@ export function DayColumn({
   onMoveToPlace,
 }: DayColumnProps) {
   const { t } = useI18n();
+  const { openTransit } = useTransitSheet();
   const [renameTarget, setRenameTarget] = useState<Place | null>(null);
   const [renameLabel, setRenameLabel] = useState('');
   // Dropping on empty space in the day appends to the end; the plain day id is what getDestination expects.
@@ -230,13 +231,10 @@ export function DayColumn({
         {places.length >= 2 ? (
           <Box className="day-column__transport-summary">
             <span>{t('mostly')}</span>
-            <TransportLegChip
+            <DayModeChip
               mode={dayDefaultMode}
-              dayDefaultMode={dayDefaultMode}
-              isOverride={false}
               readOnly={readOnly}
-              hideDefaultItem
-              onChange={(mode) => { if (mode !== 'default') onDayScheduleChange(day.id, { travelMode: mode }); }}
+              onChange={(mode) => onDayScheduleChange(day.id, { travelMode: mode })}
             />
             <Text span size="xs" c="dimmed">· {t('legsSummary', { legs: legCount, minutes: totalLegMinutes })}</Text>
             <Button ml="auto" size="compact-xs" variant="subtle" color="gray" onClick={() => setShowAllLegs((value) => !value)}>
@@ -288,24 +286,25 @@ export function DayColumn({
                   clusterRelationship={cluster ? member?.relationship ?? 'anchor' : undefined}
                 />
                 {places[placeIndex + 1] ? (() => {
-                  const nextPlace = places[placeIndex + 1];
                   const leg = legs[placeIndex];
-                  const context = leg.relationship === 'inside' ? t('insideVenue') : leg.relationship === 'same-area' ? t('inArea') : leg.relationship === 'walkable' ? t('nearby') : undefined;
                   const showChip = showAllLegs || isExceptionLeg(leg.legMode, leg.mode, dayDefaultMode);
+                  const onOpenTransit = leg.transit.status === 'ineligible'
+                    ? undefined
+                    : () => openTransit({ dayId: day.id, fromPlaceId: leg.from.id, toPlaceId: leg.to.id });
+                  const rowClass = showChip ? '' : onOpenTransit ? ' route-leg--minutes' : ' route-leg--collapsed';
                   return (
-                    <Group className={`route-leg${showChip ? '' : ' route-leg--collapsed'}`} gap="xs" justify="center" wrap="nowrap">
-                      {!showChip ? null : leg.inside ? (
+                    <Group className={`route-leg${rowClass}`} gap="xs" justify="center" wrap="nowrap">
+                      {!showChip ? (
+                        onOpenTransit ? <LegMinutesButton leg={leg} onClick={onOpenTransit} /> : null
+                      ) : leg.inside ? (
                         <Text size="xs" c="dimmed">{t('walk').toLowerCase()} · {t('insideVenue')}</Text>
                       ) : (
                         <TransportLegChip
-                          mode={leg.mode}
+                          leg={leg}
                           dayDefaultMode={dayDefaultMode}
-                          isOverride={leg.legMode !== 'default'}
-                          minutes={leg.minutes}
-                          context={context}
                           readOnly={readOnly}
-                          routeUrl={!isPlaceholder(place) && !isPlaceholder(nextPlace) ? legGoogleMapsUrl(place, nextPlace, leg.mode) : undefined}
-                          onChange={(mode) => onLegModeChange(day.id, place.id, nextPlace.id, mode)}
+                          onChange={(mode) => onLegModeChange(day.id, leg.from.id, leg.to.id, mode)}
+                          onOpenTransit={onOpenTransit}
                         />
                       )}
                     </Group>

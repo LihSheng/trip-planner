@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActionIcon, Badge, Button, Checkbox, Collapse, Group, Menu, Modal, Paper, Select, Stack, Text, Textarea, Title, Tooltip, UnstyledButton } from '@mantine/core';
+import { ActionIcon, Anchor, Badge, Button, Checkbox, Collapse, Group, Menu, Modal, Paper, Select, Stack, Text, Textarea, Title, Tooltip, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
   IconCheck, IconChevronDown, IconCircle, IconCircleCheckFilled, IconClock, IconDots,
@@ -17,6 +17,8 @@ import { nextAnchor, toMinutes } from '../utils/schedule';
 import { transportIcon } from './transportIcons';
 import { categoryLabel, useI18n } from '../i18n';
 import { flexibleDaysFor, flexiblePlacesForDay, remainingWindowDays } from '../domain/flexibleWindows';
+import { isSavedRouteOld, transitOnSurface } from '../domain/transit';
+import { useTransitSheet } from './TransitSheet';
 import type { TravelMode } from '../types';
 
 const MODE_LABEL_KEYS = { public: 'publicTransport', walk: 'walk', bike: 'bike', car: 'car', taxi: 'taxi', other: 'otherTransport' } as const satisfies Record<TravelMode, string>;
@@ -44,6 +46,7 @@ export function TodayModePage({ location }: TodayModePageProps) {
   const [displayRate, setDisplayRate] = useState<number | null>(null);
   const [completedTasksOpen, setCompletedTasksOpen] = useState(false);
   const { t } = useI18n();
+  const { openTransit } = useTransitSheet();
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -214,6 +217,16 @@ export function TodayModePage({ location }: TodayModePageProps) {
                   ? t('todayLeaveByNoTravel', { place: anchorPlace.name, arriveBy: anchor.arriveBy })
                   : t('todayLeaveBy', { leaveAt: anchor.leaveAt, place: anchorPlace.name, arriveBy: anchor.arriveBy, mode: t(MODE_LABEL_KEYS[anchor.mode]), minutes: anchor.travelMinutes })}
           </Text>
+          {anchor.kind === 'leaveBy' && anchor.leg && anchor.legRef && anchor.leg.transit.status !== 'ineligible' ? (() => {
+            const { leg, legRef } = anchor;
+            const transit = transitOnSurface(leg.transit, 'today');
+            const refreshSuggested = transit.status === 'saved' && (transit.stale.length > 0 || isSavedRouteOld(transit.saved, now));
+            return (
+              <Anchor component="button" type="button" size="sm" className="today-anchor__transit" onClick={() => openTransit(legRef, { surface: 'today' })}>
+                {t('showTransit')}{refreshSuggested ? ` · ${t('transitRefreshSuggested')}` : ''}
+              </Anchor>
+            );
+          })() : null}
         </Group>
       ) : null}
 

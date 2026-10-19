@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { Place, TripDay } from '../types';
+import type { Place, TripDay, TripState } from '../types';
 import {
+  basisMatchesStops,
+  departureFor,
   finalizeOptions,
+  isSavedRouteOld,
+  legAt,
   isTransitEligible,
   legTransit,
   mergeLookup,
@@ -171,5 +175,55 @@ describe('pruneTransitByLeg', () => {
   it('matches ids that themselves contain a colon', () => {
     const unchanged = day(['stay:1', 'b'], { 'stay:1:b': saved() });
     expect(pruneTransitByLeg(unchanged)).toBe(unchanged);
+  });
+});
+
+describe('departureFor', () => {
+  const planned = { surface: 'planner' as const, timesOn: true, dayDate: '2026-10-21', leaveMinutes: 10 * 60 + 30 };
+
+  it('asks for the from-stop leave time on the trip day when Times are on', () => {
+    expect(departureFor(planned)).toEqual({ kind: 'planned', local: '2026-10-21T10:30' });
+  });
+
+  it('rolls a leave time past midnight onto the next day, across a month end', () => {
+    expect(departureFor({ ...planned, dayDate: '2026-10-31', leaveMinutes: 24 * 60 + 15 })).toEqual({ kind: 'planned', local: '2026-11-01T00:15' });
+  });
+
+  it('asks for now on Today, with Times off, or without a planned start', () => {
+    expect(departureFor({ ...planned, surface: 'today' })).toEqual({ kind: 'now' });
+    expect(departureFor({ ...planned, timesOn: false })).toEqual({ kind: 'now' });
+    expect(departureFor({ ...planned, leaveMinutes: null })).toEqual({ kind: 'now' });
+  });
+});
+
+describe('legAt', () => {
+  const state = (placeIds: string[]): TripState => ({
+    version: 1, tripName: 'Trip', startDate: '2026-10-20', places: [from, to], unscheduledIds: [], visitedPlaceIds: [],
+    days: [{ id: 'day-0', label: '', placeIds: [] }, { id: 'day-1', label: '', placeIds }],
+  });
+  const ref = { dayId: 'day-1', fromPlaceId: 'from', toPlaceId: 'to' };
+
+  it('finds the leg while its stops are adjacent in that order', () => {
+    expect(legAt(state(['from', 'to']), ref)).toEqual({ day: state(['from', 'to']).days[1], dayIndex: 1, from, to });
+  });
+
+  it('is null once the stops are reordered, separated or the day is gone', () => {
+    expect(legAt(state(['to', 'from']), ref)).toBeNull();
+    expect(legAt(state(['from', 'other', 'to']), ref)).toBeNull();
+    expect(legAt(state(['from', 'to']), { ...ref, dayId: 'missing' })).toBeNull();
+  });
+});
+
+describe('basisMatchesStops', () => {
+  it('tolerates movement up to 25 m at either end', () => {
+    expect(basisMatchesStops(saved().basis, north(from, 0.0002), north(to, 0.0002))).toBe(true);
+    expect(basisMatchesStops(saved().basis, from, north(to, 0.0003))).toBe(false);
+  });
+});
+
+describe('isSavedRouteOld', () => {
+  it('is old only after seven days', () => {
+    expect(isSavedRouteOld(saved(), new Date('2026-10-26T01:00:00.000Z'))).toBe(false);
+    expect(isSavedRouteOld(saved(), new Date('2026-10-26T01:00:01.000Z'))).toBe(true);
   });
 });

@@ -39,6 +39,17 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const DEMO_USER_ID = 'demo';
+const SHARED_VIEWER_ID = 'shared-trip-viewer';
+
+export type AuthKind = 'signedIn' | 'demo' | 'sharedViewer';
+
+/** Demo and share-link guests both have isDemo and no token; only the user id tells them apart. */
+export function authKind(auth: Pick<AuthContextValue, 'isAuthenticated' | 'user'>): AuthKind {
+  if (auth.isAuthenticated) return 'signedIn';
+  return auth.user.id === DEMO_USER_ID ? 'demo' : 'sharedViewer';
+}
+
 export function useAuth(): AuthContextValue {
   const value = useContext(AuthContext);
   if (!value) throw new Error('useAuth must be used inside AuthGate.');
@@ -118,7 +129,7 @@ export function AuthGate({ children, allowGuest = false }: { children: ReactNode
   const contextValue = useMemo<AuthContextValue | null>(() => {
     if (demoMode) {
       return {
-        user: { id: 'demo', email: 'Demo mode' },
+        user: { id: DEMO_USER_ID, email: 'Demo mode' },
         accessToken: '',
         isDemo: true,
         isAuthenticated: false,
@@ -132,7 +143,7 @@ export function AuthGate({ children, allowGuest = false }: { children: ReactNode
     }
     if (!session) {
       return allowGuest ? {
-        user: { id: 'shared-trip-viewer' },
+        user: { id: SHARED_VIEWER_ID },
         accessToken: '',
         isDemo: true,
         isAuthenticated: false,

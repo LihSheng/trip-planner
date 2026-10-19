@@ -125,7 +125,15 @@ describe('nextAnchor', () => {
     const d = day({ stopSchedules: { second: { startTime: '15:30' } } });
     expect(nextAnchor(d, [], [first, second], 'first', 'second')).toEqual({
       kind: 'leaveBy', leaveAt: '15:07', arriveBy: '15:30', travelMinutes: 23, mode: 'walk', toPlaceId: 'second',
+      leg: resolveLeg(d, [], first, second),
+      legRef: { dayId: 'day-1', fromPlaceId: 'first', toPlaceId: 'second' },
     });
+  });
+
+
+  it('gives no leg ref when a stop sits between current and next, while still timing the direct trip', () => {
+    const d = day({ placeIds: ['first', 'skipped', 'second'], stopSchedules: { second: { startTime: '15:30' } } });
+    expect(nextAnchor(d, [], [first, second], 'first', 'second')).toMatchObject({ kind: 'leaveBy', leaveAt: '15:07', travelMinutes: 23, legRef: null });
   });
 
   it('prefers the planned start time over closing time', () => {
@@ -136,7 +144,7 @@ describe('nextAnchor', () => {
 
   it('falls back to closing time minus the stop duration', () => {
     const closing = { ...second, openingHours: { opensAt: '09:00', closesAt: '18:00' } };
-    expect(nextAnchor(day(), [], [first, closing], 'first', 'second')).toEqual({
+    expect(nextAnchor(day(), [], [first, closing], 'first', 'second')).toMatchObject({
       kind: 'leaveBy', leaveAt: '16:37', arriveBy: '17:00', travelMinutes: 23, mode: 'walk', toPlaceId: 'second',
     });
   });
@@ -155,13 +163,13 @@ describe('nextAnchor', () => {
   it('returns zero travel when there is no current place', () => {
     const d = day({ stopSchedules: { second: { startTime: '10:00' } } });
     expect(nextAnchor(d, [], [second], null, 'second')).toEqual({
-      kind: 'leaveBy', leaveAt: '10:00', arriveBy: '10:00', travelMinutes: 0, mode: 'walk', toPlaceId: 'second',
+      kind: 'leaveBy', leaveAt: '10:00', arriveBy: '10:00', travelMinutes: 0, mode: 'walk', toPlaceId: 'second', leg: null, legRef: null,
     });
   });
 
   it('honours the leg mode override between current and next', () => {
     const d = day({ stopSchedules: { second: { startTime: '15:30' } }, legModeOverrides: { 'first:second': 'car' } });
-    expect(nextAnchor(d, [], [first, second], 'first', 'second')).toEqual({
+    expect(nextAnchor(d, [], [first, second], 'first', 'second')).toMatchObject({
       kind: 'leaveBy', leaveAt: '15:25', arriveBy: '15:30', travelMinutes: 5, mode: 'car', toPlaceId: 'second',
     });
   });
