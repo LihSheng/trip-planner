@@ -108,16 +108,6 @@ export function placeStatus(
   return firstEligible === placeId ? 'current' : 'upcoming';
 }
 
-/** Format the scheduled time range for a stop (e.g. "09:00–10:30"). */
-export function timeRange(day: TripDay, placeId: string): string {
-  const schedule = day.stopSchedules?.[placeId];
-  if (!schedule?.startTime) return 'No fixed time';
-  if (!schedule.durationMinutes) return schedule.startTime;
-  const [hour, minute] = schedule.startTime.split(':').map(Number);
-  const end = new Date(2000, 0, 1, hour, minute + schedule.durationMinutes);
-  return `${schedule.startTime}–${end.toTimeString().slice(0, 5)}`;
-}
-
 /** Polyline style per travel mode: public solid teal, car/taxi dashed, walk dotted, bike dot-dash, other grey dashed. */
 export const legPathOptions: Record<TravelMode, PathOptions> = {
   public: { color: '#13a889', weight: 5, opacity: 0.85, lineCap: 'round' },

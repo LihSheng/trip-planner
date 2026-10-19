@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createInitialState } from '../data/seed';
 import type { LocationCluster, Place, TripDay } from '../types';
 import type { SavedLegTransit, TransitOption } from '../domain/transit';
-import { dayLegs, dayStops, dayTravelMinutes, isDrawableLeg, resolveLeg, viewportPlaces } from './routing';
+import { dayLegs, dayStops, dayTravelMinutes, isDrawableLeg, legOnwardFrom, resolveLeg, viewportPlaces } from './routing';
 
 const day: TripDay = { id: 'day-1', label: 'Day 1', placeIds: ['a', 'b'], travelMode: 'public' };
 
@@ -194,6 +194,20 @@ describe('dayTravelMinutes', () => {
     const markers = [placesById.get('shifen')!, placesById.get('jiufen')!];
     expect(viewportPlaces(markers, dayLegs({ ...dayTwo, placeIds: ['shifen', 'jiufen'] }, placesById, []))).toBe(markers);
     expect(viewportPlaces(markers, [])).toBe(markers);
+  });
+
+  it('takes each stop onward to the next real stop, never to a placeholder', () => {
+    const coffee = place('placeholder-coffee', 0, 0, { region: '', placeholderKind: 'coffee' });
+    const withCoffee = new Map([...placesById, [coffee.id, coffee]]);
+    const twoBreaks: TripDay = { ...dayTwo, placeIds: ['stay-1', 'shifen', 'placeholder-lunch', 'placeholder-coffee', 'jiufen'] };
+    const legs = dayLegs(twoBreaks, withCoffee, []);
+    const onward = (index: number) => { const leg = legOnwardFrom(legs, index); return leg && [leg.from.id, leg.to.id, leg.minutes]; };
+    expect([0, 1, 2, 3, 4, -1].map(onward)).toEqual([
+      ['stay-1', 'shifen', 85],
+      // Shifen and both breaks lead on to Jiufen with the bridged minutes, as the planner's leg row shows.
+      ['shifen', 'jiufen', 33], ['shifen', 'jiufen', 33], ['shifen', 'jiufen', 33],
+      undefined, undefined,
+    ]);
   });
 
   it('pairs legs with stops, skipping ids with no place', () => {

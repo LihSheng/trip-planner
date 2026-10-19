@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n';
 import type { Place, TripDay } from '../types';
+import { projectDay } from '../utils/dayProjection';
 import { dayLegs, type ResolvedLeg } from '../utils/routing';
 import { MapStopTimeline } from './MapStopTimeline';
 
@@ -15,7 +16,9 @@ const leg = (from: Place, to: Place, minutes: number): ResolvedLeg => ({
 const legs = [leg(places[0], places[1], 12), leg(places[1], places[2], 25)];
 const stop = (name: string) => screen.getByText(name).closest('button')!;
 
-function setup(selectedId: string | null, visited: string[], onSelect = vi.fn(), props = { day, places, legs }) {
+const projected = (stopDay: TripDay, stops: Place[]) => ({ stops: projectDay(stopDay, stops, []).stops, legs: dayLegs(stopDay, new Map(stops.map((stop) => [stop.id, stop])), []) });
+
+function setup(selectedId: string | null, visited: string[], onSelect = vi.fn(), props = { stops: projectDay(day, places, []).stops, legs }) {
   render(
     <MantineProvider env="test">
       <I18nProvider>
@@ -33,7 +36,7 @@ describe('MapStopTimeline', () => {
     expect(document.querySelectorAll('.map-stop-timeline__leg')).toHaveLength(2);
     expect(screen.getByText('12 min')).toBeDefined();
     expect(screen.getByText('25 min')).toBeDefined();
-    expect(screen.getByText('09:00')).toBeDefined();
+    expect(screen.getByText('09:00–10:30')).toBeDefined();
   });
 
   it('calls onSelect with the clicked stop id', () => {
@@ -51,8 +54,7 @@ describe('MapStopTimeline', () => {
     const jiufen = place('jiufen', 'Jiufen', 25.1092, 121.8452);
     const stops = [stay, shifen, lunch, jiufen];
     const stopDay = { id: 'd2', label: 'Day 2', placeIds: stops.map((stop) => stop.id), travelMode: 'public' } as unknown as TripDay;
-    const stopLegs = dayLegs(stopDay, new Map(stops.map((stop) => [stop.id, stop])), []);
-    setup(null, [], vi.fn(), { day: stopDay, places: stops, legs: stopLegs });
+    setup(null, [], vi.fn(), projected(stopDay, stops));
 
     expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
       expect.stringContaining('1Hotel'), expect.stringContaining('2Shifen'), expect.stringContaining('3Lunch'), expect.stringContaining('4Jiufen'),
@@ -60,6 +62,9 @@ describe('MapStopTimeline', () => {
     const legMinutes = [...document.querySelectorAll('.map-stop-timeline__leg')].map((node) => node.textContent);
     // The leg after lunch is bridged from Shifen, so the strip shows the minutes the day total counts.
     expect(legMinutes).toEqual(['85 min', '', '32 min']);
+    // The planner's projected times: lunch adds its duration but no travel, Jiufen follows the bridged 32 min.
+    const times = [...document.querySelectorAll('.map-stop-timeline__stop')].map((node) => node.firstChild?.textContent);
+    expect(times).toEqual(['~09:00–10:30', '~11:55–13:25', '~13:25–14:55', '~15:27–16:57']);
   });
 
   it('shows the translated label for a placeholder still named after its kind, and a custom name as is', () => {
@@ -67,7 +72,7 @@ describe('MapStopTimeline', () => {
     const renamed: Place = { ...place('placeholder-coffee', 'Bakery run', 0, 0), placeholderKind: 'coffee' };
     const stops = [places[0], meal, renamed];
     const stopDay = { ...day, placeIds: stops.map((stop) => stop.id) } as TripDay;
-    setup(null, [], vi.fn(), { day: stopDay, places: stops, legs: dayLegs(stopDay, new Map(stops.map((stop) => [stop.id, stop])), []) });
+    setup(null, [], vi.fn(), projected(stopDay, stops));
 
     expect(screen.getByText('Lunch / dinner — undecided')).toBeDefined();
     expect(screen.getByText('Bakery run')).toBeDefined();

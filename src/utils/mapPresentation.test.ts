@@ -8,7 +8,6 @@ import {
   markerColors,
   navigationUrl,
   placeStatus,
-  timeRange,
 } from './mapPresentation';
 
 const place = (overrides: Partial<Place> = {}): Place => ({
@@ -134,29 +133,5 @@ describe('placeStatus', () => {
 
   it('returns upcoming for later stops', () => {
     expect(placeStatus(day, undefined, 'p2')).toBe('upcoming');
-  });
-});
-
-describe('timeRange', () => {
-  const day: TripDay = {
-    id: 'day-1',
-    label: 'Day 1',
-    placeIds: ['p1'],
-    stopSchedules: {
-      p1: { startTime: '09:00', durationMinutes: 90 },
-      p2: { startTime: '14:00' },
-    },
-  };
-
-  it('returns formatted range when both start and duration exist', () => {
-    expect(timeRange(day, 'p1')).toBe('09:00–10:30');
-  });
-
-  it('returns just start time when no duration', () => {
-    expect(timeRange(day, 'p2')).toBe('14:00');
-  });
-
-  it('returns fallback when no schedule exists', () => {
-    expect(timeRange(day, 'p99')).toBe('No fixed time');
   });
 });

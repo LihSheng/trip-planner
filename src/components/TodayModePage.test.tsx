@@ -46,6 +46,46 @@ describe('TodayModePage', () => {
     expect(screen.getByText('Leave by 23:07 to reach Jiufen before 23:30 · Walk 23 min')).toBeTruthy();
   });
 
+  it('shows the planner projected times on a day without planned times', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-10T08:00:00'));
+    tripState = {
+      version: 1, tripName: 'Taiwan', startDate: '2026-10-10', places: [first, second], unscheduledIds: [], visitedPlaceIds: [],
+      days: [{ id: 'day-1', label: '', placeIds: ['first', 'second'], travelMode: 'walk' }],
+      executionByDay: { 'day-1': { dayId: 'day-1', selectedAt: '', updatedAt: '', stopStates: { first: { placeId: 'first', status: 'current' } } } },
+    };
+    renderToday();
+    // projectDay: the station from 09:00 for 30 min, then 23 min on foot. The planner gutter shows the same ~ times.
+    expect(screen.getByText('Leave by ~09:30 to reach Jiufen before ~09:53 · Walk 23 min')).toBeTruthy();
+    expect([...document.querySelectorAll('.today-timeline-row__time')].map((node) => node.textContent)).toEqual(['~09:00', '~09:53']);
+  });
+
+  it('offers transit for the bridged leg when the placeholder between was skipped', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-10T09:00:00'));
+    const lunch: Place = { id: 'lunch', name: 'meal', region: '', category: 'Food', latitude: 0, longitude: 0, notes: '', placeholderKind: 'meal' };
+    tripState = {
+      version: 1, tripName: 'Taiwan', startDate: '2026-10-10', places: [first, lunch, second], unscheduledIds: [], visitedPlaceIds: [],
+      days: [{
+        id: 'day-1', label: '', placeIds: ['first', 'lunch', 'second'], travelMode: 'public', stopSchedules: { second: { startTime: '11:00' } },
+        transitByLeg: {
+          'first:second': {
+            provider: 'mock', fetchedAt: '2026-10-09T01:00:00.000Z', options: [],
+            basis: { from: { lat: 25.03, lng: 121.56 }, to: { lat: 25.04, lng: 121.57 }, departAt: '2026-10-10T09:00:00+08:00' },
+          },
+        },
+      }],
+      executionByDay: { 'day-1': { dayId: 'day-1', selectedAt: '', updatedAt: '', stopStates: {
+        first: { placeId: 'first', status: 'current' },
+        lunch: { placeId: 'lunch', status: 'skipped' },
+      } } },
+    };
+    renderToday();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show transit' }));
+    expect(within(screen.getByRole('dialog')).getByText('Saved Oct 9')).toBeTruthy();
+  });
+
   it('does not say leave now for a day other than today', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-10T15:00:00'));
