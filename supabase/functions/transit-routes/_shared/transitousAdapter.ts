@@ -146,14 +146,20 @@ function rideSignature(option: TransitOptionV1): string {
 /**
  * MOTIS returns several departures of the same route inside its search window. Keeping only the
  * fastest of each ride sequence leaves room for genuinely different routes under the cap.
+ * Short trips also get a walk in the top-level `direct` array, sometimes with no itineraries at all,
+ * so direct entries are candidates too.
  */
 export function adaptTransitousPlan(raw: unknown): { options: TransitOptionV1[]; dropped: number } {
-  if (!isRecord(raw) || !Array.isArray(raw.itineraries)) {
-    throw new AdapterShapeError('Response has no itineraries array.', sample(raw));
+  if (!isRecord(raw) || (!Array.isArray(raw.itineraries) && !Array.isArray(raw.direct))) {
+    throw new AdapterShapeError('Response has no itineraries or direct array.', sample(raw));
   }
-  const parsed = raw.itineraries.map(parseItinerary).filter((option): option is TransitOptionV1 => option !== null);
-  const dropped = raw.itineraries.length - parsed.length;
-  if (raw.itineraries.length > 0 && parsed.length === 0) {
+  const candidates: unknown[] = [
+    ...(Array.isArray(raw.direct) ? raw.direct : []),
+    ...(Array.isArray(raw.itineraries) ? raw.itineraries : []),
+  ];
+  const parsed = candidates.map(parseItinerary).filter((option): option is TransitOptionV1 => option !== null);
+  const dropped = candidates.length - parsed.length;
+  if (candidates.length > 0 && parsed.length === 0) {
     throw new AdapterShapeError('No itinerary could be parsed.', sample(raw));
   }
   const seen = new Set<string>();

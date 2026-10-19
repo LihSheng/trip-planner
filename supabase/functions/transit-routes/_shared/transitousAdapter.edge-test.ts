@@ -84,7 +84,28 @@ test('no itineraries is an empty answer, not an error', () => {
   assert.deepEqual(adaptTransitousPlan(fixture('kuala-lumpur-empty')), { options: [], dropped: 0 });
 });
 
+test('Taipei 101 short walk: a direct-only answer becomes one walk option', () => {
+  assert.deepEqual(adaptTransitousPlan(fixture('taipei101-short-walk')), {
+    options: [{ minutes: 7, steps: [{ kind: 'walk', minutes: 7, distanceMeters: 530 }] }],
+    dropped: 0,
+  });
+});
+
 const bus = { mode: 'BUS', duration: 600, displayName: '307', from: { name: 'A' }, to: { name: 'B' }, intermediateStops: [{ name: 'X' }] };
+
+test('direct walks join the itineraries, sorted by minutes, and walk-only repeats collapse', () => {
+  const walk = (duration: number) => ({ duration, legs: [{ mode: 'WALK', duration, distance: 1500 }] });
+  const result = adaptTransitousPlan({
+    direct: [walk(1200), { legs: [] }],
+    itineraries: [{ duration: 900, legs: [bus] }, walk(1500)],
+  });
+  assert.equal(result.dropped, 1);
+  assert.deepEqual(result.options, [
+    { minutes: 15, steps: [{ kind: 'bus', minutes: 10, line: '307', fromStop: 'A', toStop: 'B', stopCount: 2 }] },
+    { minutes: 20, steps: [{ kind: 'walk', minutes: 20, distanceMeters: 1500 }] },
+  ]);
+  assert.deepEqual(adaptTransitousPlan({ direct: [walk(300)] }).options, [{ minutes: 5, steps: [{ kind: 'walk', minutes: 5, distanceMeters: 1500 }] }]);
+});
 
 test('consecutive walk legs merge before rounding', () => {
   const { options } = adaptTransitousPlan({
@@ -121,6 +142,7 @@ test('a malformed itinerary is dropped and counted, the rest survive', () => {
 
 test('throws AdapterShapeError only when nothing usable came back', () => {
   assert.throws(() => adaptTransitousPlan({ itineraries: [{ duration: 60, legs: [] }] }), AdapterShapeError);
+  assert.throws(() => adaptTransitousPlan({ direct: [{ duration: 60, legs: [] }], itineraries: [] }), AdapterShapeError);
   assert.throws(() => adaptTransitousPlan({ error: 'boom' }), (error) => error instanceof AdapterShapeError && error.sample === '{"error":"boom"}');
   assert.throws(() => adaptTransitousPlan(null), AdapterShapeError);
 });

@@ -1,0 +1,36 @@
+{
+ "from": {
+  "name": "START",
+  "lat": 25.034,
+  "lon": 121.5645
+ },
+ "to": {
+  "name": "END",
+  "lat": 25.0377,
+  "lon": 121.566
+ },
+ "direct": [
+  {
+   "duration": 446,
+   "startTime": "2026-10-21T02:00:00Z",
+   "endTime": "2026-10-21T02:07:00Z",
+   "transfers": 0,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 446,
+     "startTime": "2026-10-21T02:00:00Z",
+     "endTime": "2026-10-21T02:07:00Z",
+     "distance": 530,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  }
+ ],
+ "itineraries": []
+}
