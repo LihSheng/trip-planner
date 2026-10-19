@@ -31,7 +31,7 @@ import type { CurrentLocation } from '../hooks/useCurrentLocation';
 import { formatTripDate } from '../utils/date';
 import { categoryLabel, useI18n } from '../i18n';
 import { ghostPathOptions, googleMapsRouteUrl, legModeColor, legPathOptions, markerColors, timeRange } from '../utils/mapPresentation';
-import { dayLegs } from '../utils/routing';
+import { dayLegs, dayTravelMinutes } from '../utils/routing';
 import { MapLegChips } from './MapLegChips';
 import { MapPlaceCard } from './MapPlaceCard';
 import { MapStopTimeline } from './MapStopTimeline';
@@ -41,7 +41,10 @@ import { transportIcon } from './transportIcons';
 const geoapifyMapsApiKey = import.meta.env.VITE_GEOAPIFY_API_KEY as string | undefined;
 
 interface TaiwanMapProps {
+  /** Places drawn as markers: no placeholders or hotel-stay copies. */
   places: Place[];
+  /** Every place a day can list, placeholders and hotel-stay copies included, so day minutes match the planner. */
+  itineraryPlaces: Place[];
   days: TripDay[];
   unscheduledIds: string[];
   startDate: string;
@@ -195,6 +198,7 @@ const PlaceMarker = memo(function PlaceMarker({
 
 function MapSurface({
   places,
+  itineraryPlaces,
   days,
   unscheduledIds,
   startDate,
@@ -255,10 +259,10 @@ function MapSurface({
   const selectedPlace = visiblePlaces.find((place) => place.id === selectedId);
   const cardPlace = selectedPlace && selectedPlace.id !== dismissedCardId ? selectedPlace : undefined;
   const legs = useMemo(() => (activeDay ? dayLegs(activeDay, placesById, clusters) : []), [activeDay, placesById, clusters]);
-  const totalMinutes = useMemo(() => legs.reduce((sum, leg) => sum + (leg.minutes ?? 0), 0), [legs]);
+  const itineraryPlacesById = useMemo(() => new Map(itineraryPlaces.map((place) => [place.id, place])), [itineraryPlaces]);
   const dayMinutes = useMemo(
-    () => new Map(days.map((day) => [day.id, dayLegs(day, placesById, clusters).reduce((sum, leg) => sum + (leg.minutes ?? 0), 0)])),
-    [days, placesById, clusters],
+    () => new Map(days.map((day) => [day.id, dayTravelMinutes(day, itineraryPlacesById, clusters)])),
+    [days, itineraryPlacesById, clusters],
   );
   const ghostDays = useMemo(() => {
     if (!activeDay || !showOtherDays) return [];
@@ -496,7 +500,7 @@ function MapSurface({
           {activeDay ? (
             <div className="map-route-summary__stats">
               <div><span>{routePlaces.length}</span><small>{t('stopsLabel')}</small></div>
-              <div><span>{totalMinutes}</span><small>{t('minTravelLabel')}</small></div>
+              <div><span>{dayMinutes.get(activeDay.id) ?? 0}</span><small>{t('minTravelLabel')}</small></div>
             </div>
           ) : null}
           {activeDay?.routeStale ? <div className="map-route-summary__stale"><IconAlertTriangle size={14} />{t('routeStaleShort')}</div> : null}

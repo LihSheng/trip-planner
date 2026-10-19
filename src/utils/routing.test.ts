@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { createInitialState } from '../data/seed';
 import type { LocationCluster, Place, TripDay } from '../types';
-import { effectiveLegMode, markRouteStale, resolveLeg, routeLegKey } from './routing';
+import { dayLegs, dayTravelMinutes, effectiveLegMode, markRouteStale, resolveLeg, routeLegKey } from './routing';
 
 const day: TripDay = { id: 'day-1', label: 'Day 1', placeIds: ['a', 'b'], travelMode: 'public' };
 
@@ -63,5 +64,28 @@ describe('resolveLeg', () => {
     const leg = resolveLeg(day, [], a, place('b', 25.0, 121.6, { placeholderKind: 'free-time' as Place['placeholderKind'] }));
     expect(leg.minutes).toBeUndefined();
     expect(leg.mode).toBe('public');
+  });
+});
+
+describe('dayTravelMinutes', () => {
+  // Seed day 2 with a hotel-stay copy first and a meal placeholder between Shifen and Jiufen.
+  // The map used to drop both (they are not markers) and route Shifen straight to Jiufen.
+  const state = createInitialState();
+  const hotel = place('hotel', 25.0478, 121.517, { category: 'Accommodation' });
+  const stay = { ...hotel, id: 'stay-1', assignmentOf: 'hotel' };
+  const lunch = place('placeholder-lunch', 0, 0, { region: '', placeholderKind: 'meal' });
+  const placesById = new Map([...state.places, hotel, stay, lunch].map((item) => [item.id, item]));
+  const dayTwo: TripDay = { ...state.days[1], placeIds: ['stay-1', 'shifen', 'placeholder-lunch', 'jiufen'] };
+
+  it('sums the legs the planner shows, counting the hotel stop and leaving placeholder legs at 0', () => {
+    const legs = dayLegs(dayTwo, placesById, []);
+    expect(legs.map((leg) => leg.minutes)).toEqual([85, undefined, undefined]);
+    expect(dayTravelMinutes(dayTwo, placesById, [])).toBe(85);
+  });
+
+  it('does not bridge over a placeholder', () => {
+    const placeholderDay: TripDay = { ...dayTwo, placeIds: ['shifen', 'placeholder-lunch', 'jiufen'] };
+    expect(dayTravelMinutes(placeholderDay, placesById, [])).toBe(0);
+    expect(dayTravelMinutes({ ...dayTwo, placeIds: ['shifen', 'jiufen'] }, placesById, [])).toBe(33);
   });
 });

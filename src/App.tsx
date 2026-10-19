@@ -318,6 +318,7 @@ export default function App() {
     <Suspense fallback={<Skeleton height="calc(100vh - 176px)" mih={560} radius="lg" />}>
       <TaiwanMap
         places={mapPlaces}
+        itineraryPlaces={planner.state.places}
         days={planner.state.days}
         unscheduledIds={planner.state.unscheduledIds}
         startDate={planner.state.startDate}
