@@ -264,6 +264,11 @@ describe('nextAnchor', () => {
     expect(anchor(d, 'first', 'second')).toMatchObject({ kind: 'leaveBy', leaveAt: '10:30', arriveBy: '10:53', estimated: true, travelMinutes: 23 });
   });
 
+  it('labels a visit that runs past midnight on the clock, not clamped to 23:59', () => {
+    const { stops } = projectDay(day({ stopSchedules: { first: { startTime: '23:30', durationMinutes: 60 } } }), all, []);
+    expect(stops.map(({ timing }) => timingLabel(timing))).toEqual(['23:30–00:30', '~00:53–01:53']);
+  });
+
   it('follows a chosen leg mode and a location cluster, as the planner does', () => {
     expect(anchor(day({ stopSchedules: { second: { startTime: '15:30' } }, legModeOverrides: { 'first:second': 'car' } }), 'first', 'second'))
       .toMatchObject({ leaveAt: '15:25', travelMinutes: 5, mode: 'car' });

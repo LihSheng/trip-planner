@@ -62,14 +62,19 @@ export function storeProjectedStarts(day: TripDay, places: Place[], clusters: Lo
   return { ...day, stopSchedules };
 }
 
+/** A projected time on the clock: past midnight wraps (24:30 is 00:30) instead of clamping to 23:59 like `toTime`. */
+export function clockTime(minutes: number): string {
+  return toTime(((Math.round(minutes) % 1440) + 1440) % 1440);
+}
+
 /** A stop's start as every surface shows it: an estimate is prefixed with `~`, as in the planner gutter. */
 export function timingStartLabel(timing: StopTiming): string {
-  return `${timing.source === 'estimated' ? '~' : ''}${toTime(timing.start)}`;
+  return `${timing.source === 'estimated' ? '~' : ''}${clockTime(timing.start)}`;
 }
 
 /** A stop's time range, e.g. `~09:00–10:30`. */
 export function timingLabel(timing: StopTiming): string {
-  return `${timingStartLabel(timing)}–${toTime(timing.end)}`;
+  return `${timingStartLabel(timing)}–${clockTime(timing.end)}`;
 }
 
 export type NextAnchor =
