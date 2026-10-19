@@ -93,12 +93,11 @@ begin
   -- One global lock, because the per-minute budget protects the provider for all users together.
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('transit-routes', 0));
 
-  -- Failed rows are refunded: only started and completed lookups count.
+  -- Every attempt counts here, failed ones too: they still reached the provider.
   select count(*)::integer
   into minute_count
   from public.ai_import_usage
   where source_type = 'transit'
-    and status in ('started', 'completed')
     and created_at >= pg_catalog.now() - interval '1 minute';
 
   if minute_count >= p_per_minute_limit then
@@ -106,6 +105,7 @@ begin
     return;
   end if;
 
+  -- Failed rows are refunded from the user's daily quota: only started and completed lookups count.
   select count(*)::integer, min(created_at)
   into day_count, oldest_counted
   from public.ai_import_usage
