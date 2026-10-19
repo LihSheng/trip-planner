@@ -19,6 +19,18 @@ describe('restoreTripState', () => {
     });
   });
 
+  it('drops the retired route fields from older saved days', () => {
+    const state = createInitialState();
+    state.days = [{
+      id: 'day', label: 'Day', placeIds: [],
+      routeLegs: [], routeUpdatedAt: '2026-01-01T00:00:00.000Z', routeStale: true, routeError: 'x',
+    } as typeof state.days[number]];
+
+    const restored = restoreTripState(state);
+
+    expect(restored.ok && Object.keys(restored.trip.state.days[0]).filter((key) => key.startsWith('route'))).toEqual([]);
+  });
+
   it('retains a migratable-shaped Trip read-only when migration fails', () => {
     const state = createInitialState();
     state.days[0].placeIds.push('missing-place');

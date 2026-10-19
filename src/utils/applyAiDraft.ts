@@ -1,6 +1,5 @@
 import type { Place, TripDay, TripState } from '../types';
 import type { AiResolvedPlace, ConfirmedAiDraft } from '../types/aiImport';
-import { markRouteStale } from './routing';
 
 function importedPlace(candidate: AiResolvedPlace): Place | null {
   if (candidate.latitude === undefined || candidate.longitude === undefined) return null;
@@ -69,14 +68,14 @@ export function applyAiDraft(state: TripState, confirmed: ConfirmedAiDraft): Tri
           }
           return [placeId];
         });
-        return markRouteStale({
+        return {
           id: `day-${crypto.randomUUID()}`,
           label: draftDay.label || `Day ${state.days.length + 1}`,
           placeIds,
           travelMode: confirmed.preferences.travelMode ?? 'public',
           stopSchedules,
           timeManagementEnabled: placeIds.some((id) => Boolean(stopSchedules[id]?.startTime)),
-        });
+        };
       }),
     ]
     : state.days;

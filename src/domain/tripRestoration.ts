@@ -1,4 +1,4 @@
-import type { TripState } from '../types';
+import type { TripDay, TripState } from '../types';
 import { ensureActivities } from './activity';
 import { normalizeDayTasks } from './dayTask';
 import { normalizeExpenseState } from './expenses';
@@ -30,6 +30,14 @@ export function isTripState(value: unknown): value is TripState {
   );
 }
 
+/** Fields from a removed Google Routes scaffold that older saved trips still carry. */
+type LegacyTripDay = TripDay & { routeLegs?: unknown; routeUpdatedAt?: unknown; routeStale?: unknown; routeError?: unknown };
+
+function withoutLegacyRouteFields(day: LegacyTripDay): TripDay {
+  const { routeLegs: _legs, routeUpdatedAt: _updatedAt, routeStale: _stale, routeError: _error, ...rest } = day;
+  return rest;
+}
+
 export function normalizeTripState(state: TripState): TripState {
   const normalized = {
     ...state,
@@ -38,7 +46,7 @@ export function normalizeTripState(state: TripState): TripState {
       ? state.visitedPlaceIds.filter((placeId): placeId is string => typeof placeId === 'string')
       : [],
     days: state.days.map((day) => ({
-      ...day,
+      ...withoutLegacyRouteFields(day),
       travelMode: day.travelMode ?? 'public',
       stopSchedules: day.stopSchedules ?? {},
       timeManagementEnabled: day.timeManagementEnabled ?? false,
