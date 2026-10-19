@@ -60,8 +60,9 @@ export interface ResolvedLeg {
 /**
  * Resolve the transport leg between two consecutive stops: mode, minutes and cluster relationship.
  * Nothing else may estimate leg time, so every surface shows the same minutes.
+ * `departFrom` is the stop the traveller leaves at: the last placeholder on a bridged leg, else `from`.
  */
-export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Place, to: Place): ResolvedLeg {
+export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Place, to: Place, departFrom: Place = from): ResolvedLeg {
   const key = routeLegKey(from.id, to.id);
   const dayDefaultMode: TravelMode = day.travelMode ?? 'public';
   const cluster = clusterForPlace(clusters, from.id);
@@ -85,7 +86,7 @@ export function resolveLeg(day: TripDay, clusters: LocationCluster[], from: Plac
     isTransitEligible(mode, inside, from, to),
     from,
     to,
-    day.timeManagementEnabled ? plannedLeaveMinutes(day, from) : null,
+    day.timeManagementEnabled ? plannedLeaveMinutes(day, departFrom) : null,
   );
   // A stale chosen route still wins: the traveller picked it, and the UI flags it for refresh.
   const chosen = transit.status === 'saved' ? transit.chosen : null;
@@ -123,7 +124,7 @@ export function dayLegs(day: TripDay, placesById: Map<string, Place>, clusters: 
     const before = stops[i];
     if (!isPlaceholder(before)) lastReal = before;
     return isPlaceholder(before) && lastReal && !isPlaceholder(to)
-      ? { ...resolveLeg(day, clusters, lastReal, to), follows: before }
+      ? { ...resolveLeg(day, clusters, lastReal, to, before), follows: before }
       : resolveLeg(day, clusters, before, to);
   });
 }
@@ -151,12 +152,18 @@ export function isDrawableLeg(leg: Pick<ResolvedLeg, 'from' | 'to'>): boolean {
 }
 
 /**
- * Places the map fits its viewport to: the markers plus any stop a drawn leg ends at that has no marker
- * (a hotel-stay copy). Returns `markers` itself when nothing is added, so the map does not refit needlessly.
+ * Places the map fits its viewport to: the markers plus any end of a drawn leg that has no marker
+ * (a hotel-stay copy, including across a bridged placeholder). Returns `markers` itself when nothing
+ * is added, so the map does not refit needlessly.
  */
-export function viewportPlaces(markers: Place[], stops: Place[]): Place[] {
-  const markerIds = new Set(markers.map((place) => place.id));
-  const legEnds = stops.filter((stop, i) => !markerIds.has(stop.id)
-    && [stops[i - 1], stops[i + 1]].some((neighbour) => neighbour && isDrawableLeg({ from: stop, to: neighbour })));
+export function viewportPlaces(markers: Place[], legs: Pick<ResolvedLeg, 'from' | 'to'>[]): Place[] {
+  const seen = new Set(markers.map((place) => place.id));
+  const legEnds: Place[] = [];
+  for (const leg of legs) {
+    if (!isDrawableLeg(leg)) continue;
+    for (const end of [leg.from, leg.to]) {
+      if (!seen.has(end.id)) { seen.add(end.id); legEnds.push(end); }
+    }
+  }
   return legEnds.length ? [...markers, ...legEnds] : markers;
 }

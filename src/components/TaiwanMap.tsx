@@ -263,7 +263,11 @@ function MapSurface({
   const activePlaceIds = activeDay?.placeIds;
   // Keyed on placeIds, not the day, so changing a leg's mode does not refit the viewport.
   const stops = useMemo(() => (activePlaceIds ? dayStops({ placeIds: activePlaceIds }, itineraryPlacesById) : []), [activePlaceIds, itineraryPlacesById]);
-  const fitPlaces = useMemo(() => viewportPlaces(visiblePlaces, stops), [visiblePlaces, stops]);
+  // Which legs are drawn depends only on their ends, so a stops-only day keeps the fit stable across mode changes.
+  const fitPlaces = useMemo(
+    () => viewportPlaces(visiblePlaces, activePlaceIds ? dayLegs({ id: '', label: '', placeIds: activePlaceIds }, itineraryPlacesById, []) : []),
+    [visiblePlaces, activePlaceIds, itineraryPlacesById],
+  );
   const legs = useMemo(() => (activeDay ? dayLegs(activeDay, itineraryPlacesById, clusters) : []), [activeDay, itineraryPlacesById, clusters]);
   const drawnLegs = useMemo(() => legs.filter(isDrawableLeg), [legs]);
   const dayMinutes = useMemo(

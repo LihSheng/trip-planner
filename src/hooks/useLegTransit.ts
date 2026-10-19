@@ -57,7 +57,7 @@ export function useLegTransit(ref: LegRef, surface: TransitSurface): LegTransitC
   }, []);
 
   const target = legAt(state, ref);
-  const resolved = target ? resolveLeg(target.day, state.locationClusters ?? [], target.from, target.to) : null;
+  const resolved = target ? resolveLeg(target.day, state.locationClusters ?? [], target.from, target.to, target.departFrom) : null;
   const view: LegTransit = resolved ? transitOnSurface(resolved.transit, surface) : { status: 'ineligible' };
 
   const lookup = useCallback(async (fresh: boolean) => {
@@ -66,7 +66,7 @@ export function useLegTransit(ref: LegRef, surface: TransitSurface): LegTransitC
       surface,
       timesOn: Boolean(target.day.timeManagementEnabled),
       dayDate: tripDayDate(state.startDate, target.dayIndex),
-      leaveMinutes: plannedLeaveMinutes(target.day, target.from),
+      leaveMinutes: plannedLeaveMinutes(target.day, target.departFrom),
     });
     setRequest({ status: 'loading' });
     const result = await client.lookup({ from: latLngOf(target.from), to: latLngOf(target.to), departure }, { fresh });
