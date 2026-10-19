@@ -1,3 +1,5 @@
+import type { SavedLegTransit } from './domain/transit';
+
 export type PlaceCategory =
   | 'Landmark'
   | 'Food'
@@ -161,6 +163,8 @@ export interface TripDay {
   lodgingPlaceId?: string;
   timeManagementEnabled?: boolean;
   legModeOverrides?: Record<string, RouteLegMode>;
+  /** Saved transit lookups keyed by routeLegKey(from, to). Defaults to {} so collaborators adding different legs merge per key. */
+  transitByLeg?: Record<string, SavedLegTransit>;
 }
 
 export type StopExecutionStatus = 'upcoming' | 'current' | 'completed' | 'skipped' | 'rescheduled';
