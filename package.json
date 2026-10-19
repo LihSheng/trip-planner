@@ -9,7 +9,7 @@
     "typecheck": "tsc -b --pretty false",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:security": "node --test supabase/functions/ai-itinerary-import/_shared/sourceExtractor.security-test.ts"
+    "test:edge": "node --test supabase/functions/ai-itinerary-import/_shared/sourceExtractor.security-test.ts supabase/functions/transit-routes/_shared/transitousAdapter.edge-test.ts supabase/functions/transit-routes/_shared/transitRequest.edge-test.ts supabase/functions/transit-routes/_shared/transitousClient.edge-test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",
