@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useDroppable } from '@dnd-kit/core';
+import { useDndContext, useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import {
   ActionIcon,
@@ -16,15 +16,15 @@ import {
   TextInput,
   Select,
 } from '@mantine/core';
-import { IconAlertTriangle, IconBed, IconCircleCheckFilled, IconCoffee, IconDots, IconListCheck, IconMapPinPlus, IconPlane, IconPlus, IconSun, IconToolsKitchen, IconTrash } from '@tabler/icons-react';
+import { IconBed, IconCircleCheckFilled, IconCoffee, IconDots, IconListCheck, IconMapPinPlus, IconPlane, IconPlus, IconSun, IconToolsKitchen, IconTrash } from '@tabler/icons-react';
 import type { DayTask, LocationCluster, PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
-import { useI18n } from '../i18n';
-import { scheduleFor } from '../utils/schedule';
-import { isExceptionLeg, sumLegMinutes } from '../utils/routing';
-import { projectDay, type ScheduleWarning } from '../utils/dayProjection';
-import { DayModeChip, LegMinutesButton, TransportLegChip } from './TransportLegChip';
+import { placeName, useI18n } from '../i18n';
+import { scheduleFor, toTime } from '../utils/schedule';
+import { sumLegMinutes, type ResolvedLeg } from '../utils/routing';
+import { projectDay, type ScheduleWarning, type StopTiming } from '../utils/dayProjection';
+import { DayModeChip, TransportLegChip } from './TransportLegChip';
 import { useTransitSheet } from './TransitSheet';
 import { isPlaceholder } from '../domain/place';
 import { clusterForPlace, clusterMember } from '../domain/locationCluster';
@@ -105,16 +105,16 @@ export function DayColumn({
   const [renameLabel, setRenameLabel] = useState('');
   // Dropping on empty space in the day appends to the end; the plain day id is what getDestination expects.
   const { setNodeRef, isOver } = useDroppable({ id: day.id, data: { type: 'day', dayId: day.id }, disabled: readOnly });
+  // dnd-kit only transforms the sortable rows, so leg rows would sit between the wrong stops mid-drag.
+  const dragging = Boolean(useDndContext().active);
   const dayName = t('day', { number: index + 1 });
   const visitedCount = places.filter((place) => visitedPlaceIds.includes(place.id)).length;
   const allPlacesVisited = places.length > 0 && visitedCount === places.length;
   const projection = projectDay(day, places, clusters);
   const warningText = (warning: ScheduleWarning) => warning.kind === 'outsideHours' ? t('outsideOpeningHours') : t('shortTravelBy', { minutes: warning.shortByMinutes });
-  const warningCount = day.timeManagementEnabled ? projection.stops.reduce((total, stop) => total + stop.warnings.length, 0) : 0;
   const incompleteTaskCount = tasks.filter((task) => !task.completed).length;
 
   const dayDefaultMode: TravelMode = day.travelMode ?? 'public';
-  const [showAllLegs, setShowAllLegs] = useState(false);
   const legs = projection.legs;
   const legCount = legs.length;
   const totalLegMinutes = sumLegMinutes(legs);
@@ -239,16 +239,7 @@ export function DayColumn({
               onChange={(mode) => onDayScheduleChange(day.id, { travelMode: mode })}
             />
             <Text span size="xs" c="dimmed">· {t('legsSummary', { legs: legCount, minutes: totalLegMinutes })}</Text>
-            <Button ml="auto" size="compact-xs" variant="subtle" color="gray" onClick={() => setShowAllLegs((value) => !value)}>
-              {showAllLegs ? t('hideDefaultLegs') : t('showAllLegs')}
-            </Button>
           </Box>
-        ) : null}
-        {day.timeManagementEnabled && warningCount ? (
-          <Group gap={4} mt="xs">
-            <IconAlertTriangle size={14} color="var(--mantine-color-orange-6)" />
-            <Text size="xs" c="orange">{warningCount} schedule warning{warningCount === 1 ? '' : 's'}</Text>
-          </Group>
         ) : null}
       </Box>
 
@@ -258,10 +249,14 @@ export function DayColumn({
           {places.map((place, placeIndex) => {
             const cluster = clusterForPlace(clusters, place.id);
             const member = cluster ? clusterMember(cluster, place.id) : undefined;
+            const { timing, warnings } = projection.stops[placeIndex];
+            const leg = legs[placeIndex];
             return (
               <Box
                 key={place.id}
                 className="planner-place"
+                data-timeline-first={placeIndex === 0 || undefined}
+                data-timeline-last={placeIndex === places.length - 1 || undefined}
                 data-cluster-member={member ? member.relationship : undefined}
                 data-cluster-anchor={cluster?.anchorPlaceId === place.id || undefined}
               >
@@ -280,38 +275,24 @@ export function DayColumn({
                   onReplace={!readOnly && isPlaceholder(place) ? onReplacePlaceholder : undefined}
                   onRename={!readOnly && isPlaceholder(place) ? (target) => { setRenameTarget(target); setRenameLabel(target.name === target.placeholderKind ? '' : target.name); } : undefined}
                   schedule={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] ? scheduleFor(day, place) : undefined}
-                  travelMinutes={!readOnly && day.timeManagementEnabled && day.stopSchedules?.[place.id] && placeIndex > 0 ? legs[placeIndex - 1].minutes : undefined}
-                  warnings={readOnly || !day.timeManagementEnabled ? undefined : projection.stops[placeIndex].warnings.map(warningText)}
+                  warnings={warnings.map(warningText)}
+                  timeline={<TimelineGutter timing={timing} />}
                   onScheduleChange={!readOnly && day.timeManagementEnabled ? (updates) => onStopScheduleChange(day.id, place.id, updates) : undefined}
                   onEnableSchedule={!readOnly && day.timeManagementEnabled ? () => onStopScheduleChange(day.id, place.id, { durationMinutes: scheduleFor(day, place).durationMinutes }) : undefined}
                   clusterLabel={cluster?.name}
                   clusterRelationship={cluster ? member?.relationship ?? 'anchor' : undefined}
                 />
-                {places[placeIndex + 1] ? (() => {
-                  const leg = legs[placeIndex];
-                  const showChip = showAllLegs || isExceptionLeg(leg.legMode, leg.mode, dayDefaultMode);
-                  const onOpenTransit = leg.transit.status === 'ineligible'
-                    ? undefined
-                    : () => openTransit({ dayId: day.id, fromPlaceId: leg.from.id, toPlaceId: leg.to.id });
-                  const rowClass = showChip ? '' : onOpenTransit ? ' route-leg--minutes' : ' route-leg--collapsed';
-                  return (
-                    <Group className={`route-leg${rowClass}`} gap="xs" justify="center" wrap="nowrap">
-                      {!showChip ? (
-                        onOpenTransit ? <LegMinutesButton leg={leg} onClick={onOpenTransit} /> : null
-                      ) : leg.inside ? (
-                        <Text size="xs" c="dimmed">{t('walk').toLowerCase()} · {t('insideVenue')}</Text>
-                      ) : (
-                        <TransportLegChip
-                          leg={leg}
-                          dayDefaultMode={dayDefaultMode}
-                          readOnly={readOnly}
-                          onChange={(mode) => onLegModeChange(day.id, leg.from.id, leg.to.id, mode)}
-                          onOpenTransit={onOpenTransit}
-                        />
-                      )}
-                    </Group>
-                  );
-                })() : null}
+                {leg && !dragging ? (
+                  <TimelineLeg
+                    leg={leg}
+                    dayDefaultMode={dayDefaultMode}
+                    readOnly={readOnly}
+                    onChange={(mode) => onLegModeChange(day.id, leg.from.id, leg.to.id, mode)}
+                    onOpenTransit={leg.transit.status === 'ineligible'
+                      ? undefined
+                      : () => openTransit({ dayId: day.id, fromPlaceId: leg.from.id, toPlaceId: leg.to.id })}
+                  />
+                ) : null}
               </Box>
             );
           })}
@@ -357,5 +338,44 @@ export function DayColumn({
         </Stack>
       </Modal>
     </Paper>
+  );
+}
+
+function TimelineGutter({ timing }: { timing: StopTiming }) {
+  const estimated = timing.source === 'estimated' || undefined;
+  return (
+    <>
+      <div className="timeline-stop__time" data-estimated={estimated}>
+        <span className="timeline-stop__start">{estimated ? '~' : ''}{toTime(timing.start)}</span>
+        <span className="timeline-stop__end">{toTime(timing.end)}</span>
+      </div>
+      <div className="timeline-stop__rail" aria-hidden="true">
+        <span className="timeline-stop__dot" data-estimated={estimated} />
+      </div>
+    </>
+  );
+}
+
+/** The row between two stops: the leg's minutes (the transit entry point), its mode menu, and the rail. */
+function TimelineLeg({ leg, dayDefaultMode, readOnly, onChange, onOpenTransit }: {
+  leg: ResolvedLeg;
+  dayDefaultMode: TravelMode;
+  readOnly: boolean;
+  onChange: (mode: TravelMode | 'default') => void;
+  onOpenTransit?: () => void;
+}) {
+  const { t } = useI18n();
+  // The leg into a placeholder adds no time; the bridged leg after it carries the travel.
+  const quiet = isPlaceholder(leg.to);
+  return (
+    <div className={`timeline-leg${quiet ? ' timeline-leg--quiet' : ''}`}>
+      <span className="timeline-leg__rail" aria-hidden="true" />
+      {quiet ? null : (
+        <div className="timeline-leg__chip">
+          <TransportLegChip leg={leg} dayDefaultMode={dayDefaultMode} readOnly={readOnly || leg.inside} onChange={onChange} onOpenTransit={onOpenTransit} />
+          {leg.follows ? <Text span size="xs" c="dimmed" lineClamp={1}>{t('bridgedFrom', { name: placeName(t, leg.from) })}</Text> : null}
+        </div>
+      )}
+    </div>
   );
 }

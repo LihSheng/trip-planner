@@ -32,10 +32,6 @@ export function modeLabel(mode: RouteLegMode) {
   return mode === 'default' ? 'Use day default' : mode;
 }
 
-export function isExceptionLeg(legMode: RouteLegMode, resolvedMode: TravelMode, dayDefaultMode: TravelMode): boolean {
-  return legMode !== 'default';
-}
-
 export type LegRelationship = 'inside' | 'same-area' | 'walkable';
 
 export type LegMinutesSource = 'transit' | 'cluster' | 'estimate' | 'none';
