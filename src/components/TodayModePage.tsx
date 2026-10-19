@@ -17,7 +17,7 @@ import { nextAnchor, toMinutes } from '../utils/schedule';
 import { transportIcon } from './transportIcons';
 import { categoryLabel, useI18n } from '../i18n';
 import { flexibleDaysFor, flexiblePlacesForDay, remainingWindowDays } from '../domain/flexibleWindows';
-import { isSavedRouteOld } from '../domain/transit';
+import { isSavedRouteOld, transitOnSurface } from '../domain/transit';
 import { useTransitSheet } from './TransitSheet';
 import type { TravelMode } from '../types';
 
@@ -219,7 +219,8 @@ export function TodayModePage({ location }: TodayModePageProps) {
           </Text>
           {anchor.kind === 'leaveBy' && anchor.leg && anchor.legRef && anchor.leg.transit.status !== 'ineligible' ? (() => {
             const { leg, legRef } = anchor;
-            const refreshSuggested = leg.transit.status === 'saved' && (leg.transit.stale.length > 0 || isSavedRouteOld(leg.transit.saved, now));
+            const transit = transitOnSurface(leg.transit, 'today');
+            const refreshSuggested = transit.status === 'saved' && (transit.stale.length > 0 || isSavedRouteOld(transit.saved, now));
             return (
               <Anchor component="button" type="button" size="sm" className="today-anchor__transit" onClick={() => openTransit(legRef, { surface: 'today' })}>
                 {t('showTransit')}{refreshSuggested ? ` · ${t('transitRefreshSuggested')}` : ''}

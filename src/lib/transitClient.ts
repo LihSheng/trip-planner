@@ -22,13 +22,17 @@ export type TransitLookupError =
 
 export type TransitLookupResult = { ok: true; lookup: TransitLookup } | { ok: false; error: TransitLookupError };
 
+export interface TransitLookupOptions {
+  /** Aborting only stops this caller's wait: the request still finishes and fills the cache. */
+  signal?: AbortSignal;
+  /** Skip the session cache and replace its entry, for an explicit refresh. */
+  fresh?: boolean;
+}
+
 export interface TransitClient {
   readonly provider: TransitProviderId;
-  /**
-   * Never rejects for expected failures. Successful results are shared for the session.
-   * Aborting only stops this caller's wait: the request still finishes and fills the cache.
-   */
-  lookup(request: TransitRequest, signal?: AbortSignal): Promise<TransitLookupResult>;
+  /** Never rejects for expected failures. Successful results are shared for the session unless `fresh` is set. */
+  lookup(request: TransitRequest, options?: TransitLookupOptions): Promise<TransitLookupResult>;
 }
 
 const STEP_KINDS: readonly TransitStepKind[] = ['walk', 'bus', 'tram', 'metro', 'rail', 'highSpeedRail', 'ferry', 'cableCar', 'other'];
@@ -49,14 +53,16 @@ function cacheKey(provider: TransitProviderId, request: TransitRequest, now: num
 }
 
 function cached(provider: TransitProviderId, run: (request: TransitRequest) => Promise<TransitLookupResult>): TransitClient['lookup'] {
-  return (request, signal) => {
+  return (request, { signal, fresh = false } = {}) => {
     const key = cacheKey(provider, request, Date.now());
-    let pending = sessionCache.get(key);
+    let pending = fresh ? undefined : sessionCache.get(key);
     if (!pending) {
-      pending = run(request).then((result) => {
-        if (!result.ok) sessionCache.delete(key);
+      const started: Promise<TransitLookupResult> = run(request).then((result) => {
+        // A fresh lookup may have replaced this entry since; only drop our own failure.
+        if (!result.ok && sessionCache.get(key) === started) sessionCache.delete(key);
         return result;
       });
+      pending = started;
       sessionCache.set(key, pending);
     }
     if (!signal) return pending;

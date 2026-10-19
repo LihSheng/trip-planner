@@ -109,6 +109,19 @@ describe('edge transit client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('asks the server again on a fresh lookup and keeps that answer for later lookups', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, okBody));
+    fetchMock.mockResolvedValueOnce(json(200, { ...okBody, fetchedAt: '2026-10-19T08:00:00.000Z' }));
+    await client.lookup(request);
+
+    const refreshed = await client.lookup(request, { fresh: true });
+    const later = await client.lookup(request);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(refreshed.ok && refreshed.lookup.fetchedAt).toBe('2026-10-19T08:00:00.000Z');
+    expect(later).toBe(refreshed);
+  });
+
   it('does not keep failures, so the next lookup asks again', async () => {
     fetchMock.mockResolvedValueOnce(json(503, { code: 'TRANSIT_BUSY', message: 'x', requestId: 'r', retryable: true }));
     fetchMock.mockResolvedValueOnce(json(200, okBody));
@@ -121,7 +134,7 @@ describe('edge transit client', () => {
     let answer: (response: Response) => void = () => undefined;
     fetchMock.mockReturnValue(new Promise<Response>((resolve) => { answer = resolve; }));
     const controller = new AbortController();
-    const waiting = client.lookup(request, controller.signal);
+    const waiting = client.lookup(request, { signal: controller.signal });
     controller.abort();
     await expect(waiting).rejects.toMatchObject({ name: 'AbortError' });
 

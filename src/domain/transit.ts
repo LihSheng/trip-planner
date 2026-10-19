@@ -172,6 +172,15 @@ export function legTransit(
   return { status: 'saved', saved, chosen, stale };
 }
 
+/**
+ * The leg's transit view as a surface shows it. Today always looks up "now", so a planned
+ * departure says nothing there: its freshness is the age rule alone (decision 11).
+ */
+export function transitOnSurface(view: LegTransit, surface: TransitSurface): LegTransit {
+  if (surface !== 'today' || view.status !== 'saved' || !view.stale.includes('departureShifted')) return view;
+  return { ...view, stale: view.stale.filter((reason) => reason !== 'departureShifted') };
+}
+
 function signatureOf(option: RawTransitOption) {
   return option.steps
     .filter((step) => step.kind !== 'walk')

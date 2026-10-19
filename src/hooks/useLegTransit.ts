@@ -6,6 +6,7 @@ import {
   isSavedRouteOld,
   latLngOf,
   legAt,
+  transitOnSurface,
   type LegRef,
   type LegTransit,
   type TransitProviderId,
@@ -57,9 +58,9 @@ export function useLegTransit(ref: LegRef, surface: TransitSurface): LegTransitC
 
   const target = legAt(state, ref);
   const resolved = target ? resolveLeg(target.day, state.locationClusters ?? [], target.from, target.to) : null;
-  const view: LegTransit = resolved?.transit ?? { status: 'ineligible' };
+  const view: LegTransit = resolved ? transitOnSurface(resolved.transit, surface) : { status: 'ineligible' };
 
-  const lookup = useCallback(async () => {
+  const lookup = useCallback(async (fresh: boolean) => {
     if (!client || !target) return;
     const departure = departureFor({
       surface,
@@ -68,20 +69,20 @@ export function useLegTransit(ref: LegRef, surface: TransitSurface): LegTransitC
       leaveMinutes: plannedLeaveMinutes(target.day, target.from),
     });
     setRequest({ status: 'loading' });
-    const result = await client.lookup({ from: latLngOf(target.from), to: latLngOf(target.to), departure });
+    const result = await client.lookup({ from: latLngOf(target.from), to: latLngOf(target.to), departure }, { fresh });
     // Saved even when the sheet has closed: the lookup was paid for, and the mutator rechecks the leg.
     if (result.ok) saveTransitLookup(ref, result.lookup);
     if (mounted.current) setRequest(result.ok ? { status: 'idle' } : { status: 'failed', error: result.error });
   }, [client, target, surface, state.startDate, saveTransitLookup, ref]);
 
   const canLookUp = Boolean(client) && view.status !== 'ineligible';
-  const refresh = canLookUp ? () => { void lookup(); } : undefined;
+  const refresh = canLookUp ? () => { void lookup(true); } : undefined;
 
   const autoLookedUp = useRef(false);
   useEffect(() => {
     if (autoLookedUp.current || !canLookUp || view.status !== 'empty') return;
     autoLookedUp.current = true;
-    void lookup();
+    void lookup(false);
   }, [canLookUp, view.status, lookup]);
 
   const choose = isReadOnly || view.status !== 'saved'

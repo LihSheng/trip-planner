@@ -131,6 +131,11 @@ describe('nextAnchor', () => {
   });
 
 
+  it('gives no leg ref when a stop sits between current and next, while still timing the direct trip', () => {
+    const d = day({ placeIds: ['first', 'skipped', 'second'], stopSchedules: { second: { startTime: '15:30' } } });
+    expect(nextAnchor(d, [], [first, second], 'first', 'second')).toMatchObject({ kind: 'leaveBy', leaveAt: '15:07', travelMinutes: 23, legRef: null });
+  });
+
   it('prefers the planned start time over closing time', () => {
     const d = day({ stopSchedules: { second: { startTime: '12:00' } } });
     const closing = { ...second, openingHours: { opensAt: '09:00', closesAt: '18:00' } };

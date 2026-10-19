@@ -83,6 +83,23 @@ describe('TodayModePage', () => {
     expect(within(dialog).getByText('Sample data')).toBeTruthy();
   });
 
+  it('does not offer transit when a skipped stop sits between the current and next stop', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-10T09:00:00'));
+    const skipped: Place = { id: 'skipped', name: 'Beitou', region: 'Taipei', category: 'Landmark', latitude: 25.13, longitude: 121.5, notes: '' };
+    tripState = {
+      version: 1, tripName: 'Taiwan', startDate: '2026-10-10', places: [first, skipped, second], unscheduledIds: [], visitedPlaceIds: [],
+      days: [{ id: 'day-1', label: '', placeIds: ['first', 'skipped', 'second'], travelMode: 'public', stopSchedules: { second: { startTime: '23:30' } } }],
+      executionByDay: { 'day-1': { dayId: 'day-1', selectedAt: '', updatedAt: '', stopStates: {
+        first: { placeId: 'first', status: 'current' },
+        skipped: { placeId: 'skipped', status: 'skipped' },
+      } } },
+    };
+    renderToday();
+    expect(screen.getByText(/to reach Jiufen before 23:30/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Show transit/ })).toBeNull();
+  });
+
   it('does not offer transit on a walking leg', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-10T09:00:00'));

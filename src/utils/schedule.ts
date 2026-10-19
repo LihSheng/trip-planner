@@ -102,7 +102,9 @@ export type NextAnchor =
   | {
     kind: 'leaveBy'; leaveAt: string; arriveBy: string; travelMinutes: number; mode: TravelMode; toPlaceId: string;
     /** Null when there is no current stop, so no leg leads to the next one. */
-    leg: ResolvedLeg | null; legRef: LegRef | null;
+    leg: ResolvedLeg | null;
+    /** Null as well when stops between current and next were skipped: only adjacent stops form a saved leg. */
+    legRef: LegRef | null;
   }
   | { kind: 'opensAt'; opensAt: string; placeId: string }
   | { kind: 'none' };
@@ -124,6 +126,7 @@ export function nextAnchor(day: TripDay, clusters: LocationCluster[], orderedPla
   const leg = current ? resolveLeg(day, clusters, current, next) : null;
   const mode = leg?.mode ?? day.travelMode ?? 'public';
   const travelMinutes = leg?.minutes ?? 0;
-  const legRef = current ? { dayId: day.id, fromPlaceId: current.id, toPlaceId: next.id } : null;
+  const adjacent = current !== undefined && day.placeIds[day.placeIds.indexOf(current.id) + 1] === next.id;
+  const legRef = adjacent ? { dayId: day.id, fromPlaceId: current.id, toPlaceId: next.id } : null;
   return { kind: 'leaveBy', leaveAt: toTime(arriveMinutes - travelMinutes), arriveBy: toTime(arriveMinutes), travelMinutes, mode, toPlaceId: next.id, leg, legRef };
 }

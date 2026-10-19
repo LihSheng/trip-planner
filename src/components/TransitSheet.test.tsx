@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { useEffect, type Context, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as tripContext from '../context/TripContext';
-import type { SavedLegTransit } from '../domain/transit';
+import type { SavedLegTransit, TransitSurface } from '../domain/transit';
 import { useTripState } from '../hooks/useTripState';
 import { I18nProvider } from '../i18n';
 import { resetTransitSessionCache } from '../lib/transitClient';
@@ -45,6 +45,17 @@ const trip = (transitByLeg: TripState['days'][number]['transitByLeg'] = {}): Tri
   days: [{ id: 'day-1', label: '', placeIds: [a.id, b.id], travelMode: 'public', transitByLeg }],
 });
 
+/** Times on: Taipei 101 runs 10:00 for an hour, so the planned departure is 11:00. */
+const timesOn = (transitByLeg: TripState['days'][number]['transitByLeg'] = {}): TripState => {
+  const base = trip(transitByLeg);
+  return { ...base, days: [{ ...base.days[0], timeManagementEnabled: true, stopSchedules: { [a.id]: { startTime: '10:00', durationMinutes: 60 } } }] };
+};
+
+const routesResponse = (departAt: string, fetchedAt: string) => new Response(JSON.stringify({
+  version: 1, provider: 'transitous', departAt, timeZone: 'Asia/Taipei', fetchedAt,
+  options: [{ minutes: 22, steps: [{ kind: 'metro', minutes: 22, line: 'BL', stopCount: 5 }] }],
+}), { status: 200 });
+
 function Trip({ initial, readOnly, children }: { initial: TripState; readOnly: boolean; children: ReactNode }) {
   const tripState = useTripState(readOnly);
   const { setState } = tripState;
@@ -52,7 +63,7 @@ function Trip({ initial, readOnly, children }: { initial: TripState; readOnly: b
   return <TestTripContext.Provider value={{ ...tripState, isReadOnly: readOnly }}>{children}</TestTripContext.Provider>;
 }
 
-function FirstLeg() {
+function FirstLeg({ surface }: { surface: TransitSurface }) {
   const { state, placesById, isReadOnly } = tripContext.useTrip();
   const { openTransit } = useTransitSheet();
   const leg = dayLegs(state.days[0], placesById, [])[0];
@@ -63,17 +74,17 @@ function FirstLeg() {
       dayDefaultMode="public"
       readOnly={isReadOnly}
       onChange={vi.fn()}
-      onOpenTransit={() => openTransit({ dayId: 'day-1', fromPlaceId: a.id, toPlaceId: b.id })}
+      onOpenTransit={() => openTransit({ dayId: 'day-1', fromPlaceId: a.id, toPlaceId: b.id }, { surface })}
     />
   );
 }
 
-function renderLeg(initial: TripState, readOnly: boolean) {
+function renderLeg(initial: TripState, readOnly: boolean, surface: TransitSurface = 'planner') {
   return render(
     <MantineProvider env="test">
       <I18nProvider>
         <Trip initial={initial} readOnly={readOnly}>
-          <TransitSheetProvider><FirstLeg /></TransitSheetProvider>
+          <TransitSheetProvider><FirstLeg surface={surface} /></TransitSheetProvider>
         </Trip>
       </I18nProvider>
     </MantineProvider>,
@@ -149,6 +160,48 @@ describe('TransitSheet', () => {
     expect(within(dialog).getByRole('link', { name: 'Open route' })).toBeDefined();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).departure).toEqual({ kind: 'now' });
+  });
+
+  it('asks the server again on Refresh for a planned departure and saves the new answer', async () => {
+    auth = { isAuthenticated: true, user: { id: 'user-1' }, accessToken: 'token' };
+    fetchMock
+      .mockResolvedValueOnce(routesResponse('2026-10-21T11:00:00+08:00', '2026-10-19T06:00:00.000Z'))
+      .mockResolvedValueOnce(routesResponse('2026-10-21T11:00:00+08:00', '2026-10-20T06:00:00.000Z'));
+    renderLeg(timesOn(), false);
+
+    fireEvent.click(await screen.findByRole('button', { name: '18 min, show transit options' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByText('Saved Oct 19')).toBeDefined();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Refresh' }));
+
+    expect(await within(dialog).findByText('Saved Oct 20')).toBeDefined();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).departure).toEqual({ kind: 'planned', local: '2026-10-21T11:00' });
+  });
+
+  it('does not call a Today lookup for now stale on a day with Times on', async () => {
+    auth = { isAuthenticated: true, user: { id: 'user-1' }, accessToken: 'token' };
+    fetchMock.mockResolvedValueOnce(routesResponse('2026-10-19T14:00:00+08:00', '2026-10-19T06:00:00.000Z'));
+    renderLeg(timesOn(), false, 'today');
+
+    fireEvent.click(await screen.findByRole('button', { name: '18 min, show transit options' }));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(await within(dialog).findByText('Saved Oct 19')).toBeDefined();
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).departure).toEqual({ kind: 'now' });
+    expect(within(dialog).queryByText('Stops or times changed since this was saved.')).toBeNull();
+  });
+
+  it('still calls a route stale in the planner when its departure is far from the planned leave time', async () => {
+    auth = { isAuthenticated: true, user: { id: 'user-1' }, accessToken: 'token' };
+    renderLeg(timesOn({ 'Taipei 101:Longshan': { ...saved, basis: { ...saved.basis, departAt: '2026-10-19T14:00:00+08:00' } } }), false);
+
+    fireEvent.click(await screen.findByRole('button', { name: /^18 min, show transit options/ }));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByText('Stops or times changed since this was saved.')).toBeDefined();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('shows the busy message when the shared limit is hit', async () => {
