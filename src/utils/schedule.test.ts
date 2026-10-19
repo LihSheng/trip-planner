@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayWarningCount, dayWarnings, defaultDuration, estimateTravelMinutes, nextAnchor, scheduleFor, toMinutes, toTime } from './schedule';
+import { cascadeStartTimes, dayWarningCount, dayWarnings, defaultDuration, estimateTravelMinutes, nextAnchor, scheduleFor, toMinutes, toTime } from './schedule';
 import type { LocationCluster, Place, TripDay } from '../types';
 import { resolveLeg } from './routing';
 
@@ -71,6 +71,48 @@ describe('travel time agrees with resolveLeg', () => {
     });
     expect(dayWarnings(day('10:10'), [first, second, third], insideMall)).toEqual(new Map());
     expect(dayWarnings(day('10:09'), [first, second, third], insideMall)).toEqual(new Map([['third', ['Insufficient travel time']]]));
+  });
+});
+
+describe('cascadeStartTimes', () => {
+  const third: Place = { id: 'third', name: 'Third', region: 'Taipei', category: 'Food', latitude: 25.05, longitude: 121.58, notes: '' };
+  const fourth: Place = { id: 'fourth', name: 'Fourth', region: 'Taipei', category: 'Food', latitude: 25.06, longitude: 121.59, notes: '' };
+  const placesById = new Map([first, second, third, fourth].map((place) => [place.id, place]));
+  const mall: LocationCluster[] = [{
+    id: 'c1', name: 'Mall', anchorPlaceId: 'first',
+    members: [{ placeId: 'second', relationship: 'inside', travelMinutes: 4 }, { placeId: 'third', relationship: 'inside', travelMinutes: 6 }],
+  }];
+
+  it('fills untimed stops from resolved legs and stops at the next timed stop', () => {
+    const day: TripDay = {
+      id: 'day-1', label: '', placeIds: ['first', 'second', 'third', 'fourth'], travelMode: 'car',
+      stopSchedules: {
+        first: { startTime: '09:00', durationMinutes: 60 },
+        second: { durationMinutes: 30 },
+        third: { startTime: '13:00', durationMinutes: 45 },
+      },
+    };
+
+    expect(cascadeStartTimes(day, placesById, mall, 'first').stopSchedules).toEqual({
+      first: { startTime: '09:00', durationMinutes: 60 },
+      second: { startTime: '10:04', durationMinutes: 30 },
+      third: { startTime: '13:00', durationMinutes: 45 },
+    });
+  });
+
+  it('uses the leg mode override for the travel time', () => {
+    const day: TripDay = {
+      id: 'day-1', label: '', placeIds: ['first', 'second'], travelMode: 'walk',
+      legModeOverrides: { 'first:second': 'car' },
+      stopSchedules: { first: { startTime: '09:00', durationMinutes: 60 } },
+    };
+
+    expect(cascadeStartTimes(day, placesById, [], 'first').stopSchedules?.second).toEqual({ startTime: '10:05', durationMinutes: 60 });
+  });
+
+  it('leaves the day alone when the stop has no start time', () => {
+    const day: TripDay = { id: 'day-1', label: '', placeIds: ['first', 'second'], stopSchedules: { first: { durationMinutes: 60 } } };
+    expect(cascadeStartTimes(day, placesById, [], 'first')).toBe(day);
   });
 });
 

@@ -98,6 +98,31 @@ export function dayWarningCount(day: TripDay, places: Place[], clusters: Locatio
   return [...dayWarnings(day, places, clusters).values()].reduce((total, warnings) => total + warnings.length, 0);
 }
 
+/**
+ * Fills start times for the untimed stops after `fromPlaceId`, chaining stop durations and resolved
+ * leg minutes, and stops at the next stop that already has a time.
+ */
+export function cascadeStartTimes(day: TripDay, placesById: Map<string, Place>, clusters: LocationCluster[], fromPlaceId: string): TripDay {
+  const startIndex = day.placeIds.indexOf(fromPlaceId);
+  let previousPlace = placesById.get(fromPlaceId);
+  const fromStart = toMinutes(day.stopSchedules?.[fromPlaceId]?.startTime);
+  if (startIndex < 0 || !previousPlace || fromStart === null) return day;
+
+  const stopSchedules = { ...day.stopSchedules };
+  let nextStart = fromStart + (stopSchedules[fromPlaceId]?.durationMinutes ?? defaultDuration(previousPlace.category));
+  for (const nextPlaceId of day.placeIds.slice(startIndex + 1)) {
+    const nextPlace = placesById.get(nextPlaceId);
+    if (!nextPlace) continue;
+    nextStart += resolveLeg(day, clusters, previousPlace, nextPlace).minutes ?? 0;
+    if (stopSchedules[nextPlaceId]?.startTime) break;
+    const durationMinutes = stopSchedules[nextPlaceId]?.durationMinutes ?? defaultDuration(nextPlace.category);
+    stopSchedules[nextPlaceId] = { ...stopSchedules[nextPlaceId], startTime: toTime(nextStart), durationMinutes };
+    nextStart += durationMinutes;
+    previousPlace = nextPlace;
+  }
+  return { ...day, stopSchedules };
+}
+
 export type NextAnchor =
   | { kind: 'leaveBy'; leaveAt: string; arriveBy: string; travelMinutes: number; mode: TravelMode; toPlaceId: string }
   | { kind: 'opensAt'; opensAt: string; placeId: string }
