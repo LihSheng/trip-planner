@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import type { ClusterRelationship, ContainerId, CurrencyCode, DayExecutionState, DayTask, FlightBooking, Money, PlaceholderKind, Place, StayBooking, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
 import { movePlace } from '../utils/itinerary';
 import { cascadeStartTimes, defaultDuration } from '../utils/schedule';
-import { normalizeDayTransit, routeLegKey } from '../domain/transit';
+import { basisMatchesStops, legAt, mergeLookup, normalizeDayTransit, routeLegKey, type LegRef, type TransitLookup } from '../domain/transit';
 import { applyAiDraft as applyConfirmedAiDraft } from '../utils/applyAiDraft';
 import type { ConfirmedAiDraft } from '../types/aiImport';
 import { ensureActivities, updateActivityDetails, type ActivityDetailUpdates } from '../domain/activity';
@@ -657,6 +657,43 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     }));
   }, [readOnly]);
 
+  /**
+   * Applies a finished lookup. Dropped when the leg no longer exists as looked up: the stops were
+   * reordered or removed, or either one moved, while the request was in flight.
+   */
+  const saveTransitLookup = useCallback((ref: LegRef, lookup: TransitLookup) => {
+    if (readOnly) return;
+    setState((current) => {
+      const leg = legAt(current, ref);
+      if (!leg || !basisMatchesStops(lookup.basis, leg.from, leg.to)) return current;
+      const key = routeLegKey(ref.fromPlaceId, ref.toPlaceId);
+      const saved = mergeLookup(leg.day.transitByLeg?.[key], lookup);
+      return {
+        ...current,
+        days: current.days.map((day) => day === leg.day ? { ...day, transitByLeg: { ...day.transitByLeg, [key]: saved } } : day),
+      };
+    });
+  }, [readOnly]);
+
+  /** Sets the chosen route, or clears it with null. No-op unless the signature is one of the saved options. */
+  const chooseTransitRoute = useCallback((ref: LegRef, signature: string | null) => {
+    if (readOnly) return;
+    const key = routeLegKey(ref.fromPlaceId, ref.toPlaceId);
+    setState((current) => {
+      const target = current.days.find((day) => day.id === ref.dayId);
+      const saved = target?.transitByLeg?.[key];
+      if (!target || !saved) return current;
+      if (signature !== null && !saved.options.some((option) => option.signature === signature)) return current;
+      const next = { ...saved };
+      if (signature === null) delete next.chosen;
+      else next.chosen = signature;
+      return {
+        ...current,
+        days: current.days.map((day) => day === target ? { ...day, transitByLeg: { ...day.transitByLeg, [key]: next } } : day),
+      };
+    });
+  }, [readOnly]);
+
   const applyAiDraft = useCallback((draft: ConfirmedAiDraft) => {
     if (readOnly) return;
     setState((current) => {
@@ -717,6 +754,8 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     replaceLocationClusterAnchor,
     updateTrip,
     updateLegMode,
+    saveTransitLookup,
+    chooseTransitRoute,
     applyAiDraft,
     reset,
     markUndoPoint,

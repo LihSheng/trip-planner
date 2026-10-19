@@ -1,7 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { SavedLegTransit } from '../domain/transit';
-import type { Place } from '../types';
+import type { SavedLegTransit, TransitLookup } from '../domain/transit';
+import type { Place, TripState } from '../types';
+import { dayLegs, resolveLeg } from '../utils/routing';
+import { dayWarnings, nextAnchor } from '../utils/schedule';
 import { useTripState } from './useTripState';
 
 const samplePlace: Place = {
@@ -333,5 +335,90 @@ describe('useTripState', () => {
     act(() => result.current.removePlace('jiufen'));
 
     expect(result.current.state.days[1].transitByLeg).toEqual({});
+  });
+});
+
+describe('transit mutators', () => {
+  const stop = (id: string, latitude: number, longitude: number): Place => ({ id, name: id, region: 'Taipei', category: 'Landmark', latitude, longitude, notes: '' });
+  const a = stop('a', 25.0, 121.5);
+  const b = stop('b', 25.05, 121.55);
+  const c = stop('c', 25.1, 121.6);
+  const trip: TripState = {
+    version: 1, tripName: 'Transit', startDate: '2026-10-21', places: [a, b, c], unscheduledIds: [], visitedPlaceIds: [],
+    days: [{
+      id: 'day-1', label: '', placeIds: ['a', 'b', 'c'], travelMode: 'public', timeManagementEnabled: true,
+      stopSchedules: { a: { startTime: '09:00', durationMinutes: 60 }, b: { startTime: '10:30', durationMinutes: 60 } },
+    }],
+  };
+  const ref = { dayId: 'day-1', fromPlaceId: 'a', toPlaceId: 'b' };
+  const lookup: TransitLookup = {
+    provider: 'transitous',
+    fetchedAt: '2026-10-19T02:00:00.000Z',
+    basis: { from: { lat: 25.0, lng: 121.5 }, to: { lat: 25.05, lng: 121.55 }, departAt: '2026-10-21T10:00:00+08:00' },
+    options: [
+      { signature: 'metro:BL', minutes: 22, steps: [{ kind: 'metro', minutes: 22, line: 'BL' }] },
+      { signature: 'bus:307', minutes: 35, steps: [{ kind: 'bus', minutes: 35, line: '307' }] },
+    ],
+  };
+
+  function setup(readOnly = false) {
+    const hook = renderHook(() => useTripState(readOnly));
+    act(() => hook.result.current.setState(trip));
+    return hook.result;
+  }
+
+  it('saves a lookup for a leg that is still there as looked up', () => {
+    const result = setup();
+    act(() => result.current.saveTransitLookup(ref, lookup));
+    expect(result.current.state.days[0].transitByLeg).toEqual({ 'a:b': lookup });
+  });
+
+  it('drops a lookup for a leg that was reordered while it was in flight', () => {
+    const result = setup();
+    act(() => result.current.setState((current) => ({ ...current, days: [{ ...current.days[0], placeIds: ['b', 'a', 'c'] }] })));
+    act(() => result.current.saveTransitLookup(ref, lookup));
+    expect(result.current.state.days[0].transitByLeg).toEqual({});
+  });
+
+  it('drops a lookup when a stop moved more than 25 m meanwhile', () => {
+    const result = setup();
+    act(() => result.current.updatePlace({ ...a, latitude: 25.001 }));
+    act(() => result.current.saveTransitLookup(ref, lookup));
+    expect(result.current.state.days[0].transitByLeg).toEqual({});
+  });
+
+  it('changes the leg minutes on every surface when a route is chosen', () => {
+    const result = setup();
+    const places = new Map(trip.places.map((place) => [place.id, place]));
+    act(() => result.current.saveTransitLookup(ref, lookup));
+    const before = result.current.state.days[0];
+    expect(resolveLeg(before, [], a, b)).toMatchObject({ minutes: 24, minutesSource: 'estimate' });
+    expect(dayWarnings(before, [a, b, c], []).get('b')).toBeUndefined();
+
+    act(() => result.current.chooseTransitRoute(ref, 'bus:307'));
+
+    const after = result.current.state.days[0];
+    expect(after.transitByLeg?.['a:b'].chosen).toBe('bus:307');
+    expect(resolveLeg(after, [], a, b)).toMatchObject({ minutes: 35, minutesSource: 'transit' });
+    expect(dayLegs(after, places, [])[0].minutes).toBe(35);
+    expect(dayWarnings(after, [a, b, c], []).get('b')).toEqual(['Insufficient travel time']);
+    expect(nextAnchor(after, [], [a, b, c], 'a', 'b')).toMatchObject({ travelMinutes: 35, leaveAt: '09:55' });
+
+    act(() => result.current.chooseTransitRoute(ref, null));
+    expect(resolveLeg(result.current.state.days[0], [], a, b).minutes).toBe(24);
+  });
+
+  it('ignores a choice that is not among the saved options', () => {
+    const result = setup();
+    act(() => result.current.saveTransitLookup(ref, lookup));
+    const before = result.current.state;
+    act(() => result.current.chooseTransitRoute(ref, 'ferry:Blue'));
+    expect(result.current.state).toBe(before);
+  });
+
+  it('changes nothing on a read-only trip', () => {
+    const result = setup(true);
+    act(() => result.current.saveTransitLookup(ref, lookup));
+    expect(result.current.state.days[0].transitByLeg).toEqual({});
   });
 });
