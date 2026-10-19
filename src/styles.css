@@ -807,6 +807,53 @@ select {
   background: var(--mantine-color-orange-0);
 }
 
+.transport-leg-chip-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.leg-minutes-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: 999px;
+  background: var(--mantine-color-body);
+  color: var(--mantine-color-text);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+
+.leg-minutes-button:hover,
+.leg-minutes-button:focus-visible {
+  border-color: var(--mantine-color-teal-5);
+}
+
+.leg-minutes-button__chosen {
+  color: var(--mantine-color-teal-6);
+}
+
+.leg-minutes-button__stale {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mantine-color-orange-6);
+}
+
+.route-leg--minutes {
+  min-height: 0;
+  padding: 2px 0;
+}
+
+.transit-option--chosen {
+  border-color: var(--mantine-color-teal-5);
+}
+
 @starting-style {
   .route-leg {
     opacity: 0;
@@ -884,6 +931,12 @@ select {
 .today-anchor {
   margin: 0 4px 12px;
   color: var(--mantine-color-teal-8);
+}
+
+.today-anchor__transit {
+  margin-left: auto;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .today-header {

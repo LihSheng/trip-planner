@@ -3,10 +3,9 @@ import { createPortal } from 'react-dom';
 import { DomEvent } from 'leaflet';
 import { useMap } from 'react-leaflet';
 import type { Place, RouteLegMode, TravelMode } from '../types';
-import { useI18n } from '../i18n';
-import { legGoogleMapsUrl } from '../utils/mapPresentation';
 import type { ResolvedLeg } from '../utils/routing';
 import { TransportLegChip } from './TransportLegChip';
+import { useTransitSheet } from './TransitSheet';
 
 /** Legs shorter than this many pixels would cover their own pins, so no chip is drawn. */
 export function shouldRenderLegChip(pixelLength: number): boolean {
@@ -14,6 +13,7 @@ export function shouldRenderLegChip(pixelLength: number): boolean {
 }
 
 interface MapLegChipsProps {
+  dayId: string;
   legs: ResolvedLeg[];
   dayDefaultMode: TravelMode;
   readOnly: boolean;
@@ -24,9 +24,9 @@ interface MapLegChipsProps {
 const touches = (leg: { from: Place; to: Place }, id: string) => leg.from.id === id || leg.to.id === id;
 
 /** Transport chips at the midpoint of each leg, overlaid on the Leaflet map. Render inside <MapContainer>. */
-export function MapLegChips({ legs, dayDefaultMode, readOnly, selectedPlaceId, onLegModeChange }: MapLegChipsProps) {
+export function MapLegChips({ dayId, legs, dayDefaultMode, readOnly, selectedPlaceId, onLegModeChange }: MapLegChipsProps) {
   const map = useMap();
-  const { t } = useI18n();
+  const { openTransit } = useTransitSheet();
   const [, tick] = useReducer((n: number) => n + 1, 0);
   const overlayRef = useRef<HTMLDivElement | null>(null);
 
@@ -55,14 +55,11 @@ export function MapLegChips({ legs, dayDefaultMode, readOnly, selectedPlaceId, o
         onClick={(event) => event.stopPropagation()}
       >
         <TransportLegChip
-          mode={leg.mode}
+          leg={leg}
           dayDefaultMode={dayDefaultMode}
-          isOverride={leg.legMode !== 'default'}
-          minutes={leg.minutes}
-          context={leg.inside ? t('insideVenue') : leg.relationship === 'same-area' ? t('inArea') : leg.relationship === 'walkable' ? t('nearby') : undefined}
           readOnly={readOnly}
-          routeUrl={legGoogleMapsUrl(leg.from, leg.to, leg.mode)}
           onChange={(mode) => onLegModeChange(leg.from.id, leg.to.id, mode)}
+          onOpenTransit={leg.transit.status === 'ineligible' ? undefined : () => openTransit({ dayId, fromPlaceId: leg.from.id, toPlaceId: leg.to.id })}
         />
       </div>
     )];

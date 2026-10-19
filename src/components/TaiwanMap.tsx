@@ -343,6 +343,7 @@ function MapSurface({
 
         {activeDay ? (
           <MapLegChips
+            dayId={activeDay.id}
             legs={legs}
             dayDefaultMode={activeDay.travelMode ?? 'public'}
             readOnly={readOnly || !onLegModeChange}
