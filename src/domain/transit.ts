@@ -103,7 +103,7 @@ export function basisMatchesStops(basis: TransitBasis, from: Place, to: Place): 
  * The leg `ref` names, only while both stops are still in that order on that day with nothing but
  * placeholders between them, which is how dayLegs bridges a placeholder.
  */
-export function legAt(state: TripState, ref: LegRef): { day: TripDay; dayIndex: number; from: Place; to: Place } | null {
+export function legAt(state: TripState, ref: LegRef): { day: TripDay; dayIndex: number; from: Place; to: Place; departFrom: Place } | null {
   const dayIndex = state.days.findIndex((day) => day.id === ref.dayId);
   const day = state.days[dayIndex];
   if (!day) return null;
@@ -115,7 +115,9 @@ export function legAt(state: TripState, ref: LegRef): { day: TripDay; dayIndex: 
   if (!between.every((id) => { const place = placesById.get(id); return place !== undefined && isPlaceholder(place); })) return null;
   const from = placesById.get(ref.fromPlaceId);
   const to = placesById.get(ref.toPlaceId);
-  return from && to ? { day, dayIndex, from, to } : null;
+  // On a bridged leg the traveller leaves after the last placeholder, as in dayLegs.
+  const departFrom = between.length ? placesById.get(between[between.length - 1]) : from;
+  return from && to && departFrom ? { day, dayIndex, from, to, departFrom } : null;
 }
 
 function plannedLocal(dayDate: string, minutes: number) {

@@ -30,7 +30,7 @@ import type { CurrentLocation } from '../hooks/useCurrentLocation';
 import { formatTripDate } from '../utils/date';
 import { categoryLabel, useI18n } from '../i18n';
 import { ghostPathOptions, googleMapsRouteUrl, legModeColor, legPathOptions, markerColors } from '../utils/mapPresentation';
-import { dayStops, dayTravelMinutes, isDrawableLeg, legOnwardFrom, viewportPlaces } from '../utils/routing';
+import { dayLegs, dayStops, dayTravelMinutes, isDrawableLeg, legOnwardFrom, viewportPlaces } from '../utils/routing';
 import { projectDay, timingLabel } from '../utils/dayProjection';
 import { MapLegChips } from './MapLegChips';
 import { MapPlaceCard } from './MapPlaceCard';
@@ -264,7 +264,11 @@ function MapSurface({
   const activePlaceIds = activeDay?.placeIds;
   // Keyed on placeIds, not the day, so changing a leg's mode does not refit the viewport.
   const stops = useMemo(() => (activePlaceIds ? dayStops({ placeIds: activePlaceIds }, itineraryPlacesById) : []), [activePlaceIds, itineraryPlacesById]);
-  const fitPlaces = useMemo(() => viewportPlaces(visiblePlaces, stops), [visiblePlaces, stops]);
+  // Which legs are drawn depends only on their ends, so a stops-only day keeps the fit stable across mode changes.
+  const fitPlaces = useMemo(
+    () => viewportPlaces(visiblePlaces, activePlaceIds ? dayLegs({ id: '', label: '', placeIds: activePlaceIds }, itineraryPlacesById, []) : []),
+    [visiblePlaces, activePlaceIds, itineraryPlacesById],
+  );
   // The planner's projection: its legs are dayLegs, and its times are the ones the strip and card show.
   const projection = useMemo(() => (activeDay ? projectDay(activeDay, itineraryPlaces, clusters) : null), [activeDay, itineraryPlaces, clusters]);
   const legs = useMemo(() => projection?.legs ?? [], [projection]);
