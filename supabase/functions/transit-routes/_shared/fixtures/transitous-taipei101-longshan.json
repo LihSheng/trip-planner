@@ -1,0 +1,1074 @@
+{
+ "from": {
+  "name": "START",
+  "lat": 25.034,
+  "lon": 121.5645
+ },
+ "to": {
+  "name": "END",
+  "lat": 25.0372,
+  "lon": 121.4999
+ },
+ "direct": [],
+ "itineraries": [
+  {
+   "duration": 1680,
+   "startTime": "2026-10-21T01:00:00Z",
+   "endTime": "2026-10-21T01:28:00Z",
+   "transfers": 2,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T01:00:00Z",
+     "endTime": "2026-10-21T01:04:00Z",
+     "distance": 224,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "捷運台北101/世貿站(信義)"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 360,
+     "startTime": "2026-10-21T01:04:00Z",
+     "endTime": "2026-10-21T01:10:00Z",
+     "headsign": "捷運台大醫院站",
+     "agencyName": "首都客運",
+     "routeType": 3,
+     "routeShortName": "信義幹線",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "信義幹線",
+     "from": {
+      "name": "捷運台北101/世貿站(信義)"
+     },
+     "to": {
+      "name": "信義杭州路口"
+     },
+     "intermediateStops": [
+      {
+       "name": "信義光復路口"
+      },
+      {
+       "name": "信義通化街口"
+      },
+      {
+       "name": "捷運信義安和站(信義)"
+      },
+      {
+       "name": "信義敦化路口"
+      },
+      {
+       "name": "信義大安路口"
+      },
+      {
+       "name": "捷運大安站(信義)"
+      },
+      {
+       "name": "師大附中"
+      },
+      {
+       "name": "信義建國路口"
+      },
+      {
+       "name": "捷運大安森林公園站"
+      },
+      {
+       "name": "信義新生路口"
+      },
+      {
+       "name": "信義永康街口"
+      },
+      {
+       "name": "捷運東門站"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T01:10:00Z",
+     "endTime": "2026-10-21T01:12:00Z",
+     "distance": 116,
+     "from": {
+      "name": "信義杭州路口"
+     },
+     "to": {
+      "name": "金甌女中"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 120,
+     "startTime": "2026-10-21T01:13:00Z",
+     "endTime": "2026-10-21T01:15:00Z",
+     "headsign": "臺北車站(開封)",
+     "agencyName": "欣欣客運",
+     "routeType": 3,
+     "routeShortName": "249",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "249",
+     "from": {
+      "name": "金甌女中"
+     },
+     "to": {
+      "name": "臺北車站(開封)"
+     },
+     "intermediateStops": [
+      {
+       "name": "仁愛杭州路口"
+      },
+      {
+       "name": "仁愛林森路口"
+      },
+      {
+       "name": "仁愛中山路口"
+      },
+      {
+       "name": "捷運台大醫院站"
+      },
+      {
+       "name": "博物館(館前)"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T01:15:00Z",
+     "endTime": "2026-10-21T01:17:00Z",
+     "distance": 136,
+     "from": {
+      "name": "臺北車站(開封)"
+     },
+     "to": {
+      "name": "臺北車站(重慶)"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 180,
+     "startTime": "2026-10-21T01:17:00Z",
+     "endTime": "2026-10-21T01:20:00Z",
+     "headsign": "華中河濱公園",
+     "agencyName": "大都會客運",
+     "routeType": 3,
+     "routeShortName": "重慶幹線",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "重慶幹線",
+     "from": {
+      "name": "臺北車站(重慶)"
+     },
+     "to": {
+      "name": "萬華車站"
+     },
+     "intermediateStops": [
+      {
+       "name": "臺北郵局(撫臺街洋樓)"
+      },
+      {
+       "name": "中華路北站"
+      },
+      {
+       "name": "捷運西門站"
+      },
+      {
+       "name": "小南門"
+      },
+      {
+       "name": "龍山國中"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T01:20:00Z",
+     "endTime": "2026-10-21T01:28:00Z",
+     "distance": 498,
+     "from": {
+      "name": "萬華車站"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 1620,
+   "startTime": "2026-10-21T01:05:00Z",
+   "endTime": "2026-10-21T01:32:00Z",
+   "transfers": 1,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 360,
+     "startTime": "2026-10-21T01:05:00Z",
+     "endTime": "2026-10-21T01:11:00Z",
+     "distance": 388,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "市政府(松壽)"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 480,
+     "startTime": "2026-10-21T01:11:00Z",
+     "endTime": "2026-10-21T01:19:00Z",
+     "headsign": "青年公園(國興)",
+     "agencyName": "大都會客運",
+     "routeType": 3,
+     "routeShortName": "20",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "20",
+     "from": {
+      "name": "市政府(松壽)"
+     },
+     "to": {
+      "name": "捷運西門站"
+     },
+     "intermediateStops": [
+      {
+       "name": "世貿中心(基隆路)"
+      },
+      {
+       "name": "信義光復路口"
+      },
+      {
+       "name": "信義通化街口"
+      },
+      {
+       "name": "捷運信義安和站(信義)"
+      },
+      {
+       "name": "信義敦化路口"
+      },
+      {
+       "name": "信義大安路口"
+      },
+      {
+       "name": "捷運大安站(信義)"
+      },
+      {
+       "name": "師大附中"
+      },
+      {
+       "name": "信義建國路口"
+      },
+      {
+       "name": "捷運大安森林公園站"
+      },
+      {
+       "name": "信義新生路口"
+      },
+      {
+       "name": "信義永康街口"
+      },
+      {
+       "name": "捷運東門站"
+      },
+      {
+       "name": "信義杭州路口"
+      },
+      {
+       "name": "中正紀念堂"
+      },
+      {
+       "name": "捷運台大醫院站"
+      },
+      {
+       "name": "博物館(襄陽)"
+      },
+      {
+       "name": "衡陽路口"
+      },
+      {
+       "name": "衡陽路"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T01:19:00Z",
+     "endTime": "2026-10-21T01:21:00Z",
+     "distance": 0,
+     "from": {
+      "name": "捷運西門站"
+     },
+     "to": {
+      "name": "捷運西門站"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 60,
+     "startTime": "2026-10-21T01:21:00Z",
+     "endTime": "2026-10-21T01:22:00Z",
+     "headsign": "老松國小",
+     "agencyName": "大南汽車",
+     "routeType": 3,
+     "routeShortName": "218",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "218",
+     "from": {
+      "name": "捷運西門站"
+     },
+     "to": {
+      "name": "老松國小"
+     },
+     "intermediateStops": [
+      {
+       "name": "小南門"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 600,
+     "startTime": "2026-10-21T01:22:00Z",
+     "endTime": "2026-10-21T01:32:00Z",
+     "distance": 597,
+     "from": {
+      "name": "老松國小"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 1680,
+   "startTime": "2026-10-21T01:07:00Z",
+   "endTime": "2026-10-21T01:35:00Z",
+   "transfers": 2,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T01:07:00Z",
+     "endTime": "2026-10-21T01:11:00Z",
+     "distance": 224,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "捷運台北101/世貿站(信義)"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 420,
+     "startTime": "2026-10-21T01:11:00Z",
+     "endTime": "2026-10-21T01:18:00Z",
+     "headsign": "捷運台大醫院站",
+     "agencyName": "首都客運",
+     "routeType": 3,
+     "routeShortName": "信義幹線",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "信義幹線",
+     "from": {
+      "name": "捷運台北101/世貿站(信義)"
+     },
+     "to": {
+      "name": "捷運台大醫院站"
+     },
+     "intermediateStops": [
+      {
+       "name": "信義光復路口"
+      },
+      {
+       "name": "信義通化街口"
+      },
+      {
+       "name": "捷運信義安和站(信義)"
+      },
+      {
+       "name": "信義敦化路口"
+      },
+      {
+       "name": "信義大安路口"
+      },
+      {
+       "name": "捷運大安站(信義)"
+      },
+      {
+       "name": "師大附中"
+      },
+      {
+       "name": "信義建國路口"
+      },
+      {
+       "name": "捷運大安森林公園站"
+      },
+      {
+       "name": "信義新生路口"
+      },
+      {
+       "name": "信義永康街口"
+      },
+      {
+       "name": "捷運東門站"
+      },
+      {
+       "name": "信義杭州路口"
+      },
+      {
+       "name": "中正紀念堂"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T01:18:00Z",
+     "endTime": "2026-10-21T01:20:00Z",
+     "distance": 0,
+     "from": {
+      "name": "捷運台大醫院站"
+     },
+     "to": {
+      "name": "捷運台大醫院站"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 60,
+     "startTime": "2026-10-21T01:20:00Z",
+     "endTime": "2026-10-21T01:21:00Z",
+     "headsign": "臺北車站(開封)",
+     "agencyName": "欣欣客運",
+     "routeType": 3,
+     "routeShortName": "羅斯福路幹線",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "羅斯福路幹線",
+     "from": {
+      "name": "捷運台大醫院站"
+     },
+     "to": {
+      "name": "臺北車站(開封)"
+     },
+     "intermediateStops": [
+      {
+       "name": "博物館(館前)"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T01:21:00Z",
+     "endTime": "2026-10-21T01:23:00Z",
+     "distance": 136,
+     "from": {
+      "name": "臺北車站(開封)"
+     },
+     "to": {
+      "name": "臺北車站(重慶)"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 180,
+     "startTime": "2026-10-21T01:24:00Z",
+     "endTime": "2026-10-21T01:27:00Z",
+     "headsign": "華中河濱公園",
+     "agencyName": "大都會客運",
+     "routeType": 3,
+     "routeShortName": "重慶幹線",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "重慶幹線",
+     "from": {
+      "name": "臺北車站(重慶)"
+     },
+     "to": {
+      "name": "萬華車站"
+     },
+     "intermediateStops": [
+      {
+       "name": "臺北郵局(撫臺街洋樓)"
+      },
+      {
+       "name": "中華路北站"
+      },
+      {
+       "name": "捷運西門站"
+      },
+      {
+       "name": "小南門"
+      },
+      {
+       "name": "龍山國中"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T01:27:00Z",
+     "endTime": "2026-10-21T01:35:00Z",
+     "distance": 498,
+     "from": {
+      "name": "萬華車站"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 1680,
+   "startTime": "2026-10-21T01:10:00Z",
+   "endTime": "2026-10-21T01:38:00Z",
+   "transfers": 2,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T01:10:00Z",
+     "endTime": "2026-10-21T01:14:00Z",
+     "distance": 224,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "捷運台北101/世貿站(信義)"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 420,
+     "startTime": "2026-10-21T01:14:00Z",
+     "endTime": "2026-10-21T01:21:00Z",
+     "headsign": "臺北車站(青島)",
+     "agencyName": "大有巴士",
+     "routeType": 3,
+     "routeShortName": "88區",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "88區",
+     "from": {
+      "name": "捷運台北101/世貿站(信義)"
+     },
+     "to": {
+      "name": "捷運台大醫院站"
+     },
+     "intermediateStops": [
+      {
+       "name": "信義光復路口"
+      },
+      {
+       "name": "信義通化街口"
+      },
+      {
+       "name": "捷運信義安和站(信義)"
+      },
+      {
+       "name": "信義敦化路口"
+      },
+      {
+       "name": "信義大安路口"
+      },
+      {
+       "name": "捷運大安站(信義)"
+      },
+      {
+       "name": "師大附中"
+      },
+      {
+       "name": "信義建國路口"
+      },
+      {
+       "name": "捷運大安森林公園站"
+      },
+      {
+       "name": "信義新生路口"
+      },
+      {
+       "name": "信義永康街口"
+      },
+      {
+       "name": "捷運東門站"
+      },
+      {
+       "name": "信義杭州路口"
+      },
+      {
+       "name": "中正紀念堂"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T01:21:00Z",
+     "endTime": "2026-10-21T01:23:00Z",
+     "distance": 294,
+     "from": {
+      "name": "捷運台大醫院站"
+     },
+     "to": {
+      "name": "台大醫院"
+     }
+    },
+    {
+     "mode": "SUBWAY",
+     "duration": 60,
+     "startTime": "2026-10-21T01:25:00Z",
+     "endTime": "2026-10-21T01:26:00Z",
+     "headsign": "北投",
+     "agencyName": "臺北大眾捷運股份有限公司",
+     "routeType": 1,
+     "routeShortName": "大安－北投",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "大安－北投",
+     "from": {
+      "name": "台大醫院"
+     },
+     "to": {
+      "name": "台北車站"
+     },
+     "intermediateStops": []
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T01:26:00Z",
+     "endTime": "2026-10-21T01:28:00Z",
+     "distance": 699,
+     "from": {
+      "name": "台北車站"
+     },
+     "to": {
+      "name": "臺北車站(忠孝)"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 180,
+     "startTime": "2026-10-21T01:28:00Z",
+     "endTime": "2026-10-21T01:31:00Z",
+     "headsign": "華中河濱公園",
+     "agencyName": "大都會客運",
+     "routeType": 3,
+     "routeShortName": "49",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "49",
+     "from": {
+      "name": "臺北車站(忠孝)"
+     },
+     "to": {
+      "name": "龍山寺(康定)"
+     },
+     "intermediateStops": [
+      {
+       "name": "中華路北站"
+      },
+      {
+       "name": "捷運西門站"
+      },
+      {
+       "name": "長沙街"
+      },
+      {
+       "name": "康定路口"
+      },
+      {
+       "name": "祖師廟(康定)"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 420,
+     "startTime": "2026-10-21T01:31:00Z",
+     "endTime": "2026-10-21T01:38:00Z",
+     "distance": 411,
+     "from": {
+      "name": "龍山寺(康定)"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 1920,
+   "startTime": "2026-10-21T01:12:00Z",
+   "endTime": "2026-10-21T01:44:00Z",
+   "transfers": 1,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T01:12:00Z",
+     "endTime": "2026-10-21T01:16:00Z",
+     "distance": 224,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "捷運台北101/世貿站(信義)"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 420,
+     "startTime": "2026-10-21T01:16:00Z",
+     "endTime": "2026-10-21T01:23:00Z",
+     "headsign": "南勢角(興南路)",
+     "agencyName": "東南客運",
+     "routeType": 3,
+     "routeShortName": "207",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "207",
+     "from": {
+      "name": "捷運台北101/世貿站(信義)"
+     },
+     "to": {
+      "name": "中興新村"
+     },
+     "intermediateStops": [
+      {
+       "name": "吳興街口"
+      },
+      {
+       "name": "三興國小(臨江街觀光夜市)"
+      },
+      {
+       "name": "喬治商職"
+      },
+      {
+       "name": "捷運六張犁站(基隆路)"
+      },
+      {
+       "name": "和平高中"
+      },
+      {
+       "name": "基隆長興街口"
+      },
+      {
+       "name": "臺大癌醫(基隆路)"
+      },
+      {
+       "name": "臺灣科技大學"
+      },
+      {
+       "name": "公館"
+      },
+      {
+       "name": "福和橋(林森路)"
+      },
+      {
+       "name": "永元路"
+      },
+      {
+       "name": "秀朗國小"
+      },
+      {
+       "name": "得和路"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T01:23:00Z",
+     "endTime": "2026-10-21T01:25:00Z",
+     "distance": 48,
+     "from": {
+      "name": "中興新村"
+     },
+     "to": {
+      "name": "中興新村"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 480,
+     "startTime": "2026-10-21T01:29:00Z",
+     "endTime": "2026-10-21T01:37:00Z",
+     "headsign": "峨眉街口(中醫院區)",
+     "agencyName": "臺北客運",
+     "routeType": 3,
+     "routeShortName": "624",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "624",
+     "from": {
+      "name": "中興新村"
+     },
+     "to": {
+      "name": "龍山寺(康定)"
+     },
+     "intermediateStops": [
+      {
+       "name": "得和路口"
+      },
+      {
+       "name": "永和國小"
+      },
+      {
+       "name": "金銀大廈"
+      },
+      {
+       "name": "福和里"
+      },
+      {
+       "name": "大新街"
+      },
+      {
+       "name": "正興里"
+      },
+      {
+       "name": "捷運頂溪站"
+      },
+      {
+       "name": "中正橋頭"
+      },
+      {
+       "name": "重慶南路三段(中正橋)"
+      },
+      {
+       "name": "福州街"
+      },
+      {
+       "name": "和平西路一段"
+      },
+      {
+       "name": "泉州街"
+      },
+      {
+       "name": "龍口市場"
+      },
+      {
+       "name": "植物園"
+      },
+      {
+       "name": "和平中華路口"
+      },
+      {
+       "name": "昆明街口"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 420,
+     "startTime": "2026-10-21T01:37:00Z",
+     "endTime": "2026-10-21T01:44:00Z",
+     "distance": 425,
+     "from": {
+      "name": "龍山寺(康定)"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 1680,
+   "startTime": "2026-10-21T01:14:00Z",
+   "endTime": "2026-10-21T01:42:00Z",
+   "transfers": 2,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T01:14:00Z",
+     "endTime": "2026-10-21T01:18:00Z",
+     "distance": 224,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "捷運台北101/世貿站(信義)"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 420,
+     "startTime": "2026-10-21T01:18:00Z",
+     "endTime": "2026-10-21T01:25:00Z",
+     "headsign": "捷運台大醫院站",
+     "agencyName": "首都客運",
+     "routeType": 3,
+     "routeShortName": "信義幹線",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "信義幹線",
+     "from": {
+      "name": "捷運台北101/世貿站(信義)"
+     },
+     "to": {
+      "name": "捷運台大醫院站"
+     },
+     "intermediateStops": [
+      {
+       "name": "信義光復路口"
+      },
+      {
+       "name": "信義通化街口"
+      },
+      {
+       "name": "捷運信義安和站(信義)"
+      },
+      {
+       "name": "信義敦化路口"
+      },
+      {
+       "name": "信義大安路口"
+      },
+      {
+       "name": "捷運大安站(信義)"
+      },
+      {
+       "name": "師大附中"
+      },
+      {
+       "name": "信義建國路口"
+      },
+      {
+       "name": "捷運大安森林公園站"
+      },
+      {
+       "name": "信義新生路口"
+      },
+      {
+       "name": "信義永康街口"
+      },
+      {
+       "name": "捷運東門站"
+      },
+      {
+       "name": "信義杭州路口"
+      },
+      {
+       "name": "中正紀念堂"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T01:25:00Z",
+     "endTime": "2026-10-21T01:27:00Z",
+     "distance": 0,
+     "from": {
+      "name": "捷運台大醫院站"
+     },
+     "to": {
+      "name": "捷運台大醫院站"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 60,
+     "startTime": "2026-10-21T01:27:00Z",
+     "endTime": "2026-10-21T01:28:00Z",
+     "headsign": "臺北車站(開封)",
+     "agencyName": "欣欣客運",
+     "routeType": 3,
+     "routeShortName": "羅斯福路幹線",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "羅斯福路幹線",
+     "from": {
+      "name": "捷運台大醫院站"
+     },
+     "to": {
+      "name": "臺北車站(開封)"
+     },
+     "intermediateStops": [
+      {
+       "name": "博物館(館前)"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T01:28:00Z",
+     "endTime": "2026-10-21T01:30:00Z",
+     "distance": 136,
+     "from": {
+      "name": "臺北車站(開封)"
+     },
+     "to": {
+      "name": "臺北車站(重慶)"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 180,
+     "startTime": "2026-10-21T01:31:00Z",
+     "endTime": "2026-10-21T01:34:00Z",
+     "headsign": "華中河濱公園",
+     "agencyName": "大都會客運",
+     "routeType": 3,
+     "routeShortName": "重慶幹線",
+     "routeLongName": "",
+     "tripShortName": "",
+     "displayName": "重慶幹線",
+     "from": {
+      "name": "臺北車站(重慶)"
+     },
+     "to": {
+      "name": "萬華車站"
+     },
+     "intermediateStops": [
+      {
+       "name": "臺北郵局(撫臺街洋樓)"
+      },
+      {
+       "name": "中華路北站"
+      },
+      {
+       "name": "捷運西門站"
+      },
+      {
+       "name": "小南門"
+      },
+      {
+       "name": "龍山國中"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T01:34:00Z",
+     "endTime": "2026-10-21T01:42:00Z",
+     "distance": 498,
+     "from": {
+      "name": "萬華車站"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  }
+ ]
+}

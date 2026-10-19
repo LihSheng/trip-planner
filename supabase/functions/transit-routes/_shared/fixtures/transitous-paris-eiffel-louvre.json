@@ -1,0 +1,604 @@
+{
+ "from": {
+  "name": "START",
+  "lat": 48.8584,
+  "lon": 2.2945
+ },
+ "to": {
+  "name": "END",
+  "lat": 48.8606,
+  "lon": 2.3376
+ },
+ "direct": [],
+ "itineraries": [
+  {
+   "duration": 1680,
+   "startTime": "2026-10-21T07:01:00Z",
+   "endTime": "2026-10-21T07:29:00Z",
+   "transfers": 1,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 300,
+     "startTime": "2026-10-21T07:01:00Z",
+     "endTime": "2026-10-21T07:06:00Z",
+     "distance": 314,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "Tour Eiffel"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 540,
+     "startTime": "2026-10-21T07:06:00Z",
+     "endTime": "2026-10-21T07:15:00Z",
+     "headsign": "Gare Saint-Lazare",
+     "agencyName": "La Défense - Saint Cloud",
+     "routeType": 3,
+     "routeShortName": "42",
+     "routeLongName": "",
+     "tripShortName": "49930291",
+     "displayName": "42",
+     "from": {
+      "name": "Tour Eiffel"
+     },
+     "to": {
+      "name": "Franklin D. Roosevelt"
+     },
+     "intermediateStops": [
+      {
+       "name": "Bosquet - Rapp"
+      },
+      {
+       "name": "Alma - Marceau"
+      },
+      {
+       "name": "Montaigne - François 1er"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T07:15:00Z",
+     "endTime": "2026-10-21T07:19:00Z",
+     "from": {
+      "name": "Franklin D. Roosevelt"
+     },
+     "to": {
+      "name": "Franklin D. Roosevelt"
+     }
+    },
+    {
+     "mode": "SUBWAY",
+     "duration": 240,
+     "startTime": "2026-10-21T07:19:00Z",
+     "endTime": "2026-10-21T07:23:00Z",
+     "headsign": "Château de Vincennes",
+     "agencyName": "RATP",
+     "routeType": 1,
+     "routeShortName": "1",
+     "routeLongName": "",
+     "tripShortName": "RATP",
+     "displayName": "1",
+     "from": {
+      "name": "Franklin D. Roosevelt"
+     },
+     "to": {
+      "name": "Palais Royal - Musée du Louvre"
+     },
+     "intermediateStops": [
+      {
+       "name": "Champs-Élysées - Clemenceau"
+      },
+      {
+       "name": "Concorde"
+      },
+      {
+       "name": "Tuileries"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 360,
+     "startTime": "2026-10-21T07:23:00Z",
+     "endTime": "2026-10-21T07:29:00Z",
+     "distance": 395,
+     "from": {
+      "name": "Palais Royal - Musée du Louvre"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 1620,
+   "startTime": "2026-10-21T07:04:00Z",
+   "endTime": "2026-10-21T07:31:00Z",
+   "transfers": 0,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 660,
+     "startTime": "2026-10-21T07:04:00Z",
+     "endTime": "2026-10-21T07:15:00Z",
+     "distance": 772,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "Musée d'Art Moderne - Palais de Tokyo"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 720,
+     "startTime": "2026-10-21T07:15:00Z",
+     "endTime": "2026-10-21T07:27:00Z",
+     "headsign": "Gare de Lyon",
+     "agencyName": "La Défense - Saint Cloud",
+     "routeType": 3,
+     "routeShortName": "72",
+     "routeLongName": "",
+     "tripShortName": "49842078",
+     "displayName": "72",
+     "from": {
+      "name": "Musée d'Art Moderne - Palais de Tokyo"
+     },
+     "to": {
+      "name": "Pont des Arts"
+     },
+     "intermediateStops": [
+      {
+       "name": "Alma - Marceau"
+      },
+      {
+       "name": "Palais de la Découverte"
+      },
+      {
+       "name": "Grand Palais"
+      },
+      {
+       "name": "Concorde"
+      },
+      {
+       "name": "Passerelle L.S. Senghor"
+      },
+      {
+       "name": "Pont Royal"
+      },
+      {
+       "name": "Quai François Mitterrand"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T07:27:00Z",
+     "endTime": "2026-10-21T07:31:00Z",
+     "distance": 253,
+     "from": {
+      "name": "Pont des Arts"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 1740,
+   "startTime": "2026-10-21T07:07:00Z",
+   "endTime": "2026-10-21T07:36:00Z",
+   "transfers": 2,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T07:07:00Z",
+     "endTime": "2026-10-21T07:15:00Z",
+     "distance": 511,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "Champ de Mars Tour Eiffel"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 240,
+     "startTime": "2026-10-21T07:15:00Z",
+     "endTime": "2026-10-21T07:19:00Z",
+     "headsign": "EALE",
+     "agencyName": "RER",
+     "routeType": 2,
+     "routeShortName": "C",
+     "routeLongName": "",
+     "tripShortName": "141474-141475",
+     "displayName": "C",
+     "from": {
+      "name": "Champ de Mars Tour Eiffel"
+     },
+     "to": {
+      "name": "Invalides"
+     },
+     "intermediateStops": [
+      {
+       "name": "Pont de l'Alma"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T07:19:00Z",
+     "endTime": "2026-10-21T07:23:00Z",
+     "from": {
+      "name": "Invalides"
+     },
+     "to": {
+      "name": "Invalides"
+     }
+    },
+    {
+     "mode": "SUBWAY",
+     "duration": 60,
+     "startTime": "2026-10-21T07:23:00Z",
+     "endTime": "2026-10-21T07:24:00Z",
+     "headsign": "Pointe du Lac",
+     "agencyName": "RATP",
+     "routeType": 1,
+     "routeShortName": "8",
+     "routeLongName": "",
+     "tripShortName": "RATP",
+     "displayName": "8",
+     "from": {
+      "name": "Invalides"
+     },
+     "to": {
+      "name": "Concorde"
+     },
+     "intermediateStops": []
+    },
+    {
+     "mode": "WALK",
+     "duration": 300,
+     "startTime": "2026-10-21T07:24:00Z",
+     "endTime": "2026-10-21T07:29:00Z",
+     "from": {
+      "name": "Concorde"
+     },
+     "to": {
+      "name": "Concorde"
+     }
+    },
+    {
+     "mode": "SUBWAY",
+     "duration": 60,
+     "startTime": "2026-10-21T07:29:00Z",
+     "endTime": "2026-10-21T07:30:00Z",
+     "headsign": "Château de Vincennes",
+     "agencyName": "RATP",
+     "routeType": 1,
+     "routeShortName": "1",
+     "routeLongName": "",
+     "tripShortName": "RATP",
+     "displayName": "1",
+     "from": {
+      "name": "Concorde"
+     },
+     "to": {
+      "name": "Palais Royal - Musée du Louvre"
+     },
+     "intermediateStops": [
+      {
+       "name": "Tuileries"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 360,
+     "startTime": "2026-10-21T07:30:00Z",
+     "endTime": "2026-10-21T07:36:00Z",
+     "distance": 395,
+     "from": {
+      "name": "Palais Royal - Musée du Louvre"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 1620,
+   "startTime": "2026-10-21T07:11:00Z",
+   "endTime": "2026-10-21T07:38:00Z",
+   "transfers": 0,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 660,
+     "startTime": "2026-10-21T07:11:00Z",
+     "endTime": "2026-10-21T07:22:00Z",
+     "distance": 772,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "Musée d'Art Moderne - Palais de Tokyo"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 720,
+     "startTime": "2026-10-21T07:22:00Z",
+     "endTime": "2026-10-21T07:34:00Z",
+     "headsign": "Gare de Lyon",
+     "agencyName": "La Défense - Saint Cloud",
+     "routeType": 3,
+     "routeShortName": "72",
+     "routeLongName": "",
+     "tripShortName": "49841886",
+     "displayName": "72",
+     "from": {
+      "name": "Musée d'Art Moderne - Palais de Tokyo"
+     },
+     "to": {
+      "name": "Pont des Arts"
+     },
+     "intermediateStops": [
+      {
+       "name": "Alma - Marceau"
+      },
+      {
+       "name": "Palais de la Découverte"
+      },
+      {
+       "name": "Grand Palais"
+      },
+      {
+       "name": "Concorde"
+      },
+      {
+       "name": "Passerelle L.S. Senghor"
+      },
+      {
+       "name": "Pont Royal"
+      },
+      {
+       "name": "Quai François Mitterrand"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T07:34:00Z",
+     "endTime": "2026-10-21T07:38:00Z",
+     "distance": 253,
+     "from": {
+      "name": "Pont des Arts"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 1800,
+   "startTime": "2026-10-21T07:13:00Z",
+   "endTime": "2026-10-21T07:43:00Z",
+   "transfers": 2,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 480,
+     "startTime": "2026-10-21T07:13:00Z",
+     "endTime": "2026-10-21T07:21:00Z",
+     "distance": 511,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "Champ de Mars Tour Eiffel"
+     }
+    },
+    {
+     "mode": "REGIONAL_RAIL",
+     "duration": 240,
+     "startTime": "2026-10-21T07:21:00Z",
+     "endTime": "2026-10-21T07:25:00Z",
+     "headsign": "JUJU",
+     "agencyName": "RER",
+     "routeType": 2,
+     "routeShortName": "C",
+     "routeLongName": "",
+     "tripShortName": "141275",
+     "displayName": "C",
+     "from": {
+      "name": "Champ de Mars Tour Eiffel"
+     },
+     "to": {
+      "name": "Invalides"
+     },
+     "intermediateStops": [
+      {
+       "name": "Pont de l'Alma"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T07:25:00Z",
+     "endTime": "2026-10-21T07:29:00Z",
+     "from": {
+      "name": "Invalides"
+     },
+     "to": {
+      "name": "Invalides"
+     }
+    },
+    {
+     "mode": "SUBWAY",
+     "duration": 60,
+     "startTime": "2026-10-21T07:30:00Z",
+     "endTime": "2026-10-21T07:31:00Z",
+     "headsign": "Saint-Denis - Université",
+     "agencyName": "RATP",
+     "routeType": 1,
+     "routeShortName": "13",
+     "routeLongName": "",
+     "tripShortName": "RATP",
+     "displayName": "13",
+     "from": {
+      "name": "Invalides"
+     },
+     "to": {
+      "name": "Champs-Élysées - Clemenceau"
+     },
+     "intermediateStops": []
+    },
+    {
+     "mode": "WALK",
+     "duration": 120,
+     "startTime": "2026-10-21T07:31:00Z",
+     "endTime": "2026-10-21T07:33:00Z",
+     "from": {
+      "name": "Champs-Élysées - Clemenceau"
+     },
+     "to": {
+      "name": "Champs-Élysées - Clemenceau"
+     }
+    },
+    {
+     "mode": "SUBWAY",
+     "duration": 180,
+     "startTime": "2026-10-21T07:34:00Z",
+     "endTime": "2026-10-21T07:37:00Z",
+     "headsign": "Château de Vincennes",
+     "agencyName": "RATP",
+     "routeType": 1,
+     "routeShortName": "1",
+     "routeLongName": "",
+     "tripShortName": "RATP",
+     "displayName": "1",
+     "from": {
+      "name": "Champs-Élysées - Clemenceau"
+     },
+     "to": {
+      "name": "Palais Royal - Musée du Louvre"
+     },
+     "intermediateStops": [
+      {
+       "name": "Concorde"
+      },
+      {
+       "name": "Tuileries"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 360,
+     "startTime": "2026-10-21T07:37:00Z",
+     "endTime": "2026-10-21T07:43:00Z",
+     "distance": 395,
+     "from": {
+      "name": "Palais Royal - Musée du Louvre"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  },
+  {
+   "duration": 1620,
+   "startTime": "2026-10-21T07:18:00Z",
+   "endTime": "2026-10-21T07:45:00Z",
+   "transfers": 0,
+   "legs": [
+    {
+     "mode": "WALK",
+     "duration": 660,
+     "startTime": "2026-10-21T07:18:00Z",
+     "endTime": "2026-10-21T07:29:00Z",
+     "distance": 772,
+     "from": {
+      "name": "START"
+     },
+     "to": {
+      "name": "Musée d'Art Moderne - Palais de Tokyo"
+     }
+    },
+    {
+     "mode": "BUS",
+     "duration": 720,
+     "startTime": "2026-10-21T07:29:00Z",
+     "endTime": "2026-10-21T07:41:00Z",
+     "headsign": "Gare de Lyon",
+     "agencyName": "La Défense - Saint Cloud",
+     "routeType": 3,
+     "routeShortName": "72",
+     "routeLongName": "",
+     "tripShortName": "49842086",
+     "displayName": "72",
+     "from": {
+      "name": "Musée d'Art Moderne - Palais de Tokyo"
+     },
+     "to": {
+      "name": "Pont des Arts"
+     },
+     "intermediateStops": [
+      {
+       "name": "Alma - Marceau"
+      },
+      {
+       "name": "Palais de la Découverte"
+      },
+      {
+       "name": "Grand Palais"
+      },
+      {
+       "name": "Concorde"
+      },
+      {
+       "name": "Passerelle L.S. Senghor"
+      },
+      {
+       "name": "Pont Royal"
+      },
+      {
+       "name": "Quai François Mitterrand"
+      }
+     ]
+    },
+    {
+     "mode": "WALK",
+     "duration": 240,
+     "startTime": "2026-10-21T07:41:00Z",
+     "endTime": "2026-10-21T07:45:00Z",
+     "distance": 253,
+     "from": {
+      "name": "Pont des Arts"
+     },
+     "to": {
+      "name": "END"
+     }
+    }
+   ]
+  }
+ ]
+}
