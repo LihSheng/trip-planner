@@ -1,8 +1,23 @@
 import type { LocationCluster, Place, RouteLegMode, TravelMode, TripDay } from '../types';
-import { clusterForPlace, clusterMember } from '../domain/locationCluster';
+import { clusterForPlace, clusterMember, distanceMeters } from '../domain/locationCluster';
 import { isPlaceholder } from '../domain/place';
 import { isTransitEligible, legTransit, routeLegKey, type LegTransit } from '../domain/transit';
-import { estimateTravelMinutes, plannedLeaveMinutes } from './schedule';
+import { plannedLeaveMinutes } from './schedule';
+
+const TRAVEL_SPEEDS_KMH: Record<TravelMode, number> = {
+  public: 24,
+  walk: 4.5,
+  bike: 14,
+  car: 45,
+  taxi: 42,
+  other: 20,
+};
+
+/** Straight-line fallback. Private so that resolveLeg stays the only source of leg minutes. */
+function estimateTravelMinutes(from: Place, to: Place, mode: TravelMode) {
+  const roadFactor = mode === 'walk' ? 1.15 : 1.3;
+  return Math.max(5, Math.round((distanceMeters(from, to) / 1000 * roadFactor / TRAVEL_SPEEDS_KMH[mode]) * 60));
+}
 
 export function routePolylinePositions(day: TripDay, placesById: Map<string, Place>): [number, number][] {
   const positions: [number, number][] = [];

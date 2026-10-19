@@ -1,5 +1,4 @@
 import type { LocationCluster, Place, PlaceCategory, StopSchedule, TravelMode, TripDay } from '../types';
-import { isPlaceholder } from '../domain/place';
 import { resolveLeg } from './routing';
 
 const DEFAULT_DURATIONS: Record<PlaceCategory, number> = {
@@ -15,15 +14,6 @@ const DEFAULT_DURATIONS: Record<PlaceCategory, number> = {
   Transit: 30,
 };
 
-const TRAVEL_SPEEDS_KMH: Record<TravelMode, number> = {
-  public: 24,
-  walk: 4.5,
-  bike: 14,
-  car: 45,
-  taxi: 42,
-  other: 20,
-};
-
 export function defaultDuration(category: PlaceCategory) {
   return DEFAULT_DURATIONS[category];
 }
@@ -37,22 +27,6 @@ export function toMinutes(time?: string) {
 export function toTime(minutes: number) {
   const value = Math.max(0, Math.min(23 * 60 + 59, Math.round(minutes)));
   return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
-}
-
-function distanceKm(from: Place, to: Place) {
-  const radians = Math.PI / 180;
-  const latitudeDelta = (to.latitude - from.latitude) * radians;
-  const longitudeDelta = (to.longitude - from.longitude) * radians;
-  const latitude = from.latitude * radians;
-  const targetLatitude = to.latitude * radians;
-  const value = Math.sin(latitudeDelta / 2) ** 2 + Math.cos(latitude) * Math.cos(targetLatitude) * Math.sin(longitudeDelta / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
-}
-
-export function estimateTravelMinutes(from: Place, to: Place, mode: TravelMode = 'public') {
-  if (isPlaceholder(from) || isPlaceholder(to)) return 0;
-  const roadFactor = mode === 'walk' ? 1.15 : 1.3;
-  return Math.max(5, Math.round((distanceKm(from, to) * roadFactor / TRAVEL_SPEEDS_KMH[mode]) * 60));
 }
 
 export function scheduleFor(day: TripDay, place: Place): StopSchedule {
@@ -144,6 +118,6 @@ export function nextAnchor(day: TripDay, clusters: LocationCluster[], orderedPla
 
   const leg = current ? resolveLeg(day, clusters, current, next) : null;
   const mode = leg?.mode ?? day.travelMode ?? 'public';
-  const travelMinutes = leg ? leg.minutes ?? estimateTravelMinutes(current!, next, mode) : 0;
+  const travelMinutes = leg?.minutes ?? 0;
   return { kind: 'leaveBy', leaveAt: toTime(arriveMinutes - travelMinutes), arriveBy: toTime(arriveMinutes), travelMinutes, mode, toPlaceId: next.id };
 }

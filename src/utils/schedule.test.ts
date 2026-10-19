@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cascadeStartTimes, dayWarningCount, dayWarnings, defaultDuration, estimateTravelMinutes, nextAnchor, scheduleFor, toMinutes, toTime } from './schedule';
+import { cascadeStartTimes, dayWarningCount, dayWarnings, defaultDuration, nextAnchor, scheduleFor, toMinutes, toTime } from './schedule';
 import type { LocationCluster, Place, TripDay } from '../types';
 import { resolveLeg } from './routing';
 
@@ -16,7 +16,9 @@ describe('schedule helpers', () => {
   });
 
   it('uses transport modes for distance estimates', () => {
-    expect(estimateTravelMinutes(first, second, 'walk')).toBeGreaterThan(estimateTravelMinutes(first, second, 'car'));
+    const legDay = (mode: TripDay['travelMode']): TripDay => ({ id: 'day-1', label: '', placeIds: ['first', 'second'], travelMode: mode });
+    expect(resolveLeg(legDay('walk'), [], first, second).minutes).toBe(23);
+    expect(resolveLeg(legDay('car'), [], first, second).minutes).toBe(5);
   });
 
   it('warns for insufficient travel and opening-hour conflicts', () => {
@@ -162,6 +164,12 @@ describe('nextAnchor', () => {
     expect(nextAnchor(d, [], [first, second], 'first', 'second')).toEqual({
       kind: 'leaveBy', leaveAt: '15:25', arriveBy: '15:30', travelMinutes: 5, mode: 'car', toPlaceId: 'second',
     });
+  });
+
+  it('gives zero travel from a placeholder stop', () => {
+    const lunch: Place = { ...first, id: 'lunch', placeholderKind: 'meal' };
+    const d = day({ placeIds: ['lunch', 'second'], stopSchedules: { second: { startTime: '13:00' } } });
+    expect(nextAnchor(d, [], [lunch, second], 'lunch', 'second')).toMatchObject({ kind: 'leaveBy', travelMinutes: 0, leaveAt: '13:00' });
   });
 
   it('clamps leaveAt at midnight', () => {
