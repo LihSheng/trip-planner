@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import { Alert, Anchor, Badge, Button, Group, Loader, Modal, Paper, Stack, Text } from '@mantine/core';
-import { IconBus, IconCheck, IconRefresh, IconRoute, IconShip, IconTrain, IconWalk } from '@tabler/icons-react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ActionIcon, Alert, Anchor, Badge, Button, Group, Loader, Modal, Paper, Stack, Text, Tooltip } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { IconBus, IconCheck, IconCopy, IconRefresh, IconRoute, IconShip, IconTrain, IconWalk } from '@tabler/icons-react';
 import {
   TRANSIT_ATTRIBUTION_URL,
   type LegRef,
@@ -11,28 +12,15 @@ import {
   type TransitSurface,
 } from '../domain/transit';
 import { useLegTransit } from '../hooks/useLegTransit';
-import { useI18n, type TranslationKey } from '../i18n';
+import { useI18n } from '../i18n';
 import type { TransitLookupError } from '../lib/transitClient';
-import { summarizeTransitOption } from '../utils/transit';
+import { formatTransitText, summarizeTransitOption, transitStepDetail, transitStepStops, type CopiedTransitOption } from '../utils/transit';
 
 export interface OpenTransitOptions { surface?: TransitSurface }
 
 interface TransitSheetValue { openTransit: (ref: LegRef, options?: OpenTransitOptions) => void }
 
 const TransitSheetContext = createContext<TransitSheetValue | null>(null);
-
-/** Exhaustive: a new TransitStepKind fails the build here. */
-const STEP_LABEL: Record<TransitStepKind, TranslationKey> = {
-  walk: 'transitStepWalk',
-  bus: 'transitStepBus',
-  tram: 'transitStepTram',
-  metro: 'transitStepMetro',
-  rail: 'transitStepRail',
-  highSpeedRail: 'transitStepHighSpeedRail',
-  ferry: 'transitStepFerry',
-  cableCar: 'transitStepCableCar',
-  other: 'transitStepOther',
-};
 
 const PROVIDER_NAME: Record<TransitProviderId, string> = { transitous: 'Transitous', mock: 'Mock' };
 
@@ -84,6 +72,24 @@ function TransitSheet({ legRef, surface, onClose }: { legRef: LegRef; surface: T
   const saved = view.status === 'saved' ? view.saved : null;
   const provider = saved?.provider ?? leg.lookupProvider;
   const formatDate = (iso: string) => new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(new Date(iso));
+  const chosenSignature = view.status === 'saved' ? view.chosen?.signature : undefined;
+  const copyOptions = async (options: CopiedTransitOption[], title: string) => {
+    if (!saved || !resolved) return false;
+    const text = formatTransitText({
+      title: `${resolved.from.name} → ${resolved.to.name}`,
+      savedOn: t('transitSavedOn', { date: formatDate(saved.fetchedAt) }),
+      options,
+    }, t);
+    try {
+      await navigator.clipboard.writeText(text);
+      notifications.show({ color: 'teal', title, message: t('transitCopiedMessage') });
+      return true;
+    } catch {
+      notifications.show({ color: 'red', title: t('copyFailed'), message: t('clipboardDenied') });
+      return false;
+    }
+  };
+  const allOptions = saved?.options.map((option, index) => ({ option, number: index + 1, chosen: option.signature === chosenSignature })) ?? [];
 
   return (
     <Modal opened onClose={onClose} centered title={resolved ? `${resolved.from.name} → ${resolved.to.name}` : t('transitOptions')}>
@@ -96,6 +102,10 @@ function TransitSheet({ legRef, surface, onClose }: { legRef: LegRef; surface: T
           {saved || leg.refresh ? (
             <Group justify="space-between" gap="xs">
               <Text size="xs" c="dimmed">{saved ? t('transitSavedOn', { date: formatDate(saved.fetchedAt) }) : null}</Text>
+              <Group gap={4} wrap="nowrap">
+              {allOptions.length > 1 ? (
+                <CopyAction label={t('transitCopyAll')} onCopy={() => copyOptions(allOptions, t('transitCopiedAll', { count: allOptions.length }))} />
+              ) : null}
               {leg.refresh ? (
                 <Button
                   size="compact-xs"
@@ -107,6 +117,7 @@ function TransitSheet({ legRef, surface, onClose }: { legRef: LegRef; surface: T
                   {saved ? t('transitRefresh') : t('transitFind')}
                 </Button>
               ) : null}
+              </Group>
             </Group>
           ) : null}
           {view.status === 'saved' && view.stale.length > 0 ? (
@@ -123,13 +134,14 @@ function TransitSheet({ legRef, surface, onClose }: { legRef: LegRef; surface: T
           {request.status === 'failed' ? <Text size="sm" c="red">{errorText(t, locale, request.error)}</Text> : null}
           {!saved && !leg.refresh ? <Text size="sm" c="dimmed">{t('transitNoSaved')}</Text> : null}
           {saved && saved.options.length === 0 ? <Text size="sm" c="dimmed">{t('transitEmpty')}</Text> : null}
-          {saved?.options.map((option, index) => (
+          {allOptions.map((copied, index) => (
             <OptionCard
-              key={option.signature}
-              option={option}
+              key={copied.option.signature}
+              option={copied.option}
               index={index}
-              chosen={view.status === 'saved' && view.chosen?.signature === option.signature}
-              onChoose={leg.choose ? () => leg.choose!(option.signature) : undefined}
+              chosen={copied.chosen}
+              onCopy={() => copyOptions([copied], t('transitCopiedOption', { number: copied.number }))}
+              onChoose={leg.choose ? () => leg.choose!(copied.option.signature) : undefined}
               onClear={leg.choose ? () => leg.choose!(null) : undefined}
             />
           ))}
@@ -159,10 +171,11 @@ function Attribution({ provider }: { provider: TransitProviderId | null }) {
   );
 }
 
-function OptionCard({ option, index, chosen, onChoose, onClear }: {
+function OptionCard({ option, index, chosen, onCopy, onChoose, onClear }: {
   option: TransitOption;
   index: number;
   chosen: boolean;
+  onCopy: () => Promise<boolean>;
   onChoose?: () => void;
   onClear?: () => void;
 }) {
@@ -174,6 +187,7 @@ function OptionCard({ option, index, chosen, onChoose, onClear }: {
         <Text fw={600} size="sm">{headline}</Text>
         <Group gap="xs" wrap="nowrap">
           <Text size="sm" fw={600} style={{ whiteSpace: 'nowrap' }}>{t('routeDuration', { minutes: option.minutes })}</Text>
+          <CopyAction iconOnly label={t('transitCopyOption', { number: index + 1 })} onCopy={onCopy} />
           {chosen ? (
             <Badge color="teal" variant="light" leftSection={<IconCheck size={12} />}>{t('transitChosen')}</Badge>
           ) : onChoose ? (
@@ -191,12 +205,30 @@ function OptionCard({ option, index, chosen, onChoose, onClear }: {
   );
 }
 
+/** Turns its icon into a check for a moment after a successful copy. */
+function CopyAction({ label, iconOnly, onCopy }: { label: string; iconOnly?: boolean; onCopy: () => Promise<boolean> }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(timer);
+  }, [copied]);
+  const run = async () => setCopied(await onCopy());
+  const icon = copied ? <IconCheck size={14} /> : <IconCopy size={14} />;
+  if (iconOnly) {
+    return (
+      <Tooltip label={label} withinPortal={false}>
+        <ActionIcon variant="subtle" color={copied ? 'teal' : 'gray'} size="sm" aria-label={label} onClick={run}>{icon}</ActionIcon>
+      </Tooltip>
+    );
+  }
+  return <Button size="compact-xs" variant="subtle" color={copied ? 'teal' : undefined} leftSection={icon} onClick={run}>{label}</Button>;
+}
+
 function StepRow({ step }: { step: TransitStep }) {
   const { t } = useI18n();
-  const name = t(STEP_LABEL[step.kind], { line: step.line ?? '' }).trim();
-  const detail = [name, step.stopCount ? t('transitStops', { count: step.stopCount }) : null, t('routeDuration', { minutes: step.minutes })]
-    .filter(Boolean).join(' · ');
-  const stops = step.fromStop && step.toStop ? `${step.fromStop} → ${step.toStop}` : null;
+  const detail = transitStepDetail(step, t);
+  const stops = transitStepStops(step);
   return (
     <Group gap="xs" wrap="nowrap" align="flex-start">
       <Text span c="dimmed" mt={2}>{stepIcon(step.kind)}</Text>

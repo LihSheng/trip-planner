@@ -123,6 +123,24 @@ describe('TransitSheet', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('lets a viewer copy one option or all of them as text', async () => {
+    auth = { isAuthenticated: false, user: { id: 'shared-trip-viewer' }, accessToken: '' };
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    renderLeg(trip({ 'Taipei 101:Longshan': saved }), true);
+
+    fireEvent.click(await screen.findByRole('button', { name: '18 min, show transit options' }));
+    const dialog = await screen.findByRole('dialog');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Copy option 2' }));
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(writeText.mock.calls[0][0]).toBe('Taipei 101 → Longshan\nSaved Oct 19\n\nOption 2 · 35 min\n🚌 Bus 307 · 35 min\n    Stop A → Stop B');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Copy all' }));
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+    expect(writeText.mock.calls[1][0]).toContain('Option 1 · 22 min\n🚇 Metro BL · 5 stops · 22 min\n\nOption 2 · 35 min');
+  });
+
   it('tells a viewer when nothing is saved and still offers Open route', async () => {
     auth = { isAuthenticated: false, user: { id: 'shared-trip-viewer' }, accessToken: '' };
     renderLeg(trip(), true);
