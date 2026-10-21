@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActionIcon, Anchor, Badge, Button, Checkbox, Collapse, Group, Menu, Modal, Paper, Select, Stack, Text, Textarea, Title, Tooltip, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
-  IconCheck, IconChevronDown, IconCircle, IconCircleCheckFilled, IconClock, IconDots,
+  IconCheck, IconChevronDown, IconCircle, IconCircleCheckFilled, IconClock, IconCopy, IconDots,
   IconArrowRight, IconFileText, IconListCheck, IconMapPin, IconPlayerSkipForward, IconReceipt, IconRoute, IconTrash,
 } from '@tabler/icons-react';
 import type { DayTask, Place, StopExecutionStatus } from '../types';
@@ -10,6 +10,8 @@ import { defaultTodayDay, localDateKey, tripDayDate as dayDate } from '../utils/
 import { ExpenseSheet } from './ExpenseSheet';
 import { getTwdExchangeRate } from '../lib/exchangeRates';
 import { useTrip } from '../context/TripContext';
+import { copyIncludesTravel, copyWithToast } from '../lib/copyText';
+import { formatDayPlainText } from '../utils/exportTrip';
 import { showUndoableNotification } from '../lib/undoNotification';
 import type { CurrentLocationState } from '../hooks/useCurrentLocation';
 import { navigationUrl, placeStatus } from '../utils/mapPresentation';
@@ -159,6 +161,18 @@ export function TodayModePage({ location }: TodayModePageProps) {
           <Text c="dimmed" size="lg">{dateLabel(dayDate(state.startDate, state.days.indexOf(activeDay)))} · {stops[0]?.region || state.tripName}</Text>
         </div>
         <Group className="today-header__controls" gap="sm" wrap="nowrap" align="center">
+          <Button
+            variant="default"
+            leftSection={<IconCopy size={16} />}
+            onClick={() => void copyWithToast(
+              formatDayPlainText(state, activeDay.id, { includeTravel: copyIncludesTravel() }),
+              t('dayCopied', { number: state.days.indexOf(activeDay) + 1 }),
+              t('dayCopiedMessage'),
+              t,
+            )}
+          >
+            {t('copyPlan')}
+          </Button>
           <Select aria-label="Choose day" value={activeDay.id} onChange={(value) => value && setActiveDayId(value)} data={state.days.map((day, index) => ({ value: day.id, label: `Day ${index + 1} · ${day.label}` }))} className="today-day-select" />
         </Group>
       </header>

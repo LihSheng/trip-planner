@@ -16,7 +16,7 @@ import {
   TextInput,
   Select,
 } from '@mantine/core';
-import { IconBed, IconCircleCheckFilled, IconCoffee, IconDots, IconListCheck, IconMapPinPlus, IconPlane, IconPlus, IconSun, IconToolsKitchen, IconTrash } from '@tabler/icons-react';
+import { IconBed, IconCircleCheckFilled, IconCoffee, IconCopy, IconDots, IconListCheck, IconMapPinPlus, IconPlane, IconPlus, IconSun, IconToolsKitchen, IconTrash } from '@tabler/icons-react';
 import type { DayTask, LocationCluster, PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
@@ -56,6 +56,7 @@ interface DayColumnProps {
   clusters?: LocationCluster[];
   tasks?: DayTask[];
   onOpenTasks: (dayId: string) => void;
+  onCopyText: (dayId: string) => void;
   bookingCards?: PlannerBookingCard[];
   onEditBooking?: (card: PlannerBookingCard) => void;
   onAddFlight?: () => void;
@@ -91,6 +92,7 @@ export function DayColumn({
   clusters = [],
   tasks = [],
   onOpenTasks,
+  onCopyText,
   bookingCards = [],
   onEditBooking,
   onAddFlight,
@@ -170,14 +172,15 @@ export function DayColumn({
               ) : null}
             </Group>
           </Stack>
-          {!readOnly ? (
-            <Group gap="xs" wrap="nowrap">
-              <Switch
-                size="sm"
-                label={t('times')}
-                checked={Boolean(day.timeManagementEnabled)}
-                onChange={(event) => onDayScheduleChange(day.id, { timeManagementEnabled: event.currentTarget.checked })}
-              />
+          <Group gap="xs" wrap="nowrap">
+              {!readOnly ? (
+                <Switch
+                  size="sm"
+                  label={t('times')}
+                  checked={Boolean(day.timeManagementEnabled)}
+                  onChange={(event) => onDayScheduleChange(day.id, { timeManagementEnabled: event.currentTarget.checked })}
+                />
+              ) : null}
               <Menu position="bottom-end" shadow="md" withinPortal>
                 <Menu.Target>
                   <ActionIcon variant="default" aria-label={t('dayOptions', { day: dayName })}>
@@ -185,13 +188,15 @@ export function DayColumn({
                   </ActionIcon>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Item leftSection={<IconListCheck size={15} />} onClick={() => onOpenTasks(day.id)}>{t('checklist')}</Menu.Item>
-                  <Menu.Divider />
-                  <Menu.Item color="red" leftSection={<IconTrash size={15} />} onClick={() => onRemove(day.id)}>{t('removeDay')}</Menu.Item>
+                  {!readOnly ? <Menu.Item leftSection={<IconListCheck size={15} />} onClick={() => onOpenTasks(day.id)}>{t('checklist')}</Menu.Item> : null}
+                  <Menu.Item leftSection={<IconCopy size={15} />} onClick={() => onCopyText(day.id)}>{t('copyDayText')}</Menu.Item>
+                  {!readOnly ? <>
+                    <Menu.Divider />
+                    <Menu.Item color="red" leftSection={<IconTrash size={15} />} onClick={() => onRemove(day.id)}>{t('removeDay')}</Menu.Item>
+                  </> : null}
                 </Menu.Dropdown>
               </Menu>
-            </Group>
-          ) : null}
+          </Group>
         </Group>
         {!readOnly && day.timeManagementEnabled ? (
           <Group gap="xs" mt="sm" grow className="day-column__time-settings">

@@ -6,6 +6,7 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   Group,
   Menu,
   Modal,
@@ -44,6 +45,7 @@ import type { CurrentLocationState } from '../hooks/useCurrentLocation';
 import { exportTripExcel, exportTripMarkdown } from '../utils/exportTrip';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useI18n } from '../i18n';
+import { useCopyIncludesTravel } from '../lib/copyText';
 
 interface AppHeaderProps {
   onAddPlace: () => void;
@@ -85,6 +87,7 @@ export function AppHeader({
   } = useTrip();
   const { user, isDemo, isAuthenticated, requestMagicLink } = useAuth();
   const { t } = useI18n();
+  const [copyTravel, setCopyTravel] = useCopyIncludesTravel();
   const online = useOnlineStatus();
   const [exporting, setExporting] = useState<'excel' | 'markdown' | null>(null);
   const [signInOpened, setSignInOpened] = useState(false);
@@ -276,6 +279,14 @@ export function AppHeader({
               <Menu.Item leftSection={<IconCopy size={16} />} onClick={() => void onCopyPlainText()}>
                 {t('copyItineraryText')}
               </Menu.Item>
+              <Box px="sm" py={6}>
+                <Checkbox
+                  size="xs"
+                  label={t('copyIncludesTravel')}
+                  checked={copyTravel}
+                  onChange={(event) => setCopyTravel(event.currentTarget.checked)}
+                />
+              </Box>
               <Menu.Item
                 leftSection={<IconFileSpreadsheet size={16} />}
                 disabled={!cloudExportReady}

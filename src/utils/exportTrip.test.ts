@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createInitialState } from '../data/seed';
-import { exportTripExcel, exportTripJson, exportTripMarkdown, formatTripPlainText } from './exportTrip';
+import { latLngOf, routeLegKey } from '../domain/transit';
+import { exportTripExcel, exportTripJson, exportTripMarkdown, formatDayPlainText, formatTripPlainText } from './exportTrip';
 
 describe('plain-text itinerary export', () => {
   it('includes trip header, dated day names and notes without coordinates', () => {
@@ -26,6 +27,41 @@ describe('plain-text itinerary export', () => {
     const hidden = formatTripPlainText(state);
     expect(hidden).not.toContain('09:00');
     expect(hidden).not.toContain('1h 30m');
+  });
+
+  it('leaves travel out unless asked, then puts each leg under the stop it leaves from', () => {
+    const state = createInitialState();
+    const [firstId, secondId] = state.days[0].placeIds;
+    const first = state.places.find((place) => place.id === firstId)!;
+    const second = state.places.find((place) => place.id === secondId)!;
+    state.days[0].travelMode = 'public';
+    state.days[0].transitByLeg = {
+      [routeLegKey(firstId, secondId)]: {
+        provider: 'mock',
+        fetchedAt: '2026-10-21T02:00:00.000Z',
+        basis: { from: latLngOf(first), to: latLngOf(second), departAt: '2026-11-07T10:30:00+08:00' },
+        options: [{ signature: 'metro:BL>bus:307', minutes: 19, steps: [{ kind: 'walk', minutes: 3 }, { kind: 'metro', minutes: 10, line: 'BL' }, { kind: 'bus', minutes: 6, line: '307' }] }],
+        chosen: 'metro:BL>bus:307',
+      },
+    };
+
+    expect(formatTripPlainText(state)).not.toContain('↓');
+
+    const lines = formatTripPlainText(state, { includeTravel: true }).split('\n');
+    const firstLine = lines.findIndex((line) => line.endsWith(first.name));
+    expect(lines.slice(firstLine + 1, firstLine + 3)).toContain('       ↓ 🚇 Metro BL → 🚌 Bus 307 · 19 min');
+    expect(lines.some((line) => /^ {7}↓ .+ · ~\d+ min$/.test(line))).toBe(true);
+  });
+
+  it('copies one day with the trip name and only that day', () => {
+    const state = createInitialState();
+    const text = formatDayPlainText(state, state.days[1].id);
+
+    expect(text.split('\n')[0]).toBe(`🧳 ${state.tripName}`);
+    expect(text).toContain('📅 Day 2 · ');
+    expect(text).not.toContain('📅 Day 1 · ');
+    expect(text).not.toContain('📅 Day 3 · ');
+    expect(formatDayPlainText(state, 'missing-day')).toBe('');
   });
 
   it('shows the real arrival-day offset for multi-day flights', () => {

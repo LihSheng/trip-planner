@@ -50,6 +50,7 @@ function renderDay(day: TripDay, places: Place[], readOnly = false) {
           hotelPlaces={[]}
           onLegModeChange={vi.fn()}
           onOpenTasks={vi.fn()}
+          onCopyText={vi.fn()}
         />
       </I18nProvider>
     </MantineProvider>,

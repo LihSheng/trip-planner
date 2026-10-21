@@ -32,6 +32,8 @@ import { addDays, defaultTodayDay } from '../utils/date';
 import { isAccommodation, stayAssignmentStatus, type StayAssignmentStatus } from '../utils/stay';
 
 import { useTrip } from '../context/TripContext';
+import { copyIncludesTravel, copyWithToast } from '../lib/copyText';
+import { formatDayPlainText } from '../utils/exportTrip';
 import { showUndoableNotification } from '../lib/undoNotification';
 import { TripActivityDrawer } from './TripActivityDrawer';
 import { isPlaceholder } from '../domain/place';
@@ -122,6 +124,11 @@ export function PlannerBoard({
     undo,
   } = useTrip();
   const { t, locale } = useI18n();
+  const copyDayText = (dayId: string) => {
+    const text = formatDayPlainText(state, dayId, { includeTravel: copyIncludesTravel() });
+    const number = state.days.findIndex((day) => day.id === dayId) + 1;
+    void copyWithToast(text, t('dayCopied', { number }), t('dayCopiedMessage'), t);
+  };
   const zh = locale === 'zh-TW';
   const visitedPlaceIds = state.visitedPlaceIds;
   const onRenamePlaceholder = (place: Place, label: string) => updatePlace({ ...place, name: label });
@@ -383,6 +390,7 @@ export function PlannerBoard({
               clusters={state.locationClusters}
               tasks={(state.dayTasks ?? []).filter((task) => task.dayId === selectedDay.id)}
               onOpenTasks={setTaskDayId}
+              onCopyText={copyDayText}
               bookingCards={bookingCardsFor(dayDate(selectedDayIndex))}
               lodgingLabel={lodgingLabels[selectedDay.id]}
               flexiblePlaces={flexiblePlacesByDay[selectedDay.id]}

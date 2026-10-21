@@ -1,4 +1,6 @@
-import type { FlightLeg, Place, TripDay, TripState } from '../types';
+import type { FlightLeg, Place, TravelMode, TripDay, TripState } from '../types';
+import type { TransitStepKind } from '../domain/transit';
+import { dayLegs, type ResolvedLeg } from './routing';
 import { expenseSources } from '../domain/expenses';
 import { getCachedExchangeRate } from '../lib/exchangeRates';
 
@@ -144,7 +146,42 @@ function formatStop(day: TripDay, place: Place): string[] {
   return lines;
 }
 
-function formatDay(state: TripState, day: TripDay, dayIndex: number, places: Map<string, Place>): string[] {
+export interface PlainTextOptions {
+  /** Adds a line between stops with each leg's mode and minutes. Off by default. */
+  includeTravel?: boolean;
+}
+
+const MODE_LABEL: Record<TravelMode, string> = {
+  public: '🚇 Public transport',
+  walk: '🚶 Walk',
+  bike: '🚲 Bike',
+  car: '🚗 Car',
+  taxi: '🚕 Taxi',
+  other: '➡️ Travel',
+};
+
+const RIDE_LABEL: Record<Exclude<TransitStepKind, 'walk'>, string> = {
+  bus: '🚌 Bus',
+  tram: '🚋 Tram',
+  metro: '🚇 Metro',
+  rail: '🚆 Train',
+  highSpeedRail: '🚄 High-speed rail',
+  ferry: '⛴️ Ferry',
+  cableCar: '🚡 Cable car',
+  other: '🚏 Transit',
+};
+
+/** "↓ 🚇 Metro BL → 🚌 Bus 307 · 19 min" for a chosen route, "↓ 🚕 Taxi · ~12 min" for an estimate. */
+function formatLeg(leg: ResolvedLeg): string | null {
+  if (leg.minutes === undefined) return null;
+  const chosen = leg.minutesSource === 'transit' && leg.transit.status === 'saved' ? leg.transit.chosen : null;
+  const rides = chosen?.steps.flatMap((step) => (step.kind === 'walk' ? [] : [`${RIDE_LABEL[step.kind]}${step.line ? ` ${step.line}` : ''}`])) ?? [];
+  const label = rides.length ? rides.join(' → ') : chosen ? MODE_LABEL.walk : MODE_LABEL[leg.mode];
+  const minutes = leg.minutesSource === 'estimate' ? `~${leg.minutes} min` : `${leg.minutes} min`;
+  return `${TIME_GUTTER}↓ ${label} · ${minutes}`;
+}
+
+function formatDay(state: TripState, day: TripDay, dayIndex: number, places: Map<string, Place>, options: PlainTextOptions = {}): string[] {
   const date = addDays(state.startDate, dayIndex);
   const lines = [DIVIDER, `📅 Day ${dayIndex + 1} · ${shortDate(state.startDate, dayIndex)}${day.label ? ` — ${day.label}` : ''}`];
   const stay = stayForDate(state, day, date, places);
@@ -153,7 +190,13 @@ function formatDay(state: TripState, day: TripDay, dayIndex: number, places: Map
 
   const stops = day.placeIds.flatMap((placeId) => places.get(placeId) ?? []);
   if (!stops.length) lines.push('No places scheduled.');
-  stops.forEach((place) => lines.push(...formatStop(day, place)));
+  // legs[i] sits between stops[i] and stops[i + 1]: both skip ids with no place.
+  const legs = options.includeTravel ? dayLegs(day, places, state.locationClusters ?? []) : [];
+  stops.forEach((place, index) => {
+    lines.push(...formatStop(day, place));
+    const leg = legs[index] && formatLeg(legs[index]);
+    if (leg) lines.push(leg);
+  });
 
   const tasks = (state.dayTasks ?? []).filter((task) => task.dayId === day.id).sort((a, b) => a.sortOrder - b.sortOrder);
   if (tasks.length) {
@@ -164,7 +207,7 @@ function formatDay(state: TripState, day: TripDay, dayIndex: number, places: Map
   return lines;
 }
 
-export function formatTripPlainText(state: TripState): string {
+export function formatTripPlainText(state: TripState, options: PlainTextOptions = {}): string {
   const places = new Map(state.places.map((place) => [place.id, place]));
   const dayCount = state.days.length;
   const range = dayCount > 1 ? `${shortDate(state.startDate)} – ${shortDate(state.startDate, dayCount - 1)}` : shortDate(state.startDate);
@@ -173,7 +216,7 @@ export function formatTripPlainText(state: TripState): string {
     `${range} · ${dayCount} ${dayCount === 1 ? 'day' : 'days'}`,
     '',
     ...formatFlights(state),
-    ...state.days.flatMap((day, dayIndex) => formatDay(state, day, dayIndex, places)),
+    ...state.days.flatMap((day, dayIndex) => formatDay(state, day, dayIndex, places, options)),
   ];
 
   const unscheduled = state.unscheduledIds.flatMap((placeId) => places.get(placeId) ?? []);
@@ -183,6 +226,14 @@ export function formatTripPlainText(state: TripState): string {
   }
 
   return lines.join('\n').trim();
+}
+
+/** One day for sharing: the trip name, then the same day block the whole-trip text uses. */
+export function formatDayPlainText(state: TripState, dayId: string, options: PlainTextOptions = {}): string {
+  const dayIndex = state.days.findIndex((day) => day.id === dayId);
+  if (dayIndex < 0) return '';
+  const places = new Map(state.places.map((place) => [place.id, place]));
+  return [`🧳 ${state.tripName}`, ...formatDay(state, state.days[dayIndex], dayIndex, places, options)].join('\n').trim();
 }
 
 export function exportTripMarkdown(state: TripState): void {
