@@ -52,6 +52,7 @@ import { StayBookingModal } from './components/BookingModals';
 import { AiImportDrawer } from './components/AiImportDrawer';
 import { AiReviewDrawer } from './components/AiReviewDrawer';
 import { formatTripPlainText } from './utils/exportTrip';
+import { copyIncludesTravel, copyWithToast } from './lib/copyText';
 import { useCurrentLocation } from './hooks/useCurrentLocation';
 import { useI18n } from './i18n';
 import { TransitSheetProvider } from './components/TransitSheet';
@@ -304,12 +305,8 @@ function TripWorkspace() {
   }
 
   async function copyItineraryText() {
-    try {
-      await navigator.clipboard.writeText(formatTripPlainText(planner.state));
-      notifications.show({ color: 'teal', title: t('itineraryCopied'), message: t('itineraryCopiedMessage') });
-    } catch {
-      notifications.show({ color: 'red', title: t('copyFailed'), message: t('clipboardDenied') });
-    }
+    const text = formatTripPlainText(planner.state, { includeTravel: copyIncludesTravel() });
+    await copyWithToast(text, t('itineraryCopied'), t('itineraryCopiedMessage'), t);
   }
 
   function resetTrip() {
