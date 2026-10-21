@@ -134,7 +134,8 @@ async function edgeLookup(accessToken: string, request: TransitRequest): Promise
       body: JSON.stringify(request),
     });
   } catch {
-    return { ok: false, error: { kind: 'offline' } };
+    // fetch also throws on CORS failures, e.g. a missing function's 404 preflight; only call it offline when the browser agrees.
+    return { ok: false, error: navigator.onLine === false ? { kind: 'offline' } : { kind: 'unavailable' } };
   }
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) return { ok: false, error: errorFor(response.status, body) };

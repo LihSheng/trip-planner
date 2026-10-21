@@ -29,6 +29,11 @@
     overflow-y: auto;
   }
 
+  /* The focused day grows with its stops; the main column scrolls instead. */
+  .desktop-workspace .planner-focus__main > .day-column--focus {
+    height: auto;
+  }
+
   .desktop-workspace > .planner-focus > .day-column--unscheduled {
     height: auto;
     max-height: 100%;

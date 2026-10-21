@@ -88,9 +88,19 @@ describe('edge transit client', () => {
     await expect(client.lookup(request)).resolves.toEqual({ ok: false, error });
   });
 
-  it('reports offline when the request cannot be sent', async () => {
+  it('reports unavailable when the request fails while the browser is online', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+    await expect(client.lookup(request)).resolves.toEqual({ ok: false, error: { kind: 'unavailable' } });
+  });
+
+  it('reports offline when the request fails because the connection dropped', async () => {
+    const onLine = vi.spyOn(navigator, 'onLine', 'get');
+    fetchMock.mockImplementation(async () => {
+      onLine.mockReturnValue(false);
+      throw new TypeError('Failed to fetch');
+    });
     await expect(client.lookup(request)).resolves.toEqual({ ok: false, error: { kind: 'offline' } });
+    onLine.mockRestore();
   });
 
   it('shares one request per leg and departure for the session', async () => {
