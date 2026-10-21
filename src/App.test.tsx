@@ -46,4 +46,19 @@ describe('App workspace navigation', () => {
     fireEvent.click(within(nav).getByRole('button', { name: 'Planner' }));
     expect(within(nav).getByRole('button', { name: 'Planner' }).getAttribute('aria-current')).toBe('page');
   });
+
+  it('leaves Places to the map side panel on desktop', () => {
+    const matchMedia = window.matchMedia;
+    vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({ ...matchMedia(query), matches: query.includes('min-width') }));
+    renderApp();
+    expect(screen.queryByRole('navigation', { name: 'Trip planner navigation' })).toBeNull();
+    for (const label of ['Today', 'Map', 'Planner', 'Expenses']) {
+      expect(screen.getByRole('radio', { name: label })).toBeTruthy();
+    }
+    expect(screen.queryByRole('radio', { name: 'Places' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Places' }));
+    expect(screen.getByRole('radio', { name: 'Map' })).toHaveProperty('checked', true);
+    vi.restoreAllMocks();
+  });
 });

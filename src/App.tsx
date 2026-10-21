@@ -380,10 +380,6 @@ function TripWorkspace() {
   );
 
   const desktopView = workspaceView === 'places' ? 'map' : workspaceView;
-  const selectDesktopView = (view: WorkspaceView) => {
-    setWorkspaceView(view);
-    if (view === 'places') setMapPanelCollapsed(false);
-  };
 
   const mapWorkspace = (
     <Box className={`map-workspace${mapPanelCollapsed ? ' map-workspace--panel-collapsed' : ''}`}>
@@ -481,9 +477,9 @@ function TripWorkspace() {
                   </Text>
                 </div>
                 <SegmentedControl
-                  value={workspaceView}
-                  onChange={(value) => selectDesktopView(value as WorkspaceView)}
-                  data={WORKSPACE_VIEWS.map((item) => ({
+                  value={desktopView}
+                  onChange={(value) => setWorkspaceView(value as WorkspaceView)}
+                  data={WORKSPACE_VIEWS.filter((item) => item.value !== 'places').map((item) => ({
                     value: item.value,
                     label: (
                       <Box className="workspace-tab-label">
