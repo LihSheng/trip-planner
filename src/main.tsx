@@ -2,7 +2,7 @@ import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Center, createTheme, Loader, MantineProvider, Stack, Text } from '@mantine/core';
 import { notifications, Notifications } from '@mantine/notifications';
-import '@mantine/core/styles.css';
+import './mantine.css';
 import '@mantine/notifications/styles.css';
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
