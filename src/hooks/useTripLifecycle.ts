@@ -200,13 +200,18 @@ export function useTripLifecycle({
       }
     }
 
-    const interval = window.setInterval(() => void refreshState(), REMOTE_REFRESH_MS);
-    const onFocus = () => void refreshState();
-    window.addEventListener('focus', onFocus);
+    // A hidden tab skips the poll and catches up once when it becomes visible again.
+    const refreshIfVisible = () => {
+      if (!document.hidden) void refreshState();
+    };
+    const interval = window.setInterval(refreshIfVisible, REMOTE_REFRESH_MS);
+    window.addEventListener('focus', refreshIfVisible);
+    document.addEventListener('visibilitychange', refreshIfVisible);
     return () => {
       active = false;
       window.clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('focus', refreshIfVisible);
+      document.removeEventListener('visibilitychange', refreshIfVisible);
     };
   }, [accessToken, applyRestoredTrip, isDemo, isReady, planId, setState, shareToken, user.id]);
 
