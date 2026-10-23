@@ -1,4 +1,4 @@
-import { MantineProvider, Modal, createTheme } from '@mantine/core';
+import { MantineProvider } from '@mantine/core';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { useEffect, type Context, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -79,12 +79,9 @@ function FirstLeg({ surface }: { surface: TransitSurface }) {
   );
 }
 
-/** No modal transition: its timer could fire after the file's jsdom is torn down and crash the run. */
-const theme = createTheme({ components: { Modal: Modal.extend({ defaultProps: { transitionProps: { duration: 0 } } }) } });
-
 function renderLeg(initial: TripState, readOnly: boolean, surface: TransitSurface = 'planner') {
   return render(
-    <MantineProvider env="test" theme={theme}>
+    <MantineProvider env="test">
       <I18nProvider>
         <Trip initial={initial} readOnly={readOnly}>
           <TransitSheetProvider><FirstLeg surface={surface} /></TransitSheetProvider>
