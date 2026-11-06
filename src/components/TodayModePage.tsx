@@ -3,7 +3,7 @@ import { ActionIcon, Anchor, Badge, Button, Checkbox, Collapse, Group, Menu, Mod
 import { notifications } from '@mantine/notifications';
 import {
   IconCheck, IconChevronDown, IconCircle, IconCircleCheckFilled, IconClock, IconCopy, IconDots,
-  IconArrowRight, IconFileText, IconListCheck, IconMapPin, IconPlayerSkipForward, IconReceipt, IconRoute, IconTrash,
+  IconArrowRight, IconFileText, IconListCheck, IconMapPin, IconNote, IconPlayerSkipForward, IconReceipt, IconRoute, IconTrash,
 } from '@tabler/icons-react';
 import type { DayTask, Place, StopExecutionStatus } from '../types';
 import { defaultTodayDay, localDateKey, tripDayDate as dayDate } from '../utils/date';
@@ -20,6 +20,7 @@ import { nextAnchor, projectDay, timingLabel, timingStartLabel, type StopTiming 
 import { transportIcon } from './transportIcons';
 import { categoryLabel, useI18n } from '../i18n';
 import { flexibleDaysFor, flexiblePlacesForDay, remainingWindowDays } from '../domain/flexibleWindows';
+import { dayNoteColor } from '../domain/dayNote';
 import { isSavedRouteOld, transitOnSurface } from '../domain/transit';
 import { useTransitSheet } from './TransitSheet';
 import type { TravelMode } from '../types';
@@ -90,6 +91,7 @@ export function TodayModePage({ location }: TodayModePageProps) {
   const dayTotals = dayExpenses.reduce((totals, expense) => ({ ...totals, [expense.currency]: (totals[expense.currency] ?? 0) + expense.amount }), {} as Record<string, number>);
   const twdDayTotal = dayTotals.TWD ?? 0;
   const activeDayIndex = state.days.indexOf(activeDay);
+  const dayNotes = (state.dayNotes ?? []).filter((note) => note.dayId === activeDay.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const tasks = state.dayTasks ?? [];
   const currentTasks = tasks.filter((task) => task.dayId === activeDay.id && !task.completed).sort((a, b) => a.sortOrder - b.sortOrder);
   const completedTasks = tasks.filter((task) => task.dayId === activeDay.id && task.completed).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -223,6 +225,19 @@ export function TodayModePage({ location }: TodayModePageProps) {
               </Collapse>
             </>
           ) : null}
+        </Paper>
+      ) : null}
+
+      {dayNotes.length ? (
+        <Paper className="today-tasks" radius="xl" aria-label="Day notes">
+          <Group gap="xs" mb="sm"><IconNote size={21} /><Title order={2}>Notes</Title></Group>
+          <div className="day-note-chips">
+            {dayNotes.map((note) => (
+              <div key={note.id} className={`day-note-chip day-note-chip--${dayNoteColor(note.color)}`} aria-label={`Note ${note.text}`}>
+                {note.text}
+              </div>
+            ))}
+          </div>
         </Paper>
       ) : null}
 

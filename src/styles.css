@@ -2003,3 +2003,92 @@ select {
     transition: none;
   }
 }
+
+/* Day notes are coloured sticky cards with dark text in both themes. */
+.day-note-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.day-note-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 132px;
+  padding: 14px 14px 10px;
+  border-radius: 4px 14px 6px 12px;
+  color: #2b2b1f;
+  box-shadow: 0 6px 14px rgba(20, 24, 28, 0.14);
+  transform: rotate(-0.8deg);
+}
+
+.day-note-card:nth-child(even) {
+  transform: rotate(0.9deg);
+}
+
+.day-note-card__text {
+  flex: 1;
+  color: #2b2b1f;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.day-note-card__time {
+  color: rgba(43, 43, 31, 0.66);
+}
+
+.day-note-card--yellow,
+.day-note-chip--yellow,
+.day-note-swatch--yellow {
+  background: #fdf0a6;
+}
+
+.day-note-card--pink,
+.day-note-chip--pink,
+.day-note-swatch--pink {
+  background: #ffd4e3;
+}
+
+.day-note-card--mint,
+.day-note-chip--mint,
+.day-note-swatch--mint {
+  background: #cdf3dd;
+}
+
+.day-note-card--blue,
+.day-note-chip--blue,
+.day-note-swatch--blue {
+  background: #cfe7ff;
+}
+
+.day-note-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.day-note-chip {
+  max-width: 100%;
+  padding: 8px 12px;
+  border-radius: 4px 10px 6px 10px;
+  color: #2b2b1f;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.day-note-swatch {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid rgba(43, 43, 31, 0.18);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.day-note-swatch[aria-pressed='true'] {
+  outline: 2px solid #2b2b1f;
+  outline-offset: 2px;
+}

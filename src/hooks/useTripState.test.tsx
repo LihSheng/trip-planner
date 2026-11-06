@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { normalizeDayNotes } from '../domain/dayNote';
 import type { SavedLegTransit, TransitLookup } from '../domain/transit';
 import type { Place, TripState } from '../types';
 import { dayLegs, resolveLeg } from '../utils/routing';
@@ -160,6 +161,17 @@ describe('useTripState', () => {
     act(() => result.current.addDayTask(firstDayId, 'Carry this forward'));
     act(() => result.current.removeDay(firstDayId));
     expect(result.current.state.dayTasks?.[0]).toMatchObject({ dayId: nextDayId, text: 'Carry this forward' });
+  });
+
+  it('moves sticky notes to the next day when their day is removed and keeps them after normalizing', () => {
+    const { result } = renderHook(() => useTripState(false));
+    const firstDayId = result.current.state.days[0].id;
+    const nextDayId = result.current.state.days[1].id;
+    act(() => result.current.addDayNote(firstDayId, 'Ask hotel about late checkout', 'pink'));
+    act(() => result.current.removeDay(firstDayId));
+    expect(result.current.state.dayNotes).toHaveLength(1);
+    expect(result.current.state.dayNotes?.[0]).toMatchObject({ dayId: nextDayId, text: 'Ask hotel about late checkout', color: 'pink' });
+    expect(normalizeDayNotes(result.current.state)).toHaveLength(1);
   });
 
   it('undo after a move between days restores both days', () => {

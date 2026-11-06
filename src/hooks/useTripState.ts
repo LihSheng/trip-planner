@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
-import type { ClusterRelationship, ContainerId, CurrencyCode, DayExecutionState, DayTask, FlightBooking, Money, PlaceholderKind, Place, StayBooking, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
+import type { ClusterRelationship, ContainerId, CurrencyCode, DayExecutionState, DayNote, DayNoteColor, DayTask, FlightBooking, Money, PlaceholderKind, Place, StayBooking, StopExecutionStatus, StopSchedule, TripExpense, TripState, TravelMode } from '../types';
 import { movePlace } from '../utils/itinerary';
 import { defaultDuration } from '../utils/schedule';
 import { storeProjectedStarts } from '../utils/dayProjection';
@@ -284,6 +284,11 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
           if (!destination) return [];
           return [{ ...task, dayId: destination.id, sortOrder: destinationTaskCount + movedTaskIndex++ }];
         }),
+        dayNotes: (current.dayNotes ?? []).flatMap((note) => {
+          if (note.dayId !== dayId) return [note];
+          if (!destination) return [];
+          return [{ ...note, dayId: destination.id }];
+        }),
       };
     });
   }, [readOnly]);
@@ -345,6 +350,29 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
         dayTasks: (current.dayTasks ?? []).map((task) => task.id === taskId ? { ...task, dayId, sortOrder } : task),
       };
     });
+  }, [readOnly]);
+
+  const addDayNote = useCallback((dayId: string, text: string, color: DayNoteColor) => {
+    if (readOnly || !text.trim()) return;
+    setState((current) => {
+      if (!current.days.some((day) => day.id === dayId)) return current;
+      const now = new Date().toISOString();
+      const note: DayNote = { id: `note-${crypto.randomUUID()}`, dayId, text: text.trim(), color, createdAt: now, updatedAt: now };
+      return { ...current, dayNotes: [...(current.dayNotes ?? []), note] };
+    });
+  }, [readOnly]);
+
+  const updateDayNote = useCallback((noteId: string, text: string) => {
+    if (readOnly || !text.trim()) return;
+    setState((current) => ({
+      ...current,
+      dayNotes: (current.dayNotes ?? []).map((note) => note.id === noteId ? { ...note, text: text.trim(), updatedAt: new Date().toISOString() } : note),
+    }));
+  }, [readOnly]);
+
+  const deleteDayNote = useCallback((noteId: string) => {
+    if (readOnly) return;
+    setState((current) => ({ ...current, dayNotes: (current.dayNotes ?? []).filter((note) => note.id !== noteId) }));
   }, [readOnly]);
 
   const reorderDays = useCallback((fromIndex: number, toIndex: number) => {
@@ -732,6 +760,9 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
     deleteDayTask,
     reorderDayTasks,
     moveDayTask,
+    addDayNote,
+    updateDayNote,
+    deleteDayNote,
     reorderDays,
     toggleVisited,
     updateExecution,

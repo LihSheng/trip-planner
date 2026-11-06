@@ -208,6 +208,18 @@ export interface DayTask {
   sortOrder: number;
 }
 
+export const DAY_NOTE_COLORS = ['yellow', 'pink', 'mint', 'blue'] as const;
+export type DayNoteColor = (typeof DAY_NOTE_COLORS)[number];
+
+export interface DayNote {
+  id: string;
+  dayId: string;
+  text: string;
+  color: DayNoteColor;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TripState {
   version: 1;
   tripName: string;
@@ -233,6 +245,7 @@ export interface TripState {
   flightBookings?: FlightBooking[];
   budget?: Money;
   dayTasks?: DayTask[];
+  dayNotes?: DayNote[];
   displayCurrency?: CurrencyCode;
 }
 
