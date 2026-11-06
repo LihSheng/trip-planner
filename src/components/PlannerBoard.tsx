@@ -38,6 +38,7 @@ import { showUndoableNotification } from '../lib/undoNotification';
 import { TripActivityDrawer } from './TripActivityDrawer';
 import { isPlaceholder } from '../domain/place';
 import { flexibleDaysFor, flexiblePlacesForDay, remainingWindowDays } from '../domain/flexibleWindows';
+import { DayNotesModal } from './DayNotesModal';
 import { DayTasksModal } from './DayTasksModal';
 import { FlightBookingModal, StayBookingModal } from './BookingModals';
 import type { FlightBooking, StayBooking } from '../types';
@@ -116,6 +117,9 @@ export function PlannerBoard({
     toggleDayTask,
     deleteDayTask,
     reorderDayTasks,
+    addDayNote,
+    updateDayNote,
+    deleteDayNote,
     saveFlightBooking,
     saveStayBooking,
     deleteFlightBooking,
@@ -137,6 +141,7 @@ export function PlannerBoard({
   // null shows the whole-trip overview; a day id shows that day for editing.
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [taskDayId, setTaskDayId] = useState<string | null>(null);
+  const [noteDayId, setNoteDayId] = useState<string | null>(null);
   const [flightDate, setFlightDate] = useState('');
   const [editingFlight, setEditingFlight] = useState<FlightBooking>();
   const [editingStay, setEditingStay] = useState<StayBooking>();
@@ -390,6 +395,8 @@ export function PlannerBoard({
               clusters={state.locationClusters}
               tasks={(state.dayTasks ?? []).filter((task) => task.dayId === selectedDay.id)}
               onOpenTasks={setTaskDayId}
+              notes={(state.dayNotes ?? []).filter((note) => note.dayId === selectedDay.id)}
+              onOpenNotes={setNoteDayId}
               onCopyText={copyDayText}
               bookingCards={bookingCardsFor(dayDate(selectedDayIndex))}
               lodgingLabel={lodgingLabels[selectedDay.id]}
@@ -461,6 +468,20 @@ export function PlannerBoard({
         onToggle={toggleDayTask}
         onDelete={deleteDayTask}
         onReorder={(activeId, overId) => taskDayId && reorderDayTasks(taskDayId, activeId, overId)}
+      />
+      <DayNotesModal
+        opened={Boolean(noteDayId)}
+        dayLabel={(() => {
+          const index = state.days.findIndex((day) => day.id === noteDayId);
+          if (index < 0) return 'Day';
+          return state.days[index].label.trim() || `Day ${index + 1}`;
+        })()}
+        notes={(state.dayNotes ?? []).filter((note) => note.dayId === noteDayId)}
+        readOnly={readOnly}
+        onClose={() => setNoteDayId(null)}
+        onAdd={(text, color) => noteDayId && addDayNote(noteDayId, text, color)}
+        onUpdate={updateDayNote}
+        onDelete={deleteDayNote}
       />
       <FlightBookingModal
         opened={Boolean(flightDate)}

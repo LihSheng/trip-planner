@@ -40,6 +40,10 @@ A normal Place has one movable ItineraryEntry. An Accommodation may have multipl
 A lightweight checklist item owned by one trip day. It is separate from places and scheduled visits.
 _Avoid_: Todo card, planned stop
 
+**DayNote**:
+A short free-form text entry owned by one trip day, shown as a coloured sticky card with created and updated timestamps. A day can have several in yellow, pink, mint, or blue, oldest first. Shared with collaborators like any other trip data, and read-only for viewers.
+_Avoid_: Comment, memo
+
 **Overdue task**:
 An incomplete DayTask owned by a day before the selected Today day. It keeps its original day until a traveller moves or deletes it.
 

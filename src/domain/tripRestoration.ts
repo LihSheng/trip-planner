@@ -1,5 +1,6 @@
 import type { TripDay, TripState } from '../types';
 import { ensureActivities } from './activity';
+import { normalizeDayNotes } from './dayNote';
 import { normalizeDayTasks } from './dayTask';
 import { normalizeExpenseState } from './expenses';
 import { normalizeFlexibleWindows } from './flexibleWindows';
@@ -56,6 +57,7 @@ export function normalizeTripState(state: TripState): TripState {
     executionByDay: state.executionByDay ?? {},
     expenses: Array.isArray(state.expenses) ? state.expenses : [],
     dayTasks: normalizeDayTasks(state),
+    dayNotes: normalizeDayNotes(state),
     displayCurrency: state.displayCurrency ?? 'MYR',
   };
 

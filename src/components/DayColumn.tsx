@@ -16,8 +16,8 @@ import {
   TextInput,
   Select,
 } from '@mantine/core';
-import { IconBed, IconCircleCheckFilled, IconCoffee, IconCopy, IconDots, IconListCheck, IconMapPinPlus, IconPlane, IconPlus, IconSun, IconToolsKitchen, IconTrash } from '@tabler/icons-react';
-import type { DayTask, LocationCluster, PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
+import { IconBed, IconCircleCheckFilled, IconCoffee, IconCopy, IconDots, IconListCheck, IconMapPinPlus, IconNote, IconPlane, IconPlus, IconSun, IconToolsKitchen, IconTrash } from '@tabler/icons-react';
+import type { DayNote, DayTask, LocationCluster, PlaceholderKind, Place, StopSchedule, TravelMode, TripDay } from '../types';
 import { formatTripDate } from '../utils/date';
 import { PlaceCard } from './PlaceCard';
 import { placeName, useI18n } from '../i18n';
@@ -56,6 +56,8 @@ interface DayColumnProps {
   clusters?: LocationCluster[];
   tasks?: DayTask[];
   onOpenTasks: (dayId: string) => void;
+  notes?: DayNote[];
+  onOpenNotes: (dayId: string) => void;
   onCopyText: (dayId: string) => void;
   bookingCards?: PlannerBookingCard[];
   onEditBooking?: (card: PlannerBookingCard) => void;
@@ -92,6 +94,8 @@ export function DayColumn({
   clusters = [],
   tasks = [],
   onOpenTasks,
+  notes = [],
+  onOpenNotes,
   onCopyText,
   bookingCards = [],
   onEditBooking,
@@ -163,6 +167,17 @@ export function DayColumn({
                 onClick={() => onOpenTasks(day.id)}
               >
                 {incompleteTaskCount ? t('openTasks', { count: incompleteTaskCount }) : t('checklist')}
+              </Button>
+              <Button
+                size="compact-xs"
+                variant="light"
+                radius="xl"
+                color={notes.length ? 'indigo' : 'gray'}
+                leftSection={<IconNote size={13} />}
+                onClick={() => onOpenNotes(day.id)}
+                aria-label={notes.length ? `Notes (${notes.length})` : 'Notes'}
+              >
+                {notes.length ? `Notes (${notes.length})` : 'Notes'}
               </Button>
               <FlexibleDayBadge places={flexiblePlaces} />
               {allPlacesVisited ? (

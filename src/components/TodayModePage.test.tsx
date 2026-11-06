@@ -34,6 +34,22 @@ afterEach(() => {
 });
 
 describe('TodayModePage', () => {
+  it('shows the active day notes as coloured chips oldest first', () => {
+    tripState = {
+      version: 1, tripName: 'T', startDate: '2026-10-10', places: [first], unscheduledIds: [], visitedPlaceIds: [],
+      days: [{ id: 'd1', label: 'Day 1', placeIds: ['first'] }],
+      dayNotes: [
+        { id: 'n2', dayId: 'd1', text: 'Newer note', color: 'mint', createdAt: '2026-01-02T00:00:00.000Z', updatedAt: '2026-01-02T00:00:00.000Z' },
+        { id: 'n1', dayId: 'd1', text: 'Call the driver at 8', color: 'pink', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+      ],
+    } as unknown as TripState;
+    renderToday();
+    const chips = screen.getAllByLabelText(/^Note /);
+    expect(chips.map((chip) => chip.getAttribute('aria-label'))).toEqual(['Note Call the driver at 8', 'Note Newer note']);
+    expect(chips[0].className).toContain('day-note-chip--pink');
+    expect(chips[1].className).toContain('day-note-chip--mint');
+  });
+
   it('shows a leave-by line for the next stop with a planned start time', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-10T09:00:00'));
