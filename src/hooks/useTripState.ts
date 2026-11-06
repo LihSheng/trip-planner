@@ -284,6 +284,11 @@ export function useTripState(readOnly: boolean, actor?: TripActor) {
           if (!destination) return [];
           return [{ ...task, dayId: destination.id, sortOrder: destinationTaskCount + movedTaskIndex++ }];
         }),
+        dayNotes: (current.dayNotes ?? []).flatMap((note) => {
+          if (note.dayId !== dayId) return [note];
+          if (!destination) return [];
+          return [{ ...note, dayId: destination.id }];
+        }),
       };
     });
   }, [readOnly]);
