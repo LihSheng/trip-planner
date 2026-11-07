@@ -21,3 +21,4 @@ jobs:
       - run: npm test
       - run: npm run test:edge
       - run: npm run build
+      - run: npm run check:css

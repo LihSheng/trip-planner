@@ -9,6 +9,7 @@
     "typecheck": "tsc -b --pretty false",
     "preview": "vite preview",
     "test": "vitest run",
+    "check:css": "node scripts/check-mantine-css.mjs",
     "test:edge": "node --test supabase/functions/ai-itinerary-import/_shared/sourceExtractor.security-test.ts supabase/functions/transit-routes/_shared/transitousAdapter.edge-test.ts supabase/functions/transit-routes/_shared/transitRequest.edge-test.ts supabase/functions/transit-routes/_shared/transitousClient.edge-test.ts"
   },
   "dependencies": {
