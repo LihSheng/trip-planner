@@ -1,7 +1,19 @@
+import type { MantineProviderProps } from '@mantine/core';
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { createElement } from 'react';
+import { afterEach, vi } from 'vitest';
 
 afterEach(cleanup);
+
+// Mantine's Transition schedules rAF + setTimeout even under env="test"; one firing after a file's
+// jsdom teardown fails the run with "window is not defined". Respecting reduced motion (matched
+// below in matchMedia) makes every transition zero-length, so no timer is ever scheduled.
+vi.mock('@mantine/core', async (importOriginal) => {
+  const mantine = await importOriginal<typeof import('@mantine/core')>();
+  const MantineProvider = (props: MantineProviderProps) =>
+    createElement(mantine.MantineProvider, { ...props, theme: { ...props.theme, respectReducedMotion: true } });
+  return { ...mantine, MantineProvider };
+});
 
 Object.defineProperty(URL, 'createObjectURL', { value: () => 'blob:test', writable: true });
 Object.defineProperty(URL, 'revokeObjectURL', { value: () => undefined, writable: true });
@@ -21,7 +33,7 @@ Object.defineProperty(globalThis, 'localStorage', { value: storage, configurable
 Object.defineProperty(window, 'matchMedia', {
   configurable: true,
   value: (query: string) => ({
-    matches: false,
+    matches: query === '(prefers-reduced-motion: reduce)',
     media: query,
     onchange: null,
     addEventListener: () => undefined,
